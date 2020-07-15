@@ -271,8 +271,7 @@ pub mod rest {
 /// This module contains `Extension` trait, and function for interacting with `Extension`
 #[cfg(feature = "extensions")]
 pub mod extensions {
-    pub use super::{tanoshi_cache_dir, tanoshi_dir, tanoshi_plugin_dir};
-    use crate::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
+    use crate::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult};
     use anyhow::{anyhow, Result};
     use serde_yaml;
     use std::io::Read;
@@ -288,48 +287,27 @@ pub mod extensions {
         ///
         /// * `url` - An url to specified page in source that can be parsed into a list of mangas
         /// * `param` - Parameter to filter manga from source
-        fn get_mangas(
-            &self,
-            url: &String,
-            param: Params,
-            refresh: bool,
-            auth: String,
-        ) -> Result<Vec<Manga>>;
+        fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>>;
 
         /// Returns detail of manga
-        fn get_manga_info(&self, url: &String, refresh: bool) -> Result<Manga>;
+        fn get_manga_info(&self, url: &String) -> Result<Manga>;
 
         /// Returns list of chapters of a manga
-        fn get_chapters(&self, url: &String, refresh: bool) -> Result<Vec<Chapter>>;
+        fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>>;
 
         /// Returns list of pages from a chapter of a manga
-        fn get_pages(&self, url: &String, refresh: bool) -> Result<Vec<String>>;
+        fn get_pages(&self, url: &String) -> Result<Vec<String>>;
 
         /// Returns an image by download to disk first then serve to web
-        fn get_page(&self, image: Image, refresh: bool) -> Result<Vec<u8>> {
-            let cache_path = tanoshi_cache_dir!(image.path);
-
-            let image_path = cache_path.join(&image.file_name);
-            if refresh {
-                let _ = std::fs::remove_file(&image_path);
-            }
-
-            let bytes = match std::fs::read(&image_path) {
-                Ok(data) => data,
-                Err(_) => {
-                    let resp = ureq::get(&image.url).call();
-                    let mut reader = resp.into_reader();
-                    let mut bytes = vec![];
-                    if reader.read_to_end(&mut bytes).is_err() {
-                        return Err(anyhow!("error write image"));
-                    }
-                    if std::fs::create_dir_all(&cache_path).is_ok() {
-                        if std::fs::write(&image_path, &bytes).is_err() {
-                            return Err(anyhow!("error write image"));
-                        }
-                    }
-                    bytes
+        fn get_page(&self, url: &String) -> Result<Vec<u8>> {
+            let bytes = {
+                let resp = ureq::get(&url).call();
+                let mut reader = resp.into_reader();
+                let mut bytes = vec![];
+                if reader.read_to_end(&mut bytes).is_err() {
+                    return Err(anyhow!("error read image"));
                 }
+                bytes
             };
 
             Ok(bytes)
@@ -339,48 +317,6 @@ pub mod extensions {
         fn login(&self, _: SourceLogin) -> Result<SourceLoginResult> {
             Err(anyhow!("not implemented"))
         }
-    }
-
-    #[macro_export]
-    macro_rules! tanoshi_dir {
-        ($($path:expr),*) => {
-            {
-                let mut dir = dirs::home_dir().expect("should have home dir").join(".tanoshi");
-                $(
-                    dir = dir.join($path);
-                )*
-
-                dir
-            }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! tanoshi_cache_dir {
-        ($($path:expr),*) => {
-            {
-                let mut dir = tanoshi_dir!("cache");
-                $(
-                    dir = dir.join($path);
-                )*
-
-                dir
-            }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! tanoshi_plugin_dir {
-        ($($path:expr),*) => {
-            {
-                let mut dir = tanoshi_dir!("plugins");
-                $(
-                    dir = dir.join($path);
-                )*
-
-                dir
-            }
-        };
     }
 
     /// A type represents an extension

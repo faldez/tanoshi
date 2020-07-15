@@ -2161,7 +2161,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "tanoshi-lib 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tanoshi-lib 0.9.1",
  "tbot",
  "tokio",
  "ureq",

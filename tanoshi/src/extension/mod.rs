@@ -3,7 +3,7 @@ use std::{collections::HashMap, ffi::OsStr, sync::Arc};
 //use local::Local;
 use lib::Library;
 use tanoshi_lib::extensions::{Extension, PluginDeclaration};
-use tanoshi_lib::manga::{Chapter, Image, Manga, Params, Source, SourceLogin, SourceLoginResult};
+use tanoshi_lib::manga::{Chapter, Manga, Params, Source, SourceLogin, SourceLoginResult};
 
 use anyhow::{anyhow, Result};
 
@@ -21,30 +21,24 @@ impl Extension for ExtensionProxy {
         self.extension.info()
     }
 
-    fn get_mangas(
-        &self,
-        url: &String,
-        param: Params,
-        refresh: bool,
-        auth: String,
-    ) -> Result<Vec<Manga>> {
-        self.extension.get_mangas(url, param, refresh, auth)
+    fn get_mangas(&self, url: &String, param: Params, auth: String) -> Result<Vec<Manga>> {
+        self.extension.get_mangas(url, param, auth)
     }
 
-    fn get_manga_info(&self, url: &String, refresh: bool) -> Result<Manga> {
-        self.extension.get_manga_info(url, refresh)
+    fn get_manga_info(&self, url: &String) -> Result<Manga> {
+        self.extension.get_manga_info(url)
     }
 
-    fn get_chapters(&self, url: &String, refresh: bool) -> Result<Vec<Chapter>> {
-        self.extension.get_chapters(url, refresh)
+    fn get_chapters(&self, url: &String) -> Result<Vec<Chapter>> {
+        self.extension.get_chapters(url)
     }
 
-    fn get_pages(&self, url: &String, refresh: bool) -> Result<Vec<String>> {
-        self.extension.get_pages(url, refresh)
+    fn get_pages(&self, url: &String) -> Result<Vec<String>> {
+        self.extension.get_pages(url)
     }
 
-    fn get_page(&self, image: Image, refresh: bool) -> Result<Vec<u8>> {
-        self.extension.get_page(image, refresh)
+    fn get_page(&self, url: &String) -> Result<Vec<u8>> {
+        self.extension.get_page(url)
     }
 
     fn login(&self, login_info: SourceLogin) -> Result<SourceLoginResult> {

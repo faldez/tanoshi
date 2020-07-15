@@ -135,11 +135,10 @@ impl Manga {
     ) -> Result<impl warp::Reply, Rejection> {
         let exts = self.exts.read().unwrap();
         if let Ok(source) = self.repo.get_source(source_id) {
-            let refresh = param.refresh.unwrap_or(false);
             let mangas = exts
                 .get(&source.name)
                 .unwrap()
-                .get_mangas(&source.url, param, refresh, source_auth)
+                .get_mangas(&source.url, param, source_auth)
                 .unwrap();
             debug!("mangas {:?}", mangas.clone());
 
@@ -186,7 +185,7 @@ impl Manga {
             let manga = exts
                 .get(&source.name)
                 .unwrap()
-                .get_manga_info(&url, true)
+                .get_manga_info(&url)
                 .unwrap();
 
             match self.repo.update_manga_info(manga_id, manga) {
@@ -235,7 +234,7 @@ impl Manga {
                 }
             };
 
-            let chapter = match exts.get(&source.name).unwrap().get_chapters(&url, refresh) {
+            let chapter = match exts.get(&source.name).unwrap().get_chapters(&url) {
                 Ok(ch) => ch,
                 Err(e) => {
                     return Err(warp::reject::custom(TransactionReject {
@@ -292,11 +291,7 @@ impl Manga {
                 Err(e) => return Err(anyhow::anyhow!("{}", e.to_string())),
             };
 
-            let pages = exts
-                .get(&source.name)
-                .unwrap()
-                .get_pages(&url, refresh)
-                .unwrap();
+            let pages = exts.get(&source.name).unwrap().get_pages(&url).unwrap();
 
             match self.repo.insert_pages(chapter_id, pages.clone()) {
                 Ok(_) => {}
@@ -325,7 +320,7 @@ impl Manga {
         let bytes = exts
             .get(&image.source_name)
             .unwrap()
-            .get_page(image.clone(), true)
+            .get_page(&image.url)
             .unwrap();
 
         let path = std::path::PathBuf::from(image.path).join(image.file_name);
@@ -365,7 +360,7 @@ impl Manga {
         let _ = exts
             .get(&image.source_name)
             .unwrap()
-            .get_page(image.clone(), true)
+            .get_page(&image.url)
             .unwrap();
 
         Ok(warp::sse::data(format!("/api/page/{}", page_id)))
