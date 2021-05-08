@@ -131,15 +131,17 @@ impl Component for Home {
         html! {
            <div class="pb-20 sm:pb-25 flex justify-center px-2" style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
                 <TopBar>
-                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:bg-accent-darker focus:bg-accent-darker rounded flex-none">
-                        <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                    </button>
-                    <span class="mx-2 my-1 flex-grow text-center text-white">{"Favorites"}</span>
                     <button
                         onclick=self.link.callback(|_| Msg::SyncUpdates)
-                        class="hover:bg-accent-darker focus:bg-accent-darker rounded flex-none">
+                        class="hover:text-accent focus:text-accent focus:outline-none flex-none">
                         <svg viewBox="0 0 20 20" fill="currentColor" class="refresh w-6 h-6 mx-2 self-center flex-none">
                             <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                    <span class="mx-2 my-1 flex-grow text-center">{"Favorites"}</span>
+                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:text-accent focus:text-accent focus:outline-none flex-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </button>
                 </TopBar>

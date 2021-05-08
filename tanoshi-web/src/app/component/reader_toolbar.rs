@@ -72,22 +72,21 @@ impl Component for ReaderToolbar {
     fn view(&self) -> Html {
         html! {
             <div ref=self.root_ref.clone()
-                class="flex justify-between items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-gray-900 z-50 content-end opacity-75"
+                class="flex justify-between items-center animated slideInDown faster block fixed inset-x-0 top-0 z-50 bg-white dark:bg-gray-900 z-50 content-end opacity-75 text-black dark:text-white shadow dark:shadow-none"
                 style="padding-top: calc(env(safe-area-inset-top) + .5rem)">
-                <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2 text-white" route=AppRoute::Browse(BrowseRoute::Detail(self.props.manga_id))>
+                <RouterAnchor<AppRoute> classes="z-50 mx-2 mb-2" route=AppRoute::Browse(BrowseRoute::Detail(self.props.manga_id))>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </RouterAnchor<AppRoute>>
                 <div class="flex flex-col mx-2 mb-2">
-                    <span ref=self.title_ref.clone() class="text-white text-center truncate"></span>
-                    <span class="text-white text-center text-sm">{&self.props.chapter}</span>
+                    <span ref=self.title_ref.clone() class="text-center truncate"></span>
+                    <span class="text-center text-sm">{&self.props.chapter}</span>
                 </div>
-                <div>
-                </div>
+                <div></div>
                 // <button
                 //     onclick={&self.props.on_refresh}
-                //     class="z-50 mx-2 mb-2 text-white ">
+                //     class="z-50 mx-2 mb-2">
                 //     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 //         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                 //     </svg>

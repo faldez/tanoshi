@@ -273,20 +273,22 @@ impl Component for Source {
         return html! {
             <div ref={self.catalogue_ref.clone()} id="catalogue" class="pb-20 px-2 overflow-scroll max-h-screen">
                 <TopBar>
-                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:text-accent-darker focus:text-accent-darker focus:outline-none rounded flex-none">
-                        <svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" class="mx-2 self-center flex-none"><path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                    </button>
-                    <form class="mx-2 flex-grow" onsubmit=self.link.callback(|e| Msg::Search(e))>
-                        <input type="search"
-                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white bg-gray-800 shadow-inner rounded appearance-none"
-                            placeholder={"Search"}
-                            value={self.keyword.clone()}
-                            oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
-                    </form>
                     <button onclick=self.link.callback(|_| Msg::SourceLogin)
                         class="hover:text-accent-darker focus:text-accent-darker focus:outline-none rounded flex-none">
                         <svg viewBox="0 0 20 20" fill="currentColor" class="login w-6 h-6 mx-2 self-center flex-none">
                             <path fill-rule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L9.414 9H17a1 1 0 110 2H9.414l1.293 1.293a1 1 0 01-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                    <form class="mx-2 flex-grow" onsubmit=self.link.callback(|e| Msg::Search(e))>
+                        <input type="search"
+                            class="w-full px-3 py-2 focus:outline-none text-sm leading-tight text-white xl:text-black bg-gray-800 xl:bg-gray-100 rounded appearance-none focus:outline-none"
+                            placeholder={"Search"}
+                            value={self.keyword.clone()}
+                            oninput=self.link.callback(|e| Msg::KeywordChanged(e))/>
+                    </form>
+                    <button onclick=self.link.callback(|_| Msg::Filter) class="hover:text-accent-darker focus:text-accent-darker focus:outline-none rounded flex-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </button>
                 </TopBar>
@@ -358,7 +360,7 @@ impl Source {
                 {
                     match self.is_fetching {
                         true => html!{<Spinner is_active=true is_fullscreen=false />},
-                        false => html!{<button class="w-full dark:text-gray-200 dark:text-grey-800 my-2" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
+                        false => html!{<button class="w-full dark:text-gray-200 dark:text-grey-800 my-2 focus:outline-none" onclick=self.link.callback(|_| Msg::ScrolledDown)>{"Load More"}</button>}
                     }
                 }
             </>
@@ -368,7 +370,7 @@ impl Source {
     fn view_login_page(&self) -> Html {
         html! {
             <div class="flex justify-center px-2 my-12" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
-                <div class="w-full xl:w-3/4 lg:w-11/12 flex">
+                <div class="w-full xl:w-3/4 xl:w-11/12 flex">
                     <div class="w-full p-5">
                         <form class="px-8 pt-6 pb-8 mb-4 rounded" onsubmit=self.link.callback(|e| Msg::Submit(e))>
                             <div class="mb-4">

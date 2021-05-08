@@ -48,7 +48,6 @@ impl Component for ReaderSeekbar {
                 return true;
             }
         }
-        false
     }
 
     fn change(&mut self, props: Self::Properties) -> bool {
@@ -82,19 +81,19 @@ impl Component for ReaderSeekbar {
     fn view(&self) -> Html {
         html! {
             <div ref=self.root_ref.clone()
-                class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-gray-900 opacity-75 shadow safe-bottom text-white">
+                class="animated slideInUp faster block fixed inset-x-0 bottom-0 z-50 bg-white dark:bg-gray-900 opacity-75 shadow pb-safe-bottom text-black dark:text-white shadow dark:shadow-none">
                 <div class="flex px-4 py-5 justify-center">
-                    <button onclick=self.link.callback(|_| Msg::PrevChapter)>
+                    <button onclick=self.link.callback(|_| Msg::PrevChapter) class="focus:outline-none">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
                     <div class="w-full"></div>
-                    <span class="mx-4 text-white">{self.props.current_page + 1}</span>
+                    <span class="mx-4">{self.props.current_page + 1}</span>
                     <span>{"/"}</span>
-                    <span class="mx-4 text-white">{self.props.length}</span>
+                    <span class="mx-4">{self.props.length}</span>
                     <div class="w-full"></div>
-                    <button onclick=self.link.callback(|_| Msg::NextChapter)>
+                    <button onclick=self.link.callback(|_| Msg::NextChapter) class="focus:outline-none">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 stroke-current" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>

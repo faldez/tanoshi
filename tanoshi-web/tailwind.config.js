@@ -14,6 +14,8 @@ module.exports = {
             },
             spacing: {
                 '7/5': '141.5094339622642%',
+                'safe-bottom': 'env(safe-area-inset-bottom)',
+                'safe-top': 'env(safe-area-inset-top)'
             },
         },
         colors: {
@@ -29,11 +31,18 @@ module.exports = {
         container: {
             center: true,
         },
+        minWidth: {
+            '0': '0',
+            '1/4': '25%',
+            '1/2': '50%',
+            '3/4': '75%',
+            'full': '100%',
+        }
     },
     variants: {
-        backgroundColor: ['dark', 'hover', 'focus', 'disabled'],
-        textColor: ['dark', 'hover', 'focus', 'disabled'],
+        backgroundColor: ['dark', 'responsive', 'hover', 'focus', 'disabled'],
+        textColor: ['dark', 'responsive', 'hover', 'focus', 'disabled'],
     },
     plugins: [],
-    darkMode: 'media'
+    darkMode: 'class'
 }

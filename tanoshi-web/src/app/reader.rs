@@ -65,7 +65,7 @@ impl Component for Reader {
             .body()
             .unwrap()
             .class_list()
-            .remove_2("bg-gray-100", "dark:bg-gray-800");
+            .remove_2("bg-white", "dark:bg-black");
         match settings.background_color.clone() {
             BackgroundColor::Black => {
                 let _ = window()
@@ -256,7 +256,7 @@ impl Component for Reader {
             .body()
             .unwrap()
             .class_list()
-            .add_2("bg-gray-100", "dark:bg-gray-800");
+            .add_2("bg-white", "dark:bg-black");
         match self.settings.background_color.clone() {
             BackgroundColor::Black => {
                 let _ = window()

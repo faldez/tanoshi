@@ -101,7 +101,7 @@ impl Component for Login {
                 <TopBar>
                     <span class="mx-auto my-1">{"Login"}</span>
                 </TopBar>
-                <div class="w-full lg:w-1/2 p-2">
+                <div class="w-full xl:w-1/2 p-2">
                     <form class="mx-auto" onsubmit=self.link.callback(|e| Msg::Submit(e))>
                         <label class="mb-2 text-sm font-bold text-gray-700 dark:text-gray-300" for="username">
                             {"Username"}

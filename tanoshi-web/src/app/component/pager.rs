@@ -103,9 +103,9 @@ impl Component for Pager {
                     _ => Msg::Noop,
                 }
             )>
-                <button class="manga-navigate-left outline-none fixed" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
-                <button class="manga-navigate-center outline-none fixed" onmouseup=reader_link.callback(|_| ReaderMsg::ToggleBar)/>
-                <button class="manga-navigate-right outline-none fixed" onmouseup=self.link.callback(|_| Msg::PageForward)/>
+                <button class="manga-navigate-left outline-none fixed focus:outline-none" onmouseup=self.link.callback(|_| Msg::PagePrevious)/>
+                <button class="manga-navigate-center outline-none fixed focus:outline-none" onmouseup=reader_link.callback(|_| ReaderMsg::ToggleBar)/>
+                <button class="manga-navigate-right outline-none fixed focus:outline-none" onmouseup=self.link.callback(|_| Msg::PageForward)/>
                 <div class={class}>
                     {
                         for self.props.pages

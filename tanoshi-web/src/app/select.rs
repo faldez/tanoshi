@@ -81,7 +81,7 @@ impl Component for Select {
 
     fn view(&self) -> Html {
         html! {
-            <div class="mx-auto pb-20 pt-12">
+            <div class="m-2 pb-20 pt-12">
                 <TopBar>
                     <span class="w-full text-center">{"Catalogue"}</span>
                 </TopBar>
@@ -107,14 +107,14 @@ impl Select {
         }
         return html! {
             <>
-            <div class="w-full lg:w-1/2 flex justify-start lg:justify-center m-2"><span class="text-black dark:text-white">{"Installed"}</span></div>
-            <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" style="margin-top:env(safe-area-inset-top)">
+            <div class="w-full xl:w-1/2 flex justify-start xl:justify-center m-2"><span class="text-black dark:text-white">{"Installed"}</span></div>
+            <div class="flex flex-col rounded bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800" style="margin-top:env(safe-area-inset-top)">
             {
                 for self.sources[&true].iter().map(|source| html!{
                     <RouterAnchor<BrowseRoute>
-                        classes="flex inline-flex justify-center p-2 content-center"
+                        classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-100 dark:hover:bg-gray-800"
                         route=BrowseRoute::Catalogue(CatalogueRoute::Source(source.name.clone()))>
-                        <div class="w-full lg:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
+                        <div class="w-full xl:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
                             <div class="flex flex-col">
                                 <span class="text-md font-semibold">{source.name.to_owned()}</span>
                                 <span class="text-sm">{source.installed_version.to_owned()}</span>
@@ -135,17 +135,17 @@ impl Select {
         }
         return html! {
             <>
-            <div class="w-full lg:w-1/2 flex justify-center m-2"><span class="text-black dark:text-white">{"Available"}</span></div>
+            <div class="w-full xl:w-1/2 flex justify-center m-2"><span class="text-black dark:text-white">{"Available"}</span></div>
             <div class="flex flex-col bg-white dark:bg-gray-900 divide-y divide-gray-300 dark:divide-gray-700 border-t border-b border-gray-300 dark:border-gray-700" style="margin-top: calc(env(safe-area-inset-top) + .5rem)">
             {
                 for (0..self.sources[&false].len()).map(|i| html!{
                     <div class="flex inline-flex justify-center p-2 content-center">
-                    <div class="w-full lg:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
+                    <div class="w-full xl:w-1/2 flex justify-between items-center text-gray-900 dark:text-gray-300">
                         <div class="flex flex-col">
                             <span class="text-md font-semibold text-gray-900 dark:text-gray-300">{self.sources[&false][i].name.clone()}</span>
                             <span class="text-sm">{self.sources[&false][i].version.clone()}</span>
                         </div>
-                        <button class="bg-tachiyomi-blue text-white p-2 rounded-full"
+                        <button class="bg-tachiyomi-blue text-white p-2 rounded-full focus:outline-none"
                             disabled={!self.sources[&false][i].update && self.sources[&false][i].installed}
                             onclick={self.link.callback(move |_| Msg::InstallExtension(i))}>
                             {

@@ -67,9 +67,9 @@ impl Component for Filter {
             <Modal
                 show={self.props.show}
                 onclose={&self.props.onclose}
-                oncancel={&self.props.onclose}>
-                <div class="w-full shadow  py-1 px-4 dark:text-gray-300 text-gray-700">{"Sort By"}</div>
-                <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
+                oncancel={&self.props.oncancel}>
+                <div class="w-full shadow py-1 px-4 dark:text-gray-300 text-gray-700">{"Sort By"}</div>
+                <button class="inline-flex justify-start p-2 text-gray-700 dark:text-gray-300 focus:outline-none" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::LastUpdated))>
                     {
                         match self.props.sort_by {
                             SortByParam::LastUpdated  => self.asc_or_desc(),
@@ -78,7 +78,7 @@ impl Component for Filter {
                     }
                     <span class="text-gray-700 dark:text-gray-300">{"Last Updated"}</span>
                 </button>
-                <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
+                <button class="inline-flex justify-start p-2 text-gray-700 dark:text-gray-300 focus:outline-none" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Title))>
                     {
                         match self.props.sort_by {
                             SortByParam::Title  => self.asc_or_desc(),
@@ -87,7 +87,7 @@ impl Component for Filter {
                     }
                     <span class="dark:text-gray-300 text-gray-700">{"Title"}</span>
                 </button>
-                <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
+                <button class="inline-flex justify-start p-2 text-gray-700 dark:text-gray-300 focus:outline-none" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Comment))>
                     {
                         match self.props.sort_by {
                             SortByParam::Comment  => self.asc_or_desc(),
@@ -96,7 +96,7 @@ impl Component for Filter {
                     }
                     <span class="dark:text-gray-300 text-gray-700 dark:text-gray-300">{"Comment"}</span>
                 </button>
-                <button class="inline-flex justify-center p-2 text-gray-700 dark:text-gray-300" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Views))>
+                <button class="inline-flex justify-start p-2 text-gray-700 dark:text-gray-300 focus:outline-none" onclick=self.link.callback(|_| Msg::SortClick(SortByParam::Views))>
                     {
                         match self.props.sort_by {
                             SortByParam::Views  => self.asc_or_desc(),

@@ -54,7 +54,7 @@ impl Component for MangaList {
     }
     fn view(&self) -> Html {
         html! {
-            <div class="w-full xl:w-1/2 mx-auto grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 pt-12" style={&self.props.style}>
+            <div class="w-full mx-auto grid grid-cols-3 md:grid-cols-4 xl:grid-cols-6 xl:grid-cols-8 gap-2 pt-12" style={&self.props.style}>
                 {self.view_manga()}
             </div>
         }

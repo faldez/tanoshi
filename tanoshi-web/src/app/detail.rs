@@ -152,7 +152,7 @@ impl Component for Detail {
             </TopBar>
             <Spinner is_active={self.is_fetching} is_fullscreen=true />
             <div id="detail" class="flex justify-center p-2 mb-2">
-                <div class="w-full lg:w-1/2 flex flex-col">
+                <div class="w-full xl:w-1/2 flex flex-col">
                     <div class="flex">
                         <div class="pb-7/6">
                             <img class="w-32 md:40 object-cover mr-2 rounded-lg" src=self.manga.thumbnail_url />
@@ -167,14 +167,21 @@ impl Component for Detail {
                     </div>
                 </div>
             </div>
-            <div id="detail-description" class="flex flex-col justify-center border-t border-b border-gray-300 dark:border-gray-800 bg-white dark:bg-gray-900 p-2 mb-2 rounded-t-lg">
-                <div class="w-full lg:w-1/2 flex flex-col mx-auto">
+            <div id="detail-description" class="flex flex-col justify-center p-2 mb-2 rounded-t-lg">
+                <div class="w-full xl:w-1/2 flex flex-col mx-auto">
                     <div class="inline-flex">
                         <button
                             onclick=self.link.callback(|_| Msg::FavoriteEvent)
-                            class={"mr-2 my-2 p-2 self-center rounded text-accent-darker focus:outline-none shadow hover:shadow-lg dark:bg-gray-800 dark:hover:bg-gray-700"}>
+                            class={"mr-2 my-2 p-2 self-center rounded text-accent-darker focus:outline-none shadow hover:shadow-lg dark:bg-gray-800 dark:hover:bg-gray-700 focus:outline-none"}>
                             <svg class={format!("h-6 h-6 {}", if self.manga.is_favorite{"fill-current"}else{"stroke-current"})} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" fill={if self.manga.is_favorite{"currentColor"}else{"none"}} />
+                            </svg>
+                        </button>
+                        <button
+                            // onclick=self.link.callback(|_| Msg::FavoriteEvent)
+                            class={"mr-2 my-2 p-2 self-center rounded text-accent-darker focus:outline-none shadow hover:shadow-lg dark:bg-gray-800 dark:hover:bg-gray-700 focus:outline-none"}>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </button>
                         // <button
@@ -197,42 +204,39 @@ impl Component for Detail {
                     }
                     </div>
                 </div>
-                <div class="flex flex-col divide-y divide-gray-300 dark:divide-gray-800">
-                    <span class="w-full lg:w-1/2 mx-auto my-2 text-lg text-gray-700 dark:text-gray-300">{"Chapters"}</span>
+                <span class="w-full xl:w-1/2 mx-auto my-2 text-lg text-gray-700 dark:text-gray-300">{"Chapters"}</span>
+                <div class="w-full xl:w-1/2 mx-auto flex flex-col divide-y divide-gray-300 dark:divide-gray-800">
                     {
                         for self.chapters.iter().map(|(chapter)| html!{
-                            <RouterAnchor<AppRoute>
-                                classes="flex inline-flex justify-center p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-800"
+                            <RouterAnchor<AppRoute> classes=format!("w-full flex inline-flex justify-between p-2 content-center hover:bg-gray-200 dark:hover:bg-gray-800 {}", if chapter.read.unwrap_or(0) == 0 {"text-gray-900 dark:text-gray-300"} else {"text-gray-500"})
                                 route=AppRoute::Reader(chapter.id, (chapter.read.unwrap_or(0) + 1) as usize)>
-                                <div class=format!("w-full lg:w-1/2 flex justify-between items-center {}", if chapter.read.unwrap_or(0) == 0 {"text-gray-900 dark:text-gray-300"} else {"text-gray-500"})>
-                                    <div class="flex flex-col">
-                                        <span class="text-md font-semibold">
+                                <div class="flex flex-col">
+                                    <span class="text-md font-semibold">
+                                    {
+                                        format!("{}{}{}",
+                                        if let Some(v) = &chapter.vol {
+                                            format!("Vol. {} ", v)
+                                        } else {
+                                            "".to_string()
+                                        },
+                                        if let Some(c) = &chapter.no {
+                                            format!("Ch. {} ", c)
+                                        } else {
+                                            "".to_string()
+                                        },
                                         {
-                                            format!("{}{}{}",
-                                            if let Some(v) = &chapter.vol {
-                                                format!("Vol. {} ", v)
-                                            } else {
-                                                "".to_string()
-                                            },
-                                            if let Some(c) = &chapter.no {
-                                                format!("Ch. {} ", c)
-                                            } else {
-                                                "".to_string()
-                                            },
-                                            {
-                                            let t = chapter.title.as_ref().unwrap();
-                                            if !t.is_empty() {
-                                                format!("{}", t)
-                                            } else {
-                                                "".to_string()
-                                            }
-                                            })
+                                        let t = chapter.title.as_ref().unwrap();
+                                        if !t.is_empty() {
+                                            format!("{}", t)
+                                        } else {
+                                            "".to_string()
                                         }
-                                        </span>
-                                        <span class="text-sm">{chapter.uploaded.date()}</span>
-                                    </div>
-                                    <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
+                                        })
+                                    }
+                                    </span>
+                                    <span class="text-sm">{chapter.uploaded.date()}</span>
                                 </div>
+                                <svg viewBox="0 0 20 20" fill="currentColor" class="chevron-right w-6 h-6"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
                             </RouterAnchor<AppRoute>>
                         })
                     }

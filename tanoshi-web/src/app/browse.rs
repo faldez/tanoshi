@@ -88,8 +88,8 @@ impl Component for Browse {
 
     fn view(&self) -> Html {
         html! {
-                <div>
-                    <div class="block fixed inset-x-0 top-0 z-50 safe-top"></div>
+                <div class="w-full pl-auto xl:pl-48">
+                    <div class="block fixed inset-x-0 top-0 z-10 safe-top"></div>
                     <NavigationBar />
                     <Router<BrowseRoute>
                     render = Router::render(|switch: BrowseRoute| {

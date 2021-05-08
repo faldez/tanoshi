@@ -93,8 +93,8 @@ impl Component for Modal {
         html! {
             <div id="modals" ref={self.node_ref.clone()} class={self.classes()}>
                 <div class="absolute w-full shadow p-2 flex justify-between">
-                    <button class="flex rounded text-accent dark:text-accent-lighter py-1 px-2 justify-center" onclick=self.link.callback(|_| Msg::Cancel)>{"Cancel"}</button>
-                    <button class="flex rounded bg-accent text-white py-1 px-2 shadow justify-center" onclick=self.link.callback(|_| Msg::Done)>{"Search"}</button>
+                    <button class="flex rounded text-accent dark:text-accent-lighter py-1 px-2 justify-center focus:outline-none" onclick=self.link.callback(|_| Msg::Cancel)>{"Cancel"}</button>
+                    <button class="flex rounded bg-accent text-white py-1 px-2 shadow justify-center focus:outline-none" onclick=self.link.callback(|_| Msg::Done)>{"Search"}</button>
                 </div>
                 <div class="w-full max-w-full flex flex-col mx-auto mt-12">
                     {html! {<>{ self.props.children.clone() }</>}}
