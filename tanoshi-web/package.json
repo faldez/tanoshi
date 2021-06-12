@@ -1,6 +1,6 @@
 {
   "name": "tanoshi-web",
-  "version": "0.22.3",
+  "version": "0.22.4",
   "private": false,
   "scripts": {
     "build": "webpack --mode production",
