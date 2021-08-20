@@ -11,7 +11,7 @@ macro_rules! bind_routes {
                     StatusCode::BAD_REQUEST,
                 ));
             }
-        
+
             Ok(warp::reply::with_status(
                 "INTERNAL_SERVER_ERROR".to_string(),
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -19,6 +19,27 @@ macro_rules! bind_routes {
         })
         .with(cors);
 
-        warp::serve(routes).run(([0, 0, 0, 0], $port as u16))
+        let (_, server) = warp::serve(routes).bind_with_graceful_shutdown(([0, 0, 0, 0], $port as u16), async {
+            let sigint_signal = tokio::signal::ctrl_c();
+
+            #[cfg(target_family = "windows")]
+            sigint_signal.await.expect("failed listening ctrl_c");
+
+            #[cfg(target_family = "unix")]
+            {
+                let mut stream = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                    .expect("failed to create stream");
+                tokio::select! {
+                    Some(_) = stream.recv() => {
+                        info!("sigterm");
+                    }
+                    _ = sigint_signal => {
+                        info!("sigint");
+                    }
+                }
+            }
+       });
+
+       tokio::spawn(server)
     }};
 }

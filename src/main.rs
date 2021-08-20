@@ -48,8 +48,14 @@ struct Opts {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    if let Ok(tanoshi_log) = std::env::var("TANOSHI_LOG") {
-        std::env::set_var("RUST_LOG", format!("tanoshi={}", tanoshi_log));
+    if let Ok(rust_log) = std::env::var("RUST_LOG") {
+        info!("rust_log: {}", rust_log);
+    } else if let Ok(tanoshi_log) = std::env::var("TANOSHI_LOG") {
+        info!("tanoshi_log: {}", tanoshi_log);
+        std::env::set_var(
+            "RUST_LOG",
+            format!("tanoshi={},tanoshi_vm={}", tanoshi_log, tanoshi_log),
+        );
     }
 
     env_logger::init();
@@ -119,40 +125,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let static_files = assets::filter::static_files();
     let image_proxy = proxy::proxy();
 
-    if config.enable_playground {
+    let server_fut = if config.enable_playground {
         info!("enable graphql playground");
         let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
             HttpResponse::builder()
                 .header("content-type", "text/html")
                 .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
         });
-        let server_fut = bind_routes!(
+        bind_routes!(
             config.port,
             image_proxy,
             graphql_playground,
             static_files,
             graphql_post
-        );
-
-        tokio::select! {
-            _ = server_fut => {
-
-            }
-            Some(_) = telegram_bot_fut => {
-
-            }
-        }
+        )
     } else {
-        let server_fut = bind_routes!(config.port, image_proxy, static_files, graphql_post);
-        tokio::select! {
-            _ = server_fut => {
+        bind_routes!(config.port, image_proxy, static_files, graphql_post)
+    };
 
-            }
-            Some(_) = telegram_bot_fut => {
-
-            }
+    tokio::select! {
+        _ = server_fut => {
+            info!("server shutdown");
+        }
+        Some(_) = telegram_bot_fut => {
+            info!("worker shutdown");
         }
     }
+
+    info!("closing database...");
+    pool.close().await;
 
     Ok(())
 }
