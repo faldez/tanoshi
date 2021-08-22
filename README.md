@@ -21,6 +21,12 @@ Selfhosted web manga reader with extensions.
 - Web reader is PWA and optimized for standalone mode on mobile
 - Multi-user with admin and reader role
 
+### Currently bugged
+- Telegram bot feature
+
+### In development
+- Filter feature
+
 ## Installation
 ### Prebuilt Binary
 Download and run binary from latest release, aside from plugins all dependencies are statically linked.
@@ -33,6 +39,10 @@ docker create --name=tanoshi -p 8080:80 --mount type=bind,source=/path/to/data,t
 ```
 docker start tanoshi
 ```
+
+### Docker-compose
+
+Refer to docker-compose.yaml.
 
 ### Extensions
 By default tanoshi only support to read locally available manga specified in `local_path` in `config.yml`. To browse and read manga from external source, tanoshi needs extensions. Extensions can be donwnloaded from [here](https://github.com/fadhlika/tanoshi-extensions) in `repo` branch. 
