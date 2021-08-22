@@ -1,7 +1,6 @@
 pub mod data;
 pub mod extensions;
 pub mod prelude;
-pub mod shim;
 
 /// This is used to ensure both application and extension use the same version
 pub static CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -18,44 +17,44 @@ macro_rules! register_extension {
         #[no_mangle]
         fn detail() {
             let res = EXT.with(|ext| ext.borrow_mut().detail());
-            $crate::shim::write_object(&res);
+            tanoshi_util::shim::write_object(&res);
         }
 
         #[no_mangle]
         fn filters() {
             let res = EXT.with(|ext| ext.borrow_mut().filters());
-            $crate::shim::write_object(&res);
+            tanoshi_util::shim::write_object(&res);
         }
 
         #[no_mangle]
         fn get_manga_list() {
-            if let Ok(obj) = $crate::shim::read_object() {
+            if let Ok(obj) = tanoshi_util::shim::read_object() {
                 let res = EXT.with(|ext| ext.borrow_mut().get_manga_list(obj));
-                $crate::shim::write_object(&res);
+                tanoshi_util::shim::write_object(&res);
             }
         }
 
         #[no_mangle]
         fn get_manga_info() {
-            if let Ok(obj) = $crate::shim::read_object() {
+            if let Ok(obj) = tanoshi_util::shim::read_object() {
                 let res = EXT.with(|ext| ext.borrow_mut().get_manga_info(obj));
-                $crate::shim::write_object(&res);
+                tanoshi_util::shim::write_object(&res);
             }
         }
 
         #[no_mangle]
         fn get_chapters() {
-            if let Ok(obj) = $crate::shim::read_object() {
+            if let Ok(obj) = tanoshi_util::shim::read_object() {
                 let res = EXT.with(|ext| ext.borrow_mut().get_chapters(obj));
-                $crate::shim::write_object(&res);
+                tanoshi_util::shim::write_object(&res);
             }
         }
 
         #[no_mangle]
         fn get_pages() {
-            if let Ok(obj) = $crate::shim::read_object() {
+            if let Ok(obj) = tanoshi_util::shim::read_object() {
                 let res = EXT.with(|ext| ext.borrow_mut().get_pages(obj));
-                $crate::shim::write_object(&res);
+                tanoshi_util::shim::write_object(&res);
             }
         }
 

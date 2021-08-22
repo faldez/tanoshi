@@ -65,7 +65,7 @@ pub struct Response {
 
 #[cfg(all(not(feature = "__test"), not(feature = "host")))]
 pub fn http_request(req: Request) -> Response {
-    if let Err(err) = tanoshi_lib::shim::write_object(req) {
+    if let Err(err) = crate::shim::write_object(req) {
         return Response {
             headers: HashMap::new(),
             body: format!("{}", err),
@@ -74,7 +74,7 @@ pub fn http_request(req: Request) -> Response {
     }
 
     unsafe { host_http_request() };
-    tanoshi_lib::shim::read_object().unwrap_or_else(|err| Response {
+    crate::shim::read_object().unwrap_or_else(|err| Response {
         headers: HashMap::new(),
         body: format!("{}", err),
         status: 9999,

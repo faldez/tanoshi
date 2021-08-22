@@ -29,12 +29,14 @@ impl ExtensionProxy {
     ) -> Result<Arc<dyn Extension>, Box<dyn std::error::Error>> {
         let module = unsafe { Module::deserialize_from_file(&store, path)? };
 
-        let input = Pipe::new();
-        let output = Pipe::new();
+        let stdin = Pipe::new();
+        let stdout = Pipe::new();
+        let stderr = Pipe::new();
 
         let mut wasi_env = WasiState::new("tanoshi")
-            .stdin(Box::new(input))
-            .stdout(Box::new(output))
+            .stdin(Box::new(stdin))
+            .stdout(Box::new(stdout))
+            .stderr(Box::new(stderr))
             .finalize()?;
 
         let import_object = wasi_env.import_object(&module)?;
@@ -43,7 +45,12 @@ impl ExtensionProxy {
 
         let tanoshi = imports! {
             "tanoshi" => {
-                "host_http_request" => Function::new_native_with_env(&store, env.clone(), host_http_request)
+                "host_http_request" => Function::new_native_with_env(&store, env.clone(), host_http_request),
+                "host_debug" => Function::new_native_with_env(&store, env.clone(), host_debug),
+                "host_error" => Function::new_native_with_env(&store, env.clone(), host_error),
+                "host_info" => Function::new_native_with_env(&store, env.clone(), host_info),
+                "host_trace" => Function::new_native_with_env(&store, env.clone(), host_trace),
+                "host_warn" => Function::new_native_with_env(&store, env.clone(), host_warn),
             }
         };
 
@@ -342,6 +349,14 @@ fn process<F, T>(
     }
 }
 
+fn wasi_read_err(env: &ExtensionEnv) -> Result<String, Box<dyn std::error::Error>> {
+    let mut state = env.wasi_env.state();
+    let wasm_stderr = state.fs.stderr_mut()?.as_mut().ok_or("no wasi sterr")?;
+    let mut buf = String::new();
+    wasm_stderr.read_to_string(&mut buf)?;
+    Ok(buf)
+}
+
 fn wasi_read(env: &ExtensionEnv) -> Result<String, Box<dyn std::error::Error>> {
     let mut state = env.wasi_env.state();
     let wasm_stdout = state.fs.stdout_mut()?.as_mut().ok_or("no wasi stdout")?;
@@ -388,4 +403,64 @@ fn host_http_request(env: &ExtensionEnv) {
             error!("error wasi_write: {}", e);
         }
     }
+}
+
+fn host_debug(env: &ExtensionEnv) {
+    let message = match wasi_read_err(env) {
+        Ok(message) => message,
+        Err(e) => {
+            error!("error wasi_read: {}", e);
+            return;
+        }
+    };
+
+    tanoshi_util::log::print_debug(message);
+}
+
+fn host_error(env: &ExtensionEnv) {
+    let message = match wasi_read_err(env) {
+        Ok(message) => message,
+        Err(e) => {
+            error!("error wasi_read: {}", e);
+            return;
+        }
+    };
+
+    tanoshi_util::log::print_error(message);
+}
+
+fn host_info(env: &ExtensionEnv) {
+    let message = match wasi_read_err(env) {
+        Ok(message) => message,
+        Err(e) => {
+            error!("error wasi_read: {}", e);
+            return;
+        }
+    };
+
+    tanoshi_util::log::print_info(message);
+}
+
+fn host_trace(env: &ExtensionEnv) {
+    let message = match wasi_read_err(env) {
+        Ok(message) => message,
+        Err(e) => {
+            error!("error wasi_read: {}", e);
+            return;
+        }
+    };
+
+    tanoshi_util::log::print_trace(message);
+}
+
+fn host_warn(env: &ExtensionEnv) {
+    let message = match wasi_read_err(env) {
+        Ok(message) => message,
+        Err(e) => {
+            error!("error wasi_read: {}", e);
+            return;
+        }
+    };
+
+    tanoshi_util::log::print_warn(message);
 }
