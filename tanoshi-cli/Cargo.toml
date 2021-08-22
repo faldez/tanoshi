@@ -1,6 +1,6 @@
 [package]
 name = "tanoshi-cli"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi CLI Utilities"
@@ -14,8 +14,8 @@ default = []
 disable-compiler = ["tanoshi-vm/disable-compiler"]
 
 [dependencies]
-tanoshi-lib = { path = "../tanoshi-lib", version = "0.24" }
-tanoshi-vm = { path = "../tanoshi-vm", version = "0.3.1" }
+tanoshi-lib = { path = "../tanoshi-lib", version = "0.25.0" }
+tanoshi-vm = { path = "../tanoshi-vm", version = "0.4.0" }
 serde_yaml = "0.8"
 tokio = { version = "1", features = ["full"] }
 clap = "3.0.0-beta.4"
