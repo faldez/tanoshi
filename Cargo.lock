@@ -3327,7 +3327,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi"
-version = "0.25.0"
+version = "0.25.1"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -3367,7 +3367,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-cli"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "clap 3.0.0-beta.4",
@@ -3385,7 +3385,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-lib"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "chrono",
  "serde",
@@ -3394,7 +3394,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-util"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "log",
  "ron",
@@ -3404,7 +3404,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-vm"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "bytes",
  "env_logger 0.9.0",
@@ -3424,7 +3424,7 @@ dependencies = [
 
 [[package]]
 name = "tanoshi-web"
-version = "0.24.6"
+version = "0.25.1"
 dependencies = [
  "base64 0.13.0",
  "chrono",
