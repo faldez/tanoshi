@@ -1,0 +1,10 @@
+version: "2"
+services:
+  tanoshi:
+    image: faldez/tanoshi:latest
+    container_name: tanoshi
+    volumes:
+      - ./tanoshi:/tanoshi
+    ports:
+      - 8080:80
+    restart: unless-stopped
