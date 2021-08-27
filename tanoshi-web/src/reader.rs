@@ -599,46 +599,110 @@ impl Reader {
                 Direction::RightToLeft => "row-reverse",
             }))
             .children_signal_vec(reader.pages.entries_cloned().enumerate().map(clone!(reader => move |(index, (page, error))|
-                html!("img" => HtmlImageElement, {
-                    .class([
-                        "mx-auto"
-                    ])
-                    .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
-                    .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => "node",
-                        _ => "100%",
-                    }))
-                    .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::All => "contain",
-                        _ => "initial",
-                    }))
-                    .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Width => "initial",
-                        _ => "100%"
-                    }))
-                    .attribute("src", &proxied_image_url(&page))
-                    .event(|_: events::Error| {
-                        log::error!("error loading image");
-                    })
-                    .with_node!(img => {
-                        .style_signal("width", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
-                            if index.get().unwrap() == current_page && img.natural_width() > img.natural_height
-                            () {
-                                "initial"
-                            } else {
-                                match reader.reader_settings.fit.get() {
-                                    crate::common::Fit::Height => "initial",
-                                    _ => "50%"
+                if !error {
+                    html!("img" => HtmlImageElement, {
+                        .class([
+                            "mx-auto"
+                        ])
+                        .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
+                        .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::Height => "node",
+                            _ => "100%",
+                        }))
+                        .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::All => "contain",
+                            _ => "initial",
+                        }))
+                        .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::Width => "initial",
+                            _ => "100%"
+                        }))
+                        .attribute("src", &proxied_image_url(&page))
+                        .event(clone!(reader, page => move |_: events::Error| {
+                            log::error!("error loading image");
+                            let mut lock = reader.pages.lock_mut();
+                            lock.insert_cloned(page.clone(), true);
+                        }))
+                        .with_node!(img => {
+                            .style_signal("width", reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
+                                if index.get().unwrap() == current_page && img.natural_width() > img.natural_height
+                                () {
+                                    "initial"
+                                } else {
+                                    match reader.reader_settings.fit.get() {
+                                        crate::common::Fit::Height => "initial",
+                                        _ => "50%"
+                                    }
                                 }
-                            }
-                        })))
-                        .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
+                            })))
+                            .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
+                                let mut hidden = true;
+                                info!("index {} current_page {}", index.get().unwrap(), current_page);
+                                if index.get().unwrap() == current_page {
+                                    hidden = false;
+                                    if current_page > 0 {
+                                        let is_prev_img_landscape = if let Ok(prev_img) = document().get_element_by_id(format!("page-{}", current_page - 1).as_str()).unwrap().dyn_into::<web_sys::HtmlImageElement>() {
+                                            prev_img.natural_width() > prev_img.natural_height()
+                                        } else {
+                                            false
+                                        };
+                                        let sub = if is_prev_img_landscape || current_page == 1 {
+                                            1
+                                        } else {
+                                            2
+                                        };
+                                        reader.prev_page.set_neq(current_page.checked_sub(sub));
+                                    }
+                                } else if index.get().unwrap() == current_page + 1 {
+                                    let is_prev_img_portrait = if let Ok(prev_img) = document().get_element_by_id(format!("page-{}", current_page).as_str()).unwrap().dyn_into::<web_sys::HtmlImageElement>() {
+                                        prev_img.natural_width() <= prev_img.natural_height()
+                                    } else {
+                                        true
+                                    };
+
+                                    info!("page {} is {}", current_page, is_prev_img_portrait);
+                                    if img.natural_width() < img.natural_height() && is_prev_img_portrait {
+                                        hidden = false;
+                                        if current_page + 2 < reader.pages_len.get() {
+                                            reader.next_page.set_neq(Some(current_page + 2));
+                                        } else {
+                                            reader.next_page.set_neq(None);
+                                        }
+                                    } else if current_page + 1 < reader.pages_len.get() {
+                                        reader.next_page.set_neq(Some(current_page + 1));
+                                    } else {
+                                        reader.next_page.set_neq(None);
+                                    }
+                                }
+
+                                !hidden
+                            })))
+                            .event(clone!(reader, index => move |_: events::Load| {
+                                let current_page = reader.current_page.get();
+                                if index.get().unwrap() == current_page || index.get().unwrap() == current_page + 1 {
+                                    reader.current_page.replace(current_page);
+                                }
+                            }))
+                        })
+                    })
+                } else {
+                    html!("div", {
+                        .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
+                        .style("display", "flex")
+                        .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::Height => "node",
+                            _ => "100%",
+                        }))
+                        .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::Width => "initial",
+                            _ => "100%"
+                        }))
+                        .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index => move |current_page| {
                             let mut hidden = true;
                             if index.get().unwrap() == current_page {
                                 hidden = false;
                                 if current_page > 0 {
-                                    let prev_img = document().get_element_by_id(format!("page-{}", current_page - 1).as_str()).unwrap().dyn_into::<web_sys::HtmlImageElement>().unwrap();
-                                    let sub = if prev_img.natural_width() > prev_img.natural_height() || current_page == 1 {
+                                    let sub = if current_page == 1 {
                                         1
                                     } else {
                                         2
@@ -646,16 +710,9 @@ impl Reader {
                                     reader.prev_page.set_neq(current_page.checked_sub(sub));
                                 }
                             } else if index.get().unwrap() == current_page + 1 {
-                                let prev_img = document().get_element_by_id(format!("page-{}", current_page).as_str()).unwrap().dyn_into::<web_sys::HtmlImageElement>().unwrap();
-                                if img.natural_width() < img.natural_height() && prev_img.natural_width() < prev_img.natural_height() {
-                                    hidden = false;
-                                    if current_page + 2 < reader.pages_len.get() {
-                                        reader.next_page.set_neq(Some(current_page + 2));
-                                    } else {
-                                        reader.next_page.set_neq(None);
-                                    }
-                                } else if current_page + 1 < reader.pages_len.get() {
-                                    reader.next_page.set_neq(Some(current_page + 1));
+                                hidden = false;
+                                if current_page + 2 < reader.pages_len.get() {
+                                    reader.next_page.set_neq(Some(current_page + 2));
                                 } else {
                                     reader.next_page.set_neq(None);
                                 }
@@ -663,14 +720,20 @@ impl Reader {
 
                             !hidden
                         })))
-                        .event(clone!(reader, index => move |_: events::Load| {
-                            let current_page = reader.current_page.get();
-                            if index.get().unwrap() == current_page || index.get().unwrap() == current_page + 1 {
-                                reader.current_page.replace(current_page);
-                            }
-                        }))
+                        .children(&mut [
+                            html!("button", {
+                                .style("margin", "auto")
+                                .style("z-index", "20")
+                                .text("Retry")
+                                .event(clone!(reader, page => move |_: events::Click| {
+                                    log::info!("retry loading image");
+                                    let mut lock = reader.pages.lock_mut();
+                                    lock.insert_cloned(page.clone(), false);
+                                }))
+                            })
+                        ])
                     })
-                })
+                }
             )))
         })
     }
