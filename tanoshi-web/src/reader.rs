@@ -606,7 +606,7 @@ impl Reader {
                         ])
                         .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
-                            crate::common::Fit::Height => "node",
+                            crate::common::Fit::Height => "none",
                             _ => "100%",
                         }))
                         .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
@@ -688,7 +688,7 @@ impl Reader {
                         .attribute("id", format!("page-{}", index.get().unwrap_or(0)).as_str())
                         .style("display", "flex")
                         .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
-                            crate::common::Fit::Height => "node",
+                            crate::common::Fit::Height => "none",
                             _ => "100%",
                         }))
                         .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
