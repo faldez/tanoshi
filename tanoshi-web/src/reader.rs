@@ -637,7 +637,6 @@ impl Reader {
                             })))
                             .visible_signal(reader.current_page.signal_cloned().map(clone!(reader, index, img => move |current_page| {
                                 let mut hidden = true;
-                                info!("index {} current_page {}", index.get().unwrap(), current_page);
                                 if index.get().unwrap() == current_page {
                                     hidden = false;
                                     if current_page > 0 {
@@ -660,7 +659,6 @@ impl Reader {
                                         true
                                     };
 
-                                    info!("page {} is {}", current_page, is_prev_img_portrait);
                                     if img.natural_width() < img.natural_height() && is_prev_img_portrait {
                                         hidden = false;
                                         if current_page + 2 < reader.pages_len.get() {
