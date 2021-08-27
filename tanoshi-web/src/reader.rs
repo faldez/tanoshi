@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::common::{events, snackbar, ReaderSettings, Spinner};
@@ -11,7 +10,7 @@ use crate::{
 use dominator::{clone, html, routing, svg, with_node, Dom};
 use futures_signals::signal::{Mutable, SignalExt};
 use futures_signals::signal_map::MutableBTreeMap;
-use futures_signals::signal_vec::{MutableVec, SignalVecExt};
+use futures_signals::signal_vec::SignalVecExt;
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::HtmlImageElement;
 
@@ -73,6 +72,7 @@ impl Reader {
                     reader.pages_len.set_neq(result.pages.len());
 
                     let mut lock = reader.pages.lock_mut();
+                    lock.clear();
                     for page in result.pages.iter() {
                         lock.insert_cloned(page.clone(), false);
                     }
@@ -449,13 +449,11 @@ impl Reader {
                             crate::common::Fit::Width => "initial",
                             _ => "100vh"
                         }))
-                        .with_node!(img => {
-                            .event(clone!(reader, page => move |_: events::Error| {
-                                log::error!("error loading image");
-                                let mut lock = reader.pages.lock_mut();
-                                lock.insert_cloned(page.clone(), true);
-                            }))
-                        })
+                        .event(clone!(reader, page => move |_: events::Error| {
+                            log::error!("error loading image");
+                            let mut lock = reader.pages.lock_mut();
+                            lock.insert_cloned(page.clone(), true);
+                        }))
                         .event(clone!(reader => move |_: events::Click| {
                             reader.is_bar_visible.set_neq(!reader.is_bar_visible.get());
                         }))
@@ -522,38 +520,69 @@ impl Reader {
             .style("display", "flex")
             .style("align-items", "center")
             .children_signal_vec(reader.pages.entries_cloned().enumerate().map(clone!(reader => move |(index, (page, error))|
-                html!("img", {
-                    .style("margin-left", "auto")
-                    .style("margin-right", "auto")
-                    .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => "node",
-                        _ => "100%",
-                    }))
-                    .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::All => "contain",
-                        _ => "initial",
-                    }))
-                    .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Height => "intial",
-                        _ => "100vw"
-                    }))
-                    .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
-                        crate::common::Fit::Width => "initial",
-                        _ => "100vh"
-                    }))
-                    .visible_signal(reader.current_page.signal_cloned().map(clone!(reader => move |x| {
-                        reader.prev_page.set_neq(x.checked_sub(1));
-                        if x + 1 < reader.pages_len.get() {
-                            reader.next_page.set_neq(Some(x + 1));
-                        }
+                if !error {
+                    html!("img", {
+                        .style("margin-left", "auto")
+                        .style("margin-right", "auto")
+                        .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::Height => "node",
+                            _ => "100%",
+                        }))
+                        .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::All => "contain",
+                            _ => "initial",
+                        }))
+                        .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::Height => "intial",
+                            _ => "100vw"
+                        }))
+                        .style_signal("height", reader.reader_settings.fit.signal().map(|x| match x {
+                            crate::common::Fit::Width => "initial",
+                            _ => "100vh"
+                        }))
+                        .visible_signal(reader.current_page.signal_cloned().map(clone!(reader => move |x| {
+                            reader.prev_page.set_neq(x.checked_sub(1));
+                            if x + 1 < reader.pages_len.get() {
+                                reader.next_page.set_neq(Some(x + 1));
+                            }
 
-                        x == index.get().unwrap_or(0)
-                    })))
-                    .attribute("src", &proxied_image_url(&page))
-                    .event(|_: events::Error| {
-                        log::error!("error loading image");
+                            x == index.get().unwrap_or(0)
+                        })))
+                        .attribute("src", &proxied_image_url(&page))
+                        .event(clone!(reader, page => move |_: events::Error| {
+                            log::error!("error loading image");
+                            let mut lock = reader.pages.lock_mut();
+                            lock.insert_cloned(page.clone(), true);
+                        }))
                     })
-                })
+                } else {
+                    html!("div", {
+                        .attribute("id", index.get().unwrap().to_string().as_str())
+                        .style("display", "flex")
+                        .style("height", "100vh")
+                        .style("width", "100vw")
+                        .visible_signal(reader.current_page.signal_cloned().map(clone!(reader => move |x| {
+                            reader.prev_page.set_neq(x.checked_sub(1));
+                            if x + 1 < reader.pages_len.get() {
+                                reader.next_page.set_neq(Some(x + 1));
+                            }
+
+                            x == index.get().unwrap_or(0)
+                        })))
+                        .children(&mut [
+                            html!("button", {
+                                .style("margin", "auto")
+                                .style("z-index", "20")
+                                .text("Retry")
+                                .event(clone!(reader, page => move |_: events::Click| {
+                                    log::info!("retry loading image");
+                                    let mut lock = reader.pages.lock_mut();
+                                    lock.insert_cloned(page.clone(), false);
+                                }))
+                            })
+                        ])
+                    })
+                }
             )))
         })
     }
