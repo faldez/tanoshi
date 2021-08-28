@@ -1,5 +1,5 @@
 use super::Manga;
-use crate::{context::GlobalContext, user};
+use crate::{context::GlobalContext, user, utils};
 use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
 
@@ -176,20 +176,28 @@ impl Chapter {
         #[graphql(desc = "fetch from source", default = false)] fetch: bool,
     ) -> Result<Vec<String>> {
         info!("pages: {}, fetch: {}", self.pages.len(), fetch);
-        if !self.pages.is_empty() && !fetch {
-            return Ok(self.pages.clone());
-        }
+        let pages = if !self.pages.is_empty() && !fetch {
+            self.pages.clone()
+        } else {
+            let pages = ctx
+                .data::<GlobalContext>()?
+                .extensions
+                .get_pages(self.source_id, self.path.clone())
+                .await?;
 
-        let pages = ctx
-            .data::<GlobalContext>()?
-            .extensions
-            .get_pages(self.source_id, self.path.clone())
-            .await?;
+            ctx.data::<GlobalContext>()?
+                .mangadb
+                .insert_pages(self.id, &pages)
+                .await?;
 
-        ctx.data::<GlobalContext>()?
-            .mangadb
-            .insert_pages(self.id, &pages)
-            .await?;
+            pages
+        };
+
+        let secret = ctx.data::<GlobalContext>()?.secret.clone();
+        let pages = pages
+            .iter()
+            .map(|page| utils::encrypt_url(&secret, page).unwrap_or_default())
+            .collect();
 
         Ok(pages)
     }

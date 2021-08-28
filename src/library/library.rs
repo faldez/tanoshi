@@ -1,5 +1,7 @@
-use async_graphql::Object;
+use async_graphql::{Context, Object};
 use chrono::NaiveDateTime;
+
+use crate::{context::GlobalContext, utils};
 
 pub struct RecentChapter {
     pub manga_id: i64,
@@ -25,8 +27,19 @@ impl RecentChapter {
         self.manga_title.clone()
     }
 
-    async fn cover_url(&self) -> String {
-        self.cover_url.clone()
+    async fn cover_url(&self, ctx: &Context<'_>) -> String {
+        if let Ok(ctx) = ctx.data::<GlobalContext>() {
+            match utils::encrypt_url(&ctx.secret, &self.cover_url) {
+                Ok(encrypted_url) => {
+                    return encrypted_url;
+                }
+                Err(e) => {
+                    error!("error encrypt url: {}", e);
+                }
+            }
+        }
+
+        "".to_string()
     }
 
     async fn chapter_title(&self) -> String {
@@ -65,8 +78,19 @@ impl RecentUpdate {
         self.manga_title.clone()
     }
 
-    async fn cover_url(&self) -> String {
-        self.cover_url.clone()
+    async fn cover_url(&self, ctx: &Context<'_>) -> String {
+        if let Ok(ctx) = ctx.data::<GlobalContext>() {
+            match utils::encrypt_url(&ctx.secret, &self.cover_url) {
+                Ok(encrypted_url) => {
+                    return encrypted_url;
+                }
+                Err(e) => {
+                    error!("error encrypt url: {}", e);
+                }
+            }
+        }
+
+        "".to_string()
     }
 
     async fn chapter_title(&self) -> String {

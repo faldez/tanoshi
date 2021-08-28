@@ -227,15 +227,8 @@ pub fn get_claims(ctx: &Context<'_>) -> Result<Claims> {
         &Validation::default(),
     )
     .map_err(|e| format!("failed to decode token, reason: {}", e))?;
-    if check_is_expired(&claims.claims) {
-        Err("Token expired".into())
-    } else {
-        Ok(claims.claims)
-    }
-}
 
-pub fn check_is_expired(claims: &Claims) -> bool {
-    chrono::Utc::now().timestamp() > claims.exp as i64
+    Ok(claims.claims)
 }
 
 pub fn check_is_admin(ctx: &Context<'_>) -> Result<bool> {

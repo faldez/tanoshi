@@ -15,6 +15,7 @@ mod routes;
 mod schema;
 mod status;
 mod user;
+mod utils;
 mod worker;
 
 use crate::{
@@ -102,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .data(GlobalContext::new(
         userdb,
         mangadb,
-        config.secret,
+        config.secret.clone(),
         extension_bus,
         worker_tx,
     ))
@@ -124,7 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
     let static_files = assets::filter::static_files();
-    let image_proxy = proxy::proxy();
+    let image_proxy = proxy::proxy(config.secret.clone());
 
     let server_fut = if config.enable_playground {
         info!("enable graphql playground");

@@ -1,5 +1,5 @@
 use super::Chapter;
-use crate::{context::GlobalContext, user};
+use crate::{context::GlobalContext, user, utils};
 use async_graphql::{Context, Object, Result};
 
 /// A type represent manga details, normalized across source
@@ -125,8 +125,19 @@ impl Manga {
         self.path.as_str().to_string()
     }
 
-    async fn cover_url(&self) -> String {
-        self.cover_url.as_str().to_string()
+    async fn cover_url(&self, ctx: &Context<'_>) -> String {
+        if let Ok(ctx) = ctx.data::<GlobalContext>() {
+            match utils::encrypt_url(&ctx.secret, &self.cover_url) {
+                Ok(encrypted_url) => {
+                    return encrypted_url;
+                }
+                Err(e) => {
+                    error!("error encrypt url: {}", e);
+                }
+            }
+        }
+
+        "".to_string()
     }
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {
@@ -161,12 +172,11 @@ impl Manga {
         ctx: &Context<'_>,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Vec<Chapter>> {
-        let manga_id = self.id;
         let ctx = ctx.data::<GlobalContext>()?;
         let db = ctx.mangadb.clone();
 
         if !refresh {
-            if let Ok(chapters) = db.get_chapters_by_manga_id(manga_id).await {
+            if let Ok(chapters) = db.get_chapters_by_manga_id(self.id).await {
                 return Ok(chapters.into_iter().map(|c| c.into()).collect());
             }
         }
@@ -188,7 +198,7 @@ impl Manga {
         db.insert_chapters(&chapters).await?;
 
         Ok(db
-            .get_chapters_by_manga_id(manga_id)
+            .get_chapters_by_manga_id(self.id)
             .await?
             .into_iter()
             .map(|c| c.into())

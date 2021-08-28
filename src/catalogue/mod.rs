@@ -81,8 +81,8 @@ impl CatalogueRoot {
         let ctx = ctx.data::<GlobalContext>()?;
 
         let db = ctx.mangadb.clone();
-        if let Ok(manga) = db.get_manga_by_source_path(source_id, &path).await {
-            Ok(manga.into())
+        let manga = if let Ok(manga) = db.get_manga_by_source_path(source_id, &path).await {
+            manga
         } else {
             let mut m: crate::db::model::Manga = {
                 let extensions = ctx.extensions.clone();
@@ -90,9 +90,10 @@ impl CatalogueRoot {
             };
 
             db.insert_manga(&mut m).await?;
+            m
+        };
 
-            Ok(m.into())
-        }
+        Ok(manga.into())
     }
 
     async fn manga(

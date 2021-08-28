@@ -1,6 +1,9 @@
-use std::{ sync::atomic::{AtomicUsize, Ordering}};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use futures::{Future, future::{abortable, AbortHandle}};
+use futures::{
+    future::{abortable, AbortHandle},
+    Future,
+};
 use futures_signals::signal::{Mutable, Signal};
 use wasm_bindgen_futures::spawn_local;
 
@@ -59,7 +62,10 @@ impl AsyncLoader {
         *loading = value;
     }
 
-    pub fn load<F>(&self, fut: F) where F: Future<Output = ()> + 'static {
+    pub fn load<F>(&self, fut: F)
+    where
+        F: Future<Output = ()> + 'static,
+    {
         let (fut, handle) = abortable(fut);
 
         let state = AsyncState::new(handle);
@@ -93,10 +99,7 @@ impl AsyncLoader {
 }
 
 pub fn proxied_image_url(image_url: &str) -> String {
-    let mut url = String::with_capacity(1 + "/image?=".len() + image_url.len());
-    url.push_str("/image?url=");
-    url.push_str(image_url);
-    url
+    format!("/image/{}", image_url)
 }
 
 pub fn window() -> Window {
