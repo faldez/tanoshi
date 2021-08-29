@@ -1,6 +1,6 @@
 pub mod telegram;
 
-use crate::{context::GlobalContext, user, worker::Command as WorkerCommand};
+use crate::{context::GlobalContext, user, worker::worker::Command as WorkerCommand};
 use async_graphql::{Context, Object, Result};
 
 #[derive(Default)]

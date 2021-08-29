@@ -1,5 +1,7 @@
-use crate::db::{MangaDatabase, UserDatabase};
-use crate::worker::Command as WorkerCommand;
+use crate::{
+    db::{MangaDatabase, UserDatabase},
+    worker::worker::Command as WorkerCommand,
+};
 use tanoshi_vm::bus::ExtensionBus;
 use tokio::sync::mpsc::UnboundedSender;
 

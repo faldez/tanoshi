@@ -3396,6 +3396,7 @@ dependencies = [
  "mime_guess",
  "phf",
  "rand 0.8.4",
+ "rayon",
  "reqwest",
  "ron",
  "rust-argon2",

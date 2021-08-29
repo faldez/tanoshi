@@ -643,8 +643,60 @@ impl Db {
     }
 
     #[allow(dead_code)]
-    pub async fn insert_mangas(&self, _manga: Vec<Manga>) -> Result<()> {
-        todo!()
+    pub async fn insert_mangas(&self, manga: &[Manga]) -> Result<()> {
+        if manga.is_empty() {
+            return Ok(());
+        }
+
+        let mut values = vec![];
+        values.resize(manga.len(), "(?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+        let query_str = format!(
+            r#"
+            INSERT INTO manga(
+                source_id, 
+                title, 
+                author, 
+                genre, 
+                status, 
+                description, 
+                path, 
+                cover_url, 
+                date_added
+            ) VALUES {}
+            ON CONFLICT(source_id, path)
+            DO UPDATE SET
+                title=excluded.title,
+                author=excluded.author,
+                genre=excluded.genre,
+                status=excluded.status,
+                description=excluded.description,
+                date_added=excluded.date_added,
+                cover_url=excluded.cover_url
+        "#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+        for m in manga {
+            query = query
+                .bind(m.source_id)
+                .bind(&m.title)
+                .bind(serde_json::to_string(&m.author).unwrap_or_else(|_| "[]".to_string()))
+                .bind(serde_json::to_string(&m.genre).unwrap_or_else(|_| "[]".to_string()))
+                .bind(&m.status)
+                .bind(&m.description)
+                .bind(&m.path)
+                .bind(&m.cover_url)
+                .bind(chrono::NaiveDateTime::from_timestamp(
+                    chrono::Local::now().timestamp(),
+                    0,
+                ));
+        }
+
+        query.execute(&self.pool).await?;
+
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -847,7 +899,14 @@ impl Db {
                 scanlator,
                 uploaded, 
                 date_added
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
+            ON CONFLICT(source_id, path) DO UPDATE SET
+            manga_id=excluded.manga_id,
+            title=excluded.title, 
+            number=excluded.number,
+            scanlator=excluded.scanlator,
+            uploaded=excluded.uploaded, 
+            date_added=excluded.date_added"#,
         )
         .bind(chapter.source_id)
         .bind(chapter.manga_id)
