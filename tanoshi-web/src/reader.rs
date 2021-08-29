@@ -418,6 +418,8 @@ impl Reader {
 
     pub fn render_vertical(reader: Rc<Self>) -> Dom {
         html!("div", {
+            .style("display", "flex")
+            .style("flex-direction", "column")
             .children(&mut [
                 html!("button", {
                     .style("width", "100%")
@@ -441,12 +443,11 @@ impl Reader {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .style("object-position", "center")
                         .attribute("id", index.to_string().as_str())
                         .attribute("src", &proxied_image_url(&page))
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
-                            _ => "100%",
+                            _ => "768px",
                         }))
                         .style_signal("object-fit", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::All => "contain",
