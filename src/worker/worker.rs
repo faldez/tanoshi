@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use futures::pin_mut;
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -166,34 +167,43 @@ impl Worker {
 
     async fn scan_local_manga(&self) -> Result<(), anyhow::Error> {
         info!("scan {} for manga", self.local_manga_path.display());
-        let mut stream = tokio_stream::iter(local::get_manga_list(&self.local_manga_path)?);
-        // let manga: Vec<crate::db::model::Manga> = local::get_manga_list(&self.local_manga_path)?
-        //     .into_iter()
-        //     .map(|m| m.into())
-        //     .collect();
+        let local_manga_stream = local::get_manga_list(&self.local_manga_path)?;
 
-        while let Some(m) = stream.next().await {
+        pin_mut!(local_manga_stream);
+
+        while let Some(m) = local_manga_stream.next().await {
             {
                 let mut manga: crate::db::model::Manga = m.clone().into();
                 self.mangadb.insert_manga(&mut manga).await?;
             }
 
-            info!("scan {} for info", m.path);
-            let manga_info = local::get_manga_info(m.path.clone()).into();
-            self.mangadb.update_manga_info(&manga_info).await?;
-
             info!("scan {} for chapters", m.path);
-            let chapters: Vec<crate::db::model::Chapter> = local::get_chapters(m.path.clone())?
-                .into_iter()
-                .map(|c| c.into())
-                .collect();
-            self.mangadb.insert_chapters(&chapters).await?;
+            let chapter_path = PathBuf::from(m.path);
+            if chapter_path.is_file() {
+                let ch = local::get_single_chapter(chapter_path)?;
 
-            for chapter in chapters {
-                info!("scan {} for pages", chapter.path);
-                let pages = local::get_pages(chapter.path.clone())?;
+                let chapter_id = {
+                    let chapter: crate::db::model::Chapter = ch.clone().into();
+                    self.mangadb.insert_chapter(&chapter).await?
+                };
 
-                self.mangadb.insert_pages(chapter.id, &pages).await?;
+                info!("scan {} for pages", ch.path);
+                let pages = local::get_pages(ch.path.clone())?;
+
+                self.mangadb.insert_pages(chapter_id, &pages).await?;
+            } else {
+                let local_chapter_stream = local::get_chapters(chapter_path)?;
+                pin_mut!(local_chapter_stream);
+
+                while let Some(ch) = local_chapter_stream.next().await {
+                    let chapter: crate::db::model::Chapter = ch.clone().into();
+                    let chapter_id = self.mangadb.insert_chapter(&chapter).await?;
+
+                    info!("scan {} for pages", ch.path);
+                    let pages = local::get_pages(ch.path.clone())?;
+
+                    self.mangadb.insert_pages(chapter_id, &pages).await?;
+                }
             }
         }
 

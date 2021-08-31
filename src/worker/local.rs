@@ -6,10 +6,14 @@ use std::{
 };
 
 use anyhow::anyhow;
+use async_stream::stream;
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
+
+use futures_core::stream::Stream;
+use futures_util::pin_mut;
+use futures_util::stream::StreamExt;
 use phf::phf_set;
-use rayon::prelude::*;
 use tanoshi_lib::prelude::{Chapter, Manga};
 
 // list of supported files, other archive may works but no tested
@@ -61,7 +65,7 @@ fn sort_dir_reverse(dir: ReadDir) -> Vec<DirEntry> {
 
 fn sort_read_dir_with_reverse(dir: ReadDir, reverse: bool) -> Vec<DirEntry> {
     let mut dir: Vec<DirEntry> = dir.into_iter().filter_map(Result::ok).collect();
-    dir.par_sort_by(|a, b| {
+    dir.sort_by(|a, b| {
         human_sort::compare(
             a.path().display().to_string().as_str(),
             b.path().display().to_string().as_str(),
@@ -86,8 +90,8 @@ fn find_cover_url(entry: &PathBuf) -> String {
     };
 
     let path = match entry_read_dir
-        .into_par_iter()
-        .find_map_first(filter_supported_files_and_folders)
+        .into_iter()
+        .find_map(filter_supported_files_and_folders)
     {
         Some(entry) => entry.path(),
         None => {
@@ -166,8 +170,8 @@ fn map_entry_to_chapter(path: &PathBuf) -> Chapter {
     }
 }
 
-pub fn get_manga_list(path: &PathBuf) -> Result<impl Iterator<Item = Manga>, anyhow::Error> {
-    let data = std::fs::read_dir(path)?
+pub fn get_manga_list(path: &PathBuf) -> Result<impl Stream<Item = Manga>, anyhow::Error> {
+    let iter = std::fs::read_dir(path)?
         .into_iter()
         .filter_map(Result::ok)
         .filter_map(filter_supported_files_and_folders)
@@ -187,51 +191,61 @@ pub fn get_manga_list(path: &PathBuf) -> Result<impl Iterator<Item = Manga>, any
             cover_url: find_cover_url(&entry.path()),
         });
 
-    Ok(data)
+    let s = async_stream::stream! {
+        for m in iter {
+            yield m;
+        }
+    };
+    Ok(s)
 }
 
-pub fn get_manga_info(path: String) -> Manga {
-    let path = PathBuf::from(path);
+// pub fn get_manga_info(path: String) -> Manga {
+//     let path = PathBuf::from(path);
 
-    let title = path
-        .file_stem()
-        .and_then(OsStr::to_str)
-        .unwrap_or("")
-        .to_string();
+//     let title = path
+//         .file_stem()
+//         .and_then(OsStr::to_str)
+//         .unwrap_or("")
+//         .to_string();
 
-    Manga {
-        source_id: crate::local::ID,
-        title: title.clone(),
-        author: vec![],
-        genre: vec![],
-        status: Some("".to_string()),
-        description: Some(title),
-        path: path.display().to_string(),
-        cover_url: find_cover_url(&path),
-    }
+//     Manga {
+//         source_id: crate::local::ID,
+//         title: title.clone(),
+//         author: vec![],
+//         genre: vec![],
+//         status: Some("".to_string()),
+//         description: Some(title),
+//         path: path.display().to_string(),
+//         cover_url: find_cover_url(&path),
+//     }
+// }
+
+pub fn get_single_chapter<P: AsRef<Path>>(path: P) -> Result<Chapter, anyhow::Error> {
+    let data = map_entry_to_chapter(&PathBuf::new().join(path));
+    return Ok(data);
 }
 
-pub fn get_chapters(path: String) -> Result<impl Iterator<Item = Chapter>, anyhow::Error> {
-    let path = PathBuf::from(path);
-    if path.is_file() {
-        let data = map_entry_to_chapter(&path);
-        return Ok(vec![data].into_iter());
-    }
-
-    let data = std::fs::read_dir(&path)?
+pub fn get_chapters<P: AsRef<Path>>(path: P) -> Result<impl Stream<Item = Chapter>, anyhow::Error> {
+    let iter = std::fs::read_dir(&path)?
         .into_iter()
         .filter_map(Result::ok)
         .map(|entry| map_entry_to_chapter(&entry.path()));
 
-    Ok(data)
+    let s = async_stream::stream! {
+        for ch in iter {
+            yield ch;
+        }
+    };
+    return Ok(s);
 }
 
 pub fn get_pages(filename: String) -> Result<Vec<String>, anyhow::Error> {
     let path = PathBuf::from(filename.clone());
     let mut pages = if path.is_dir() {
-        get_pages_from_dir(&path).map_err(|e| anyhow!("{}", e))?
+        get_pages_from_dir(&path).map_err(|e| anyhow!("get_pages_from_dir: {}", e))?
     } else if path.is_file() {
-        get_pages_from_archive(&path, filename).map_err(|e| anyhow!("{}", e))?
+        get_pages_from_archive(&path, filename)
+            .map_err(|e| anyhow!("get_pages_from_archive: {}", e))?
     } else {
         return Err(anyhow!("filename neither file or dir"));
     };
