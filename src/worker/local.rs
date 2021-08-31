@@ -38,7 +38,7 @@ fn filter_supported_files_and_folders(entry: DirEntry) -> Option<DirEntry> {
 
 // find first image from an archvie
 fn find_cover_from_archive(path: &PathBuf) -> String {
-    libarchive_rs::list_archive_files(path.display().to_string().as_str())
+    libarchive_rs::list_archive_files(path)
         .ok()
         .and_then(|files| files.first().cloned())
         .map(|page| path.join(page).display().to_string())
@@ -110,9 +110,9 @@ fn find_cover_url(entry: &PathBuf) -> String {
 
 fn get_pages_from_archive(
     path: &PathBuf,
-    filename: String,
+    filename: &str,
 ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
-    match libarchive_rs::list_archive_files(&filename) {
+    match libarchive_rs::list_archive_files(filename) {
         Ok(files) => {
             let pages = files
                 .into_iter()
@@ -239,7 +239,7 @@ pub fn get_chapters<P: AsRef<Path>>(path: P) -> Result<impl Stream<Item = Chapte
     return Ok(s);
 }
 
-pub fn get_pages(filename: String) -> Result<Vec<String>, anyhow::Error> {
+pub fn get_pages(filename: &str) -> Result<Vec<String>, anyhow::Error> {
     let path = PathBuf::from(filename.clone());
     let mut pages = if path.is_dir() {
         get_pages_from_dir(&path).map_err(|e| anyhow!("get_pages_from_dir: {}", e))?

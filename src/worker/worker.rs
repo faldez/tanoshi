@@ -172,6 +172,7 @@ impl Worker {
         pin_mut!(local_manga_stream);
 
         while let Some(m) = local_manga_stream.next().await {
+            info!("found {}", self.local_manga_path.display());
             {
                 let mut manga: crate::db::model::Manga = m.clone().into();
                 self.mangadb.insert_manga(&mut manga).await?;
@@ -188,7 +189,7 @@ impl Worker {
                 };
 
                 info!("scan {} for pages", ch.path);
-                let pages = local::get_pages(ch.path.clone())?;
+                let pages = local::get_pages(&ch.path)?;
 
                 self.mangadb.insert_pages(chapter_id, &pages).await?;
             } else {
@@ -200,7 +201,7 @@ impl Worker {
                     let chapter_id = self.mangadb.insert_chapter(&chapter).await?;
 
                     info!("scan {} for pages", ch.path);
-                    let pages = local::get_pages(ch.path.clone())?;
+                    let pages = local::get_pages(&ch.path)?;
 
                     self.mangadb.insert_pages(chapter_id, &pages).await?;
                 }
