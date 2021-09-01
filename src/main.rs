@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("tanoshi_log: {}", tanoshi_log);
         std::env::set_var(
             "RUST_LOG",
-            format!("tanoshi={},tanoshi_vm={}", tanoshi_log, tanoshi_log),
+            format!("tanoshi={level},tanoshi_vm={level}", level = tanoshi_log),
         );
     }
 
@@ -73,10 +73,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let extension_bus = ExtensionBus::new(&config.plugin_path, extension_tx);
 
-    extension_bus
-        .insert(local::ID, Arc::new(local::Local::new(&config.local_path)))
-        .await?;
-
     let mut telegram_bot = None;
     let mut telegram_bot_fut: OptionFuture<_> = None.into();
     if let Some(telegram_config) = config.telegram {
@@ -87,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         telegram_bot = Some(bot);
     }
 
-    let (worker_handle, worker_tx) = worker::worker::start(
+    let (worker_handle, worker_tx) = worker::start(
         config.update_interval,
         &config.local_path,
         mangadb.clone(),

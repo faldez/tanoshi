@@ -21,8 +21,6 @@ use tokio_stream::StreamExt;
 
 use crate::db::{model::Chapter, MangaDatabase};
 
-use super::local;
-
 pub enum Command {
     TelegramMessage(i64, String),
 }
@@ -167,46 +165,10 @@ impl Worker {
 
     async fn scan_local_manga(&self) -> Result<(), anyhow::Error> {
         info!("scan {} for manga", self.local_manga_path.display());
-        let local_manga_stream = local::get_manga_list(&self.local_manga_path)?;
+        let local_scanner =
+            super::scanner::Scanner::new(self.local_manga_path.clone(), self.mangadb.clone());
 
-        pin_mut!(local_manga_stream);
-
-        while let Some(m) = local_manga_stream.next().await {
-            info!("found {}", self.local_manga_path.display());
-            {
-                let mut manga: crate::db::model::Manga = m.clone().into();
-                self.mangadb.insert_manga(&mut manga).await?;
-            }
-
-            info!("scan {} for chapters", m.path);
-            let chapter_path = PathBuf::from(m.path);
-            if chapter_path.is_file() {
-                let ch = local::get_single_chapter(chapter_path)?;
-
-                let chapter_id = {
-                    let chapter: crate::db::model::Chapter = ch.clone().into();
-                    self.mangadb.insert_chapter(&chapter).await?
-                };
-
-                info!("scan {} for pages", ch.path);
-                let pages = local::get_pages(&ch.path)?;
-
-                self.mangadb.insert_pages(chapter_id, &pages).await?;
-            } else {
-                let local_chapter_stream = local::get_chapters(chapter_path)?;
-                pin_mut!(local_chapter_stream);
-
-                while let Some(ch) = local_chapter_stream.next().await {
-                    let chapter: crate::db::model::Chapter = ch.clone().into();
-                    let chapter_id = self.mangadb.insert_chapter(&chapter).await?;
-
-                    info!("scan {} for pages", ch.path);
-                    let pages = local::get_pages(&ch.path)?;
-
-                    self.mangadb.insert_pages(chapter_id, &pages).await?;
-                }
-            }
-        }
+        local_scanner.scan().await?;
 
         Ok(())
     }

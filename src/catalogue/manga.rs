@@ -1,4 +1,4 @@
-use super::Chapter;
+use super::{Chapter, LOCAL_ID};
 use crate::{context::GlobalContext, user, utils};
 use async_graphql::{Context, Object, Result};
 
@@ -178,6 +178,8 @@ impl Manga {
         if !refresh {
             if let Ok(chapters) = db.get_chapters_by_manga_id(self.id).await {
                 return Ok(chapters.into_iter().map(|c| c.into()).collect());
+            } else if self.source_id == LOCAL_ID {
+                return Ok(vec![]);
             }
         }
 
@@ -215,7 +217,7 @@ impl Manga {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
     ) -> Result<Chapter> {
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let db = ctx.data::<GlobalContext>()?.mangadb.clone();
         Ok(db.get_chapter_by_id(id).await?.into())
     }
 }

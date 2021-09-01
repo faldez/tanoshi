@@ -127,8 +127,15 @@ impl Catalogue {
                         version: s.version.clone(),
                         icon: s.icon.clone(),
                         need_login: s.need_login,
-                    }).collect()
-                )},
+                    }).collect());
+                    catalogue.sources.lock_mut().push_cloned(Source {
+                        id: 1,
+                        name: "local".to_string(),
+                        version: "0.0.0".to_string(),
+                        icon: "/icons/192.png".to_string(),
+                        need_login: false,
+                    });
+                },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
                 }

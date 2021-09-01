@@ -12,6 +12,8 @@ use crate::context::GlobalContext;
 use async_graphql::{Context, Enum, Object, Result};
 use tanoshi_lib::prelude::Param;
 
+const LOCAL_ID: i64 = 1;
+
 /// A type represent sort parameter for query manga from source, normalized across sources
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
 #[graphql(remote = "tanoshi_lib::data::SortByParam")]
@@ -49,7 +51,16 @@ impl CatalogueRoot {
         let sort_order = sort_order.map(|s| s.into());
 
         let ctx = ctx.data::<GlobalContext>()?;
-        let fetched_manga = {
+        let fetched_manga = if source_id == LOCAL_ID {
+            let page = page.map(|p| p as usize).unwrap_or(1);
+            let offset = (page - 1) * 20;
+            ctx.mangadb
+                .get_manga_by_source_id_limit_offset(crate::local::ID, 20, offset as i64)
+                .await?
+                .into_iter()
+                .map(Manga::from)
+                .collect()
+        } else {
             let extensions = ctx.extensions.clone();
             extensions
                 .get_manga_list(
@@ -83,7 +94,7 @@ impl CatalogueRoot {
         let db = ctx.mangadb.clone();
         let manga = if let Ok(manga) = db.get_manga_by_source_path(source_id, &path).await {
             manga
-        } else {
+        } else if source_id != LOCAL_ID {
             let mut m: crate::db::model::Manga = {
                 let extensions = ctx.extensions.clone();
                 extensions.get_manga_info(source_id, path).await?.into()
@@ -91,6 +102,8 @@ impl CatalogueRoot {
 
             db.insert_manga(&mut m).await?;
             m
+        } else {
+            return Err("manga not found".into());
         };
 
         Ok(manga.into())
@@ -105,7 +118,8 @@ impl CatalogueRoot {
         let ctx = ctx.data::<GlobalContext>()?;
         let db = ctx.mangadb.clone();
         let manga = db.get_manga_by_id(id).await?;
-        if refresh {
+
+        if manga.source_id != LOCAL_ID && refresh {
             let mut m: crate::db::model::Manga = {
                 let extensions = ctx.extensions.clone();
                 extensions
@@ -127,7 +141,7 @@ impl CatalogueRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
     ) -> Result<Chapter> {
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let db = ctx.data::<GlobalContext>()?.mangadb.clone();
         Ok(db.get_chapter_by_id(id).await?.into())
     }
 }

@@ -1,4 +1,4 @@
-use super::Manga;
+use super::{Manga, LOCAL_ID};
 use crate::{context::GlobalContext, user, utils};
 use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
@@ -178,7 +178,7 @@ impl Chapter {
         info!("pages: {}, fetch: {}", self.pages.len(), fetch);
         let pages = if !self.pages.is_empty() && !fetch {
             self.pages.clone()
-        } else {
+        } else if self.source_id != LOCAL_ID {
             let pages = ctx
                 .data::<GlobalContext>()?
                 .extensions
@@ -191,6 +191,8 @@ impl Chapter {
                 .await?;
 
             pages
+        } else {
+            return Err("pages not found".into());
         };
 
         let secret = ctx.data::<GlobalContext>()?.secret.clone();

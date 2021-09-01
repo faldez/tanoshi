@@ -15,6 +15,36 @@ impl Db {
         Db { pool }
     }
 
+    pub async fn get_manga_by_source_id_limit_offset(
+        &self,
+        source_id: i64,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Manga>> {
+        let mut stream = sqlx::query(r#"SELECT * FROM manga WHERE source_id = ? LIMIT ? OFFSET ?"#)
+            .bind(source_id)
+            .bind(limit)
+            .bind(offset)
+            .fetch(&self.pool);
+
+        let mut mangas = vec![];
+        while let Some(row) = stream.try_next().await? {
+            mangas.push(Manga {
+                id: row.get(0),
+                source_id: row.get(1),
+                title: row.get(2),
+                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+                status: row.get(5),
+                description: row.get(6),
+                path: row.get(7),
+                cover_url: row.get(8),
+                date_added: row.get(9),
+            });
+        }
+        Ok(mangas)
+    }
+
     pub async fn get_manga_by_id(&self, id: i64) -> Result<Manga> {
         let stream = sqlx::query(r#"SELECT * FROM manga WHERE id = ?"#)
             .bind(id)
@@ -786,9 +816,8 @@ impl Db {
         })?)
     }
 
-    #[allow(dead_code)]
-    pub async fn get_chapter_by_source_path(&self, source_id: i64, path: &str) -> Option<Chapter> {
-        let stream = sqlx::query(
+    pub async fn get_chapter_by_source_path(&self, source_id: i64, path: &str) -> Result<Chapter> {
+        let row = sqlx::query(
             r#"
             SELECT *,
             (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
@@ -799,10 +828,9 @@ impl Db {
         .bind(source_id)
         .bind(path)
         .fetch_one(&self.pool)
-        .await
-        .ok();
+        .await?;
 
-        stream.map(|row| Chapter {
+        Ok(Chapter {
             id: row.get(0),
             source_id: row.get(1),
             manga_id: row.get(2),
@@ -889,6 +917,10 @@ impl Db {
 
     #[allow(dead_code)]
     pub async fn insert_chapter(&self, chapter: &Chapter) -> Result<i64> {
+        if chapter.source_id == 0 || chapter.manga_id == 0 {
+            return Err(anyhow!("source_id or manga_id have to be not zero"));
+        }
+
         let row_id = sqlx::query(
             r#"INSERT INTO chapter(
                 source_id,
@@ -977,6 +1009,9 @@ impl Db {
     }
 
     pub async fn insert_pages(&self, chapter_id: i64, pages: &[String]) -> Result<()> {
+        if chapter_id == 0 {
+            return Err(anyhow!("chapter_id cannot be empty"));
+        }
         if pages.is_empty() {
             return Ok(());
         }

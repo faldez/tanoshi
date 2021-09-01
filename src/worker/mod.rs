@@ -1,2 +1,4 @@
-pub mod local;
-pub mod worker;
+mod scanner;
+mod worker;
+
+pub use worker::*;
