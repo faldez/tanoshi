@@ -54,7 +54,9 @@ futures = "^0.3"
 rust-argon2 = "0.8"
 ron = "0.6.4"
 fancy-regex = "0.7"
-libarchive-rs = { path = "../libarchive-rs", features = ["static"] }
+libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = [
+    "static",
+] }
 teloxide = { version = "0.5.1", features = ["auto-send", "macros"] }
 html-escape = "0.2.9"
 phf = { version = "0.10", features = ["macros"] }
