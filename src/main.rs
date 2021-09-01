@@ -8,7 +8,6 @@ mod config;
 mod context;
 mod db;
 mod library;
-mod local;
 mod notifier;
 mod proxy;
 mod routes;
@@ -33,7 +32,7 @@ use async_graphql::{
     EmptySubscription, Schema,
 };
 use async_graphql_warp::{BadRequest, Response};
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 use teloxide::prelude::RequesterExt;
 use warp::{
     http::{Response as HttpResponse, StatusCode},

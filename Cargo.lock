@@ -1798,6 +1798,7 @@ dependencies = [
 [[package]]
 name = "libarchive-rs"
 version = "0.0.0"
+source = "git+https://github.com/faldez/libarchive-rs#71a4af52ca6ba400fb5a3626cc0fae2a132ec21c"
 dependencies = [
  "libarchive-sys",
 ]
@@ -1805,6 +1806,7 @@ dependencies = [
 [[package]]
 name = "libarchive-sys"
 version = "0.1.0"
+source = "git+https://github.com/faldez/libarchive-rs#71a4af52ca6ba400fb5a3626cc0fae2a132ec21c"
 dependencies = [
  "bindgen",
  "cmake",
@@ -3377,7 +3379,6 @@ dependencies = [
  "anyhow",
  "async-graphql",
  "async-graphql-warp",
- "async-stream",
  "base64 0.13.0",
  "block-modes",
  "bytes",
@@ -3387,8 +3388,6 @@ dependencies = [
  "env_logger 0.9.0",
  "fancy-regex",
  "futures",
- "futures-core",
- "futures-util",
  "html-escape",
  "human-sort",
  "jsonwebtoken",

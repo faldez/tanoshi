@@ -1,5 +1,4 @@
 use anyhow::anyhow;
-use futures::pin_mut;
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -17,7 +16,6 @@ use tokio::{
     task::JoinHandle,
     time::{self, Instant},
 };
-use tokio_stream::StreamExt;
 
 use crate::db::{model::Chapter, MangaDatabase};
 

@@ -12,7 +12,7 @@ use crate::context::GlobalContext;
 use async_graphql::{Context, Enum, Object, Result};
 use tanoshi_lib::prelude::Param;
 
-const LOCAL_ID: i64 = 1;
+pub const LOCAL_ID: i64 = 1;
 
 /// A type represent sort parameter for query manga from source, normalized across sources
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]
@@ -55,7 +55,7 @@ impl CatalogueRoot {
             let page = page.map(|p| p as usize).unwrap_or(1);
             let offset = (page - 1) * 20;
             ctx.mangadb
-                .get_manga_by_source_id_limit_offset(crate::local::ID, 20, offset as i64)
+                .get_manga_by_source_id_limit_offset(LOCAL_ID, 20, offset as i64)
                 .await?
                 .into_iter()
                 .map(Manga::from)

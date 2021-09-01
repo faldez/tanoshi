@@ -4,15 +4,14 @@ use std::{
     time::UNIX_EPOCH,
 };
 
-use crate::db::MangaDatabase;
+use crate::{catalogue::LOCAL_ID, db::MangaDatabase};
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
-use phf::phf_set;
 use tanoshi_lib::prelude::{Chapter, Manga};
 
 const DEFAULT_COVER_URL: &str = "/images/cover-placeholder.jpg";
-// list of supported files, other archive may works but no tested
-static SUPPORTED_FILES: phf::Set<&'static str> = phf_set! {
+// list of supported files, other archive may works but not tested
+static SUPPORTED_FILES: phf::Set<&'static str> = phf::phf_set! {
     "cbz",
     "cbr",
 };
@@ -174,7 +173,7 @@ impl Scanner {
         };
 
         Some(Chapter {
-            source_id: crate::local::ID,
+            source_id: LOCAL_ID,
             title: file_name,
             path: format!("{}", path.display()),
             number,
@@ -190,17 +189,14 @@ impl Scanner {
 
             let manga = if let Ok(manga) = self
                 .mangadb
-                .get_manga_by_source_path(
-                    crate::local::ID,
-                    entry.path().display().to_string().as_str(),
-                )
+                .get_manga_by_source_path(LOCAL_ID, entry.path().display().to_string().as_str())
                 .await
             {
                 manga
             } else {
                 let mut manga: crate::db::model::Manga = {
                     let m = Manga {
-                        source_id: crate::local::ID,
+                        source_id: LOCAL_ID,
                         title: entry
                             .path()
                             .file_stem()
@@ -235,7 +231,7 @@ impl Scanner {
     ) -> Result<(), anyhow::Error> {
         let chapter = if let Ok(chapter) = self
             .mangadb
-            .get_chapter_by_source_path(crate::local::ID, &path.display().to_string())
+            .get_chapter_by_source_path(LOCAL_ID, &path.display().to_string())
             .await
         {
             chapter
