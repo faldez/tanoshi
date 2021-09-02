@@ -1797,8 +1797,8 @@ dependencies = [
 
 [[package]]
 name = "libarchive-rs"
-version = "0.1.0"
-source = "git+https://github.com/faldez/libarchive-rs#caa8a210b0c794348de80ba0c1f1ad3fe1fbcef4"
+version = "0.0.0"
+source = "git+https://github.com/faldez/libarchive-rs#71a4af52ca6ba400fb5a3626cc0fae2a132ec21c"
 dependencies = [
  "libarchive-sys",
 ]
@@ -1806,7 +1806,7 @@ dependencies = [
 [[package]]
 name = "libarchive-sys"
 version = "0.1.0"
-source = "git+https://github.com/faldez/libarchive-rs#caa8a210b0c794348de80ba0c1f1ad3fe1fbcef4"
+source = "git+https://github.com/faldez/libarchive-rs#71a4af52ca6ba400fb5a3626cc0fae2a132ec21c"
 dependencies = [
  "bindgen",
  "cmake",
@@ -2357,9 +2357,9 @@ dependencies = [
 
 [[package]]
 name = "phf"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2ac8b67553a7ca9457ce0e526948cad581819238f4a9d1ea74545851fa24f37"
+checksum = "b9fc3db1018c4b59d7d582a739436478b6035138b6aecbce989fc91c3e98409f"
 dependencies = [
  "phf_macros",
  "phf_shared",
@@ -2368,9 +2368,9 @@ dependencies = [
 
 [[package]]
 name = "phf_generator"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d43f3220d96e0080cc9ea234978ccd80d904eafb17be31bb0f76daaea6493082"
+checksum = "5d5285893bb5eb82e6aaf5d59ee909a06a16737a8970984dd7746ba9283498d6"
 dependencies = [
  "phf_shared",
  "rand 0.8.4",
@@ -2378,9 +2378,9 @@ dependencies = [
 
 [[package]]
 name = "phf_macros"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b706f5936eb50ed880ae3009395b43ed19db5bff2ebd459c95e7bf013a89ab86"
+checksum = "58fdf3184dd560f160dd73922bea2d5cd6e8f064bf4b13110abd81b03697b4e0"
 dependencies = [
  "phf_generator",
  "phf_shared",
@@ -2392,9 +2392,9 @@ dependencies = [
 
 [[package]]
 name = "phf_shared"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a68318426de33640f02be62b4ae8eb1261be2efbc337b60c54d845bf4484e0d9"
+checksum = "b6796ad771acdc0123d2a88dc428b5e38ef24456743ddb1744ed628f9815c096"
 dependencies = [
  "siphasher",
 ]
