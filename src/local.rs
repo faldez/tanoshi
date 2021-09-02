@@ -351,7 +351,7 @@ mod test {
             ]);
             #[cfg(target_family = "unix")]
             let want_path_set = HashSet::from_iter(vec![
-                "./test/data/manga/Space Adventures".to_string(),
+                "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
                 "./test/data/manga/Space Adventures".to_string(),
                 "./test/data/manga/Super Duck".to_string(),
             ]);
