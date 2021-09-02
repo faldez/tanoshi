@@ -2,13 +2,14 @@ use std::{
     ffi::OsStr,
     fs::{DirEntry, ReadDir},
     path::{Path, PathBuf},
+    str::FromStr,
     time::UNIX_EPOCH,
 };
 
 use chrono::NaiveDateTime;
 use fancy_regex::Regex;
 use phf::phf_set;
-use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Source};
+use tanoshi_lib::prelude::{Chapter, Extension, ExtensionResult, Filters, Manga, Source, Version};
 
 pub static ID: i64 = 1;
 // list of supported files, other archive may works but no tested
@@ -194,8 +195,9 @@ impl Extension for Local {
             id: ID,
             name: "local".to_string(),
             url: format!("{}", self.path.display()),
-            version: "1.0.0".to_string(),
+            version: Version::default(),
             icon: "/icons/192.png".to_string(),
+            lib_version: Version::from_str(tanoshi_lib::TANOSHI_LIB_VERSION).unwrap_or_default(),
             need_login: false,
             languages: vec![],
         }

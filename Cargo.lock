@@ -3436,8 +3436,10 @@ name = "tanoshi-lib"
 version = "0.25.0"
 dependencies = [
  "chrono",
+ "ron",
  "serde",
  "tanoshi-util",
+ "thiserror",
 ]
 
 [[package]]

@@ -1,83 +1,12 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    fmt::Display,
+    str::FromStr,
 };
 
 use crate::{context::GlobalContext, user};
 use async_graphql::{Context, Json, Object, Result, SimpleObject};
 use serde::{Deserialize, Serialize};
-use tanoshi_lib::prelude::FilterField;
-
-#[derive(Debug, Eq, PartialEq)]
-pub struct Version {
-    pub major: i64,
-    pub minor: i64,
-    pub patch: i64,
-}
-
-impl Version {
-    pub fn new(v: String) -> Version {
-        let split = v.split('.').into_iter().collect::<Vec<&str>>();
-        match split.len() {
-            0 => Version {
-                major: 0,
-                minor: 0,
-                patch: 0,
-            },
-            1 => Version {
-                major: split[0].parse().unwrap_or(0),
-                minor: 0,
-                patch: 0,
-            },
-            2 => Version {
-                major: split[0].parse().unwrap_or(0),
-                minor: split[1].parse().unwrap_or(0),
-                patch: 0,
-            },
-            _ => Version {
-                major: split[0].parse().unwrap_or(0),
-                minor: split[1].parse().unwrap_or(0),
-                patch: split[2].parse().unwrap_or(0),
-            },
-        }
-    }
-}
-
-impl From<String> for Version {
-    fn from(v: String) -> Self {
-        Version::new(v)
-    }
-}
-
-impl Display for Version {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{}.{}.{}", self.major, self.minor, self.patch))
-    }
-}
-
-impl PartialOrd for Version {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        if let Some(ord) = self.major.partial_cmp(&other.major) {
-            match ord {
-                std::cmp::Ordering::Equal => {}
-                _ => {
-                    return Some(ord);
-                }
-            }
-        }
-
-        if let Some(ord) = self.minor.partial_cmp(&other.minor) {
-            match ord {
-                std::cmp::Ordering::Equal => {}
-                _ => {
-                    return Some(ord);
-                }
-            }
-        }
-
-        self.patch.partial_cmp(&other.patch)
-    }
-}
+use tanoshi_lib::prelude::{FilterField, Version};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SourceIndex {
@@ -131,7 +60,7 @@ impl From<tanoshi_lib::data::Source> for Source {
         Self {
             id: s.id,
             name: s.name,
-            version: s.version,
+            version: s.version.to_string(),
             icon: s.icon,
             need_login: s.need_login,
             has_update: false,
@@ -196,7 +125,7 @@ impl SourceRoot {
                 let mut source: Source = source.into();
                 if let Some(index) = available_sources_map.get(&source.id) {
                     source.has_update =
-                        Version::new(index.version.clone()) > Version::new(source.version.clone());
+                        Version::from_str(&index.version)? > Version::from_str(&source.version)?;
                 }
                 sources.push(source);
             }
@@ -297,7 +226,7 @@ impl SourceMutationRoot {
             .ok_or("source not found")?
             .clone();
 
-        if extensions.detail(source_id).await?.version == source.version {
+        if extensions.detail(source_id).await?.version == Version::from_str(&source.version)? {
             return Err("No new version".into());
         }
 
