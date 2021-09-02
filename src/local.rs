@@ -325,6 +325,8 @@ impl Extension for Local {
 
 #[cfg(test)]
 mod test {
+    use std::{collections::HashSet, iter::FromIterator};
+
     use tanoshi_lib::prelude::Param;
 
     use super::*;
@@ -340,41 +342,31 @@ mod test {
         if let Some(data) = manga.data {
             assert_eq!(data.len(), 3);
 
-            assert_eq!(data[0].title, "Space Adventures");
+            let path_set: HashSet<String> = HashSet::from_iter(data.iter().map(|a| a.path.clone()));
             #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[0].cover_url,
-                "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00401.JPG"
-            );
+            let want_path_set = HashSet::from_iter(vec![
+                "./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+                "./test/data/manga\\Space Adventures".to_string(),
+                "./test/data/manga\\Super Duck".to_string(),
+            ]);
             #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[0].cover_url,
-                "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00401.JPG"
-            );
+            let want_path_set: HashSet<&'static str> = HashSet::from_iter(vec![
+                "./test/data/manga/Space Adventures".to_string(),
+                "./test/data/manga/Space Adventures".to_string(),
+                "./test/data/manga/Super Duck".to_string(),
+            ]);
 
-            assert_eq!(data[1].title, "Space_Adventures_004__c2c__diff_ver");
-            #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[1].cover_url,
-                "./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz\\SPA00401.JPG"
-            );
-            #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[1].cover_url,
-                "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz/SPA00401.JPG"
-            );
+            assert_eq!(path_set, want_path_set);
 
-            assert_eq!(data[2].title, "Super Duck");
-            #[cfg(target_family = "windows")]
-            assert_eq!(
-                data[2].cover_url,
-                "./test/data/manga\\Super Duck\\super_duck_2.cbz\\duck00.jpg"
-            );
-            #[cfg(target_family = "unix")]
-            assert_eq!(
-                data[2].cover_url,
-                "./test/data/manga/Super Duck/super_duck_2.cbz/duck00.jpg"
-            );
+            let title_set: HashSet<String> =
+                HashSet::from_iter(data.iter().map(|a| a.title.clone()));
+            let want_title_set = HashSet::from_iter(vec![
+                "Space Adventures".to_string(),
+                "Space_Adventures_004__c2c__diff_ver".to_string(),
+                "Super Duck".to_string(),
+            ]);
+
+            assert_eq!(title_set, want_title_set);
         }
     }
 
@@ -395,8 +387,9 @@ mod test {
             ..Default::default()
         });
 
-        assert!(manga.data.is_none());
-        assert!(manga.error.is_some());
+        assert!(manga.data.is_some());
+        assert!(manga.error.is_none());
+        assert_eq!(manga.data.unwrap().len(), 0);
     }
 
     #[test]
