@@ -334,7 +334,7 @@ mod test {
 
     #[test]
     fn test_positive_get_manga_list() {
-        let local = Local::new("./test/data/manga");
+        let local = Local::new("../../test/data/manga");
         let manga = local.get_manga_list(Param::default());
 
         assert!(manga.data.is_some());
@@ -346,15 +346,15 @@ mod test {
             let path_set: HashSet<String> = HashSet::from_iter(data.iter().map(|a| a.path.clone()));
             #[cfg(target_family = "windows")]
             let want_path_set = HashSet::from_iter(vec![
-                "./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-                "./test/data/manga\\Space Adventures".to_string(),
-                "./test/data/manga\\Super Duck".to_string(),
+                "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+                "../../test/data/manga\\Space Adventures".to_string(),
+                "../../test/data/manga\\Super Duck".to_string(),
             ]);
             #[cfg(target_family = "unix")]
             let want_path_set = HashSet::from_iter(vec![
-                "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
-                "./test/data/manga/Space Adventures".to_string(),
-                "./test/data/manga/Super Duck".to_string(),
+                "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+                "../../test/data/manga/Space Adventures".to_string(),
+                "../../test/data/manga/Super Duck".to_string(),
             ]);
 
             assert_eq!(path_set, want_path_set);
@@ -373,7 +373,7 @@ mod test {
 
     #[test]
     fn test_negative_get_manga_list() {
-        let local = Local::new("./test/data/not_manga");
+        let local = Local::new("../../test/data/not_manga");
         let manga = local.get_manga_list(Param::default());
 
         assert!(manga.data.is_none());
@@ -382,7 +382,7 @@ mod test {
 
     #[test]
     fn test_positive_get_manga_list_with_page() {
-        let local = Local::new("./test/data/manga");
+        let local = Local::new("../../test/data/manga");
         let manga = local.get_manga_list(Param {
             page: Some(2),
             ..Default::default()
@@ -395,14 +395,14 @@ mod test {
 
     #[test]
     fn test_get_manga_info() {
-        let local = Local::new("./test/data/manga");
+        let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
         let manga = local.get_manga_info(
-            "./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+            "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
         );
         #[cfg(target_family = "unix")]
         let manga = local.get_manga_info(
-            "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+            "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
         );
 
         assert!(manga.data.is_some());
@@ -414,25 +414,27 @@ mod test {
             #[cfg(target_family = "windows")]
             assert_eq!(
                 data.cover_url,
-                "./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz\\SPA00401.JPG"
+                "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz\\SPA00401.JPG"
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
                 data.cover_url,
-                "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz/SPA00401.JPG"
+                "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz/SPA00401.JPG"
             );
         }
     }
 
     #[test]
     fn test_single_chapter_manga_get_chapters() {
-        let local = Local::new("./test/data/manga");
+        let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let chapter = local
-            .get_chapters("./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string());
+        let chapter = local.get_chapters(
+            "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+        );
         #[cfg(target_family = "unix")]
-        let chapter = local
-            .get_chapters("./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string());
+        let chapter = local.get_chapters(
+            "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz".to_string(),
+        );
 
         assert!(chapter.data.is_some());
         assert!(chapter.error.is_none());
@@ -445,23 +447,23 @@ mod test {
             #[cfg(target_family = "windows")]
             assert_eq!(
                 data[0].path,
-                "./test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz"
+                "../../test/data/manga\\Space_Adventures_004__c2c__diff_ver.cbz"
             );
             #[cfg(target_family = "unix")]
             assert_eq!(
                 data[0].path,
-                "./test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz"
+                "../../test/data/manga/Space_Adventures_004__c2c__diff_ver.cbz"
             );
         }
     }
 
     #[test]
     fn test_manga_get_chapters() {
-        let local = Local::new("./test/data/manga");
+        let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
-        let chapter = local.get_chapters("./test/data/manga\\Space Adventures".to_string());
+        let chapter = local.get_chapters("../../test/data/manga\\Space Adventures".to_string());
         #[cfg(target_family = "unix")]
-        let chapter = local.get_chapters("./test/data/manga/Space Adventures".to_string());
+        let chapter = local.get_chapters("../../test/data/manga/Space Adventures".to_string());
 
         assert!(chapter.data.is_some());
         assert!(chapter.error.is_none());
@@ -473,14 +475,16 @@ mod test {
 
     #[test]
     fn test_archive_get_pages() {
-        let local = Local::new("./test/data/manga");
+        let local = Local::new("../../test/data/manga");
         #[cfg(target_family = "windows")]
         let pages = local.get_pages(
-            "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver".to_string(),
+            "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver"
+                .to_string(),
         );
         #[cfg(target_family = "unix")]
         let pages = local.get_pages(
-            "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver".to_string(),
+            "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver"
+                .to_string(),
         );
 
         assert!(pages.data.is_some());
@@ -491,237 +495,237 @@ mod test {
 
             #[cfg(target_family = "windows")]
             {
-                assert_eq!(data[0], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00401.JPG");
-                assert_eq!(data[1], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00402.JPG");
-                assert_eq!(data[2], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00403.JPG");
-                assert_eq!(data[3], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00404.JPG");
-                assert_eq!(data[4], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00405.JPG");
-                assert_eq!(data[5], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00406.JPG");
-                assert_eq!(data[6], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00407.JPG");
-                assert_eq!(data[7], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00408.JPG");
-                assert_eq!(data[8], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00409.JPG");
-                assert_eq!(data[9], "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00410.JPG");
+                assert_eq!(data[0], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00401.JPG");
+                assert_eq!(data[1], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00402.JPG");
+                assert_eq!(data[2], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00403.JPG");
+                assert_eq!(data[3], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00404.JPG");
+                assert_eq!(data[4], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00405.JPG");
+                assert_eq!(data[5], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00406.JPG");
+                assert_eq!(data[6], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00407.JPG");
+                assert_eq!(data[7], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00408.JPG");
+                assert_eq!(data[8], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00409.JPG");
+                assert_eq!(data[9], "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00410.JPG");
                 assert_eq!(
                     data[10],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00411.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00411.JPG"
                 );
                 assert_eq!(
                     data[11],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00412.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00412.JPG"
                 );
                 assert_eq!(
                     data[12],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00413.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00413.JPG"
                 );
                 assert_eq!(
                     data[13],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00414.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00414.JPG"
                 );
                 assert_eq!(
                     data[14],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00415.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00415.JPG"
                 );
                 assert_eq!(
                     data[15],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00416.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00416.JPG"
                 );
                 assert_eq!(
                     data[16],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00417.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00417.JPG"
                 );
                 assert_eq!(
                     data[17],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00418.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00418.JPG"
                 );
                 assert_eq!(
                     data[18],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00419.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00419.JPG"
                 );
                 assert_eq!(
                     data[19],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00420.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00420.JPG"
                 );
                 assert_eq!(
                     data[20],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00421.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00421.JPG"
                 );
                 assert_eq!(
                     data[21],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00422.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00422.JPG"
                 );
                 assert_eq!(
                     data[22],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00423.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00423.JPG"
                 );
                 assert_eq!(
                     data[23],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00424.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00424.JPG"
                 );
                 assert_eq!(
                     data[24],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00425.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00425.JPG"
                 );
                 assert_eq!(
                     data[25],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00426.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00426.JPG"
                 );
                 assert_eq!(
                     data[26],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00427.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00427.JPG"
                 );
                 assert_eq!(
                     data[27],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00428.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00428.JPG"
                 );
                 assert_eq!(
                     data[28],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00429.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00429.JPG"
                 );
                 assert_eq!(
                     data[29],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00430.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00430.JPG"
                 );
                 assert_eq!(
                     data[30],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00431.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00431.JPG"
                 );
                 assert_eq!(
                     data[31],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00432.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00432.JPG"
                 );
                 assert_eq!(
                     data[32],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00433.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00433.JPG"
                 );
                 assert_eq!(
                     data[33],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00434.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00434.JPG"
                 );
                 assert_eq!(
                     data[34],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00435.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00435.JPG"
                 );
                 assert_eq!(
                     data[35],
-                    "./test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00436.JPG"
+                    "../../test/data/manga\\Space Adventures\\Space_Adventures_004__c2c__diff_ver\\SPA00436.JPG"
                 );
             }
 
             #[cfg(target_family = "unix")]
             {
-                assert_eq!(data[0], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00401.JPG");
-                assert_eq!(data[1], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00402.JPG");
-                assert_eq!(data[2], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00403.JPG");
-                assert_eq!(data[3], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00404.JPG");
-                assert_eq!(data[4], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00405.JPG");
-                assert_eq!(data[5], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00406.JPG");
-                assert_eq!(data[6], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00407.JPG");
-                assert_eq!(data[7], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00408.JPG");
-                assert_eq!(data[8], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00409.JPG");
-                assert_eq!(data[9], "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00410.JPG");
+                assert_eq!(data[0], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00401.JPG");
+                assert_eq!(data[1], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00402.JPG");
+                assert_eq!(data[2], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00403.JPG");
+                assert_eq!(data[3], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00404.JPG");
+                assert_eq!(data[4], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00405.JPG");
+                assert_eq!(data[5], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00406.JPG");
+                assert_eq!(data[6], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00407.JPG");
+                assert_eq!(data[7], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00408.JPG");
+                assert_eq!(data[8], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00409.JPG");
+                assert_eq!(data[9], "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00410.JPG");
                 assert_eq!(
                     data[10],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00411.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00411.JPG"
                 );
                 assert_eq!(
                     data[11],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00412.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00412.JPG"
                 );
                 assert_eq!(
                     data[12],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00413.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00413.JPG"
                 );
                 assert_eq!(
                     data[13],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00414.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00414.JPG"
                 );
                 assert_eq!(
                     data[14],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00415.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00415.JPG"
                 );
                 assert_eq!(
                     data[15],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00416.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00416.JPG"
                 );
                 assert_eq!(
                     data[16],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00417.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00417.JPG"
                 );
                 assert_eq!(
                     data[17],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00418.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00418.JPG"
                 );
                 assert_eq!(
                     data[18],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00419.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00419.JPG"
                 );
                 assert_eq!(
                     data[19],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00420.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00420.JPG"
                 );
                 assert_eq!(
                     data[20],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00421.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00421.JPG"
                 );
                 assert_eq!(
                     data[21],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00422.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00422.JPG"
                 );
                 assert_eq!(
                     data[22],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00423.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00423.JPG"
                 );
                 assert_eq!(
                     data[23],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00424.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00424.JPG"
                 );
                 assert_eq!(
                     data[24],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00425.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00425.JPG"
                 );
                 assert_eq!(
                     data[25],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00426.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00426.JPG"
                 );
                 assert_eq!(
                     data[26],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00427.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00427.JPG"
                 );
                 assert_eq!(
                     data[27],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00428.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00428.JPG"
                 );
                 assert_eq!(
                     data[28],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00429.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00429.JPG"
                 );
                 assert_eq!(
                     data[29],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00430.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00430.JPG"
                 );
                 assert_eq!(
                     data[30],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00431.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00431.JPG"
                 );
                 assert_eq!(
                     data[31],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00432.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00432.JPG"
                 );
                 assert_eq!(
                     data[32],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00433.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00433.JPG"
                 );
                 assert_eq!(
                     data[33],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00434.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00434.JPG"
                 );
                 assert_eq!(
                     data[34],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00435.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00435.JPG"
                 );
                 assert_eq!(
                     data[35],
-                    "./test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00436.JPG"
+                    "../../test/data/manga/Space Adventures/Space_Adventures_004__c2c__diff_ver/SPA00436.JPG"
                 );
             }
         }

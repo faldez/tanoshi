@@ -1,6 +1,6 @@
 pub mod filter {
-    use warp::{filters::BoxedFilter, Filter, Reply};
     use super::static_files;
+    use warp::{filters::BoxedFilter, Filter, Reply};
 
     pub fn static_files() -> BoxedFilter<(impl Reply,)> {
         serve().or(serve_index()).boxed()
@@ -46,7 +46,7 @@ mod static_files {
     use warp::{Rejection, Reply};
 
     #[derive(RustEmbed)]
-    #[folder = "$CARGO_MANIFEST_DIR/tanoshi-web/dist"]
+    #[folder = "$CARGO_MANIFEST_DIR/../tanoshi-web/dist"]
     pub struct Asset;
 
     #[derive(Debug, Clone)]

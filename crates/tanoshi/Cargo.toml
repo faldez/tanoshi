@@ -1,0 +1,55 @@
+[package]
+name = "tanoshi"
+version = "0.25.6"
+authors = ["fadhlika"]
+edition = "2018"
+description = "Tanoshi"
+repository = "https://github.com/faldez/tanoshi"
+license = "MIT"
+
+[dependencies]
+tanoshi-lib = { path = "../tanoshi-lib" }
+tanoshi-vm = { path = "../tanoshi-vm" }
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.8"
+warp = { version = "0.3.1", features = ["compression", "tls"] }
+rand = { version = "^0.8" }
+log = { version = "*" }
+env_logger = "0.9.0"
+jsonwebtoken = { version = "7" }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+rust-embed = { version = "6.0", features = ["interpolate-folder-path"] }
+mime_guess = "2"
+clap = "3.0.0-beta.1"
+bytes = "1"
+dirs = "3"
+base64 = "0.13"
+async-graphql = { version = "2.8.4", features = ["apollo_tracing", "chrono"] }
+async-graphql-warp = "2.8.4"
+sqlx = { version = "0.5.2", features = [
+    "runtime-tokio-rustls",
+    "macros",
+    "sqlite",
+    "chrono",
+    "json",
+    "migrate",
+] }
+reqwest = { version = "^0.11", features = ["json", "rustls"] }
+ureq = { version = "2", features = ["json"] }
+futures = "^0.3"
+rust-argon2 = "0.8"
+ron = "0.6.4"
+fancy-regex = "0.7"
+libarchive-rs = { git = "https://github.com/faldez/libarchive-rs", features = [
+    "static",
+] }
+teloxide = { version = "0.5.1", features = ["auto-send", "macros"] }
+html-escape = "0.2.9"
+phf = { version = "0.10", features = ["macros"] }
+human-sort = "0.2.2"
+aes = "0.7"
+block-modes = "0.8"

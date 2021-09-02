@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [tanoshi-lib] Version struct now on tanoshi-lib, `verion` field in `Source` now is Version struct
 - [tanoshi-lib] add lib_version to `Source` to identify `tanoshi-lib` version is used
 
-### Fixed
+### Changed
 - [tanoshi] optimized local manga list, now unsorted and depends on the OS for the order of file
 
 ## [0.25.6]

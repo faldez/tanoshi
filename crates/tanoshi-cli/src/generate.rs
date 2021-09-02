@@ -13,7 +13,7 @@ pub async fn generate_json(bus: ExtensionBus) -> Result<(), Box<dyn std::error::
             id: detail.id,
             name: detail.name.clone(),
             path: format!("library/{}.wasm", detail.name),
-            version: detail.version.clone(),
+            version: detail.version.to_string(),
             icon: detail.icon.clone(),
         })
         .collect::<Vec<Source>>();
