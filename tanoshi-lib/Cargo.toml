@@ -13,3 +13,7 @@ exclude = [".github/*"]
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 tanoshi-util = { path = "../tanoshi-util", version = "0.3.0" }
+thiserror = "1"
+
+[dev-dependencies]
+ron = "0.6.4"

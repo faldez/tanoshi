@@ -1,9 +1,10 @@
 pub mod data;
+pub mod error;
 pub mod extensions;
 pub mod prelude;
 
 /// This is used to ensure both application and extension use the same version
-pub static CORE_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub static TANOSHI_LIB_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[macro_export]
 macro_rules! register_extension {
