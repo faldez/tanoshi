@@ -350,7 +350,7 @@ mod test {
                 "./test/data/manga\\Super Duck".to_string(),
             ]);
             #[cfg(target_family = "unix")]
-            let want_path_set: HashSet<&'static str> = HashSet::from_iter(vec![
+            let want_path_set = HashSet::from_iter(vec![
                 "./test/data/manga/Space Adventures".to_string(),
                 "./test/data/manga/Space Adventures".to_string(),
                 "./test/data/manga/Super Duck".to_string(),
