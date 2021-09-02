@@ -92,6 +92,25 @@ impl Db {
         Ok(stream.map(|row| row.get(0))?)
     }
 
+    pub async fn get_admins(&self) -> Result<Vec<User>> {
+        let mut stream =
+            sqlx::query(r#"SELECT * FROM user WHERE is_admin = true"#).fetch(&self.pool);
+
+        let mut users = vec![];
+        while let Some(row) = stream.try_next().await? {
+            users.push(User {
+                id: row.get(0),
+                username: row.get(1),
+                password: row.get(2),
+                is_admin: row.get(3),
+                created_at: row.get(4),
+                updated_at: row.get(5),
+                telegram_chat_id: row.get(6),
+            });
+        }
+        Ok(users)
+    }
+
     pub async fn get_user_by_id(&self, id: i64) -> Result<User> {
         let stream = sqlx::query(r#"SELECT * FROM user WHERE id = ?"#)
             .bind(id)
@@ -129,7 +148,7 @@ impl Db {
     pub async fn update_user_setting(&self, user: &User) -> Result<u64> {
         let mut column_to_update = vec![];
         let mut arguments = SqliteArguments::default();
-        
+
         column_to_update.push("telegram_chat_id = ?");
         arguments.add(user.telegram_chat_id);
         arguments.add(user.id);

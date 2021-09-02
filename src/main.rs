@@ -90,6 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (worker_handle, worker_tx) = worker::start(
         config.update_interval,
         mangadb.clone(),
+        userdb.clone(),
         extension_bus.clone(),
         telegram_bot,
     );
