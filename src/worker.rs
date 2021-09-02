@@ -228,9 +228,9 @@ impl Worker {
                 start = chapter_update_interval.tick() => {
                     info!("start periodic updates");
 
-                    // if let Err(e) = self.check_chapter_update().await {
-                    //     error!("failed check chapter update: {}", e)
-                    // }
+                    if let Err(e) = self.check_chapter_update().await {
+                        error!("failed check chapter update: {}", e)
+                    }
 
                     info!("periodic updates done in {:?}", Instant::now() - start);
                 }
