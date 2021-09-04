@@ -598,7 +598,8 @@ impl Manga {
             })))
             .children(&mut [
                 html!("div", {
-                   .class("bottombar-spacing")
+                    .visible_signal(manga_page.is_edit_chapter.signal())
+                    .class("bottombar-spacing")
                 }),
             ])
             .child_signal(manga_page.is_edit_chapter.signal().map(clone!(manga_page => move |is_edit| if is_edit {
