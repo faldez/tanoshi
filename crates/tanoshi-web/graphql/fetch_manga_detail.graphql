@@ -11,6 +11,7 @@ query FetchMangaDetail($id: Int, $refresh: Boolean) {
     chapters(refresh: $refresh) {
       id
       title
+      scanlator
       uploaded
       readAt
       lastPageRead

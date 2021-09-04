@@ -1,6 +1,6 @@
-use crate::common::Spinner;
 use crate::common::snackbar;
 use crate::common::Route;
+use crate::common::Spinner;
 use crate::query;
 use crate::utils::window;
 use crate::utils::{proxied_image_url, AsyncLoader};
@@ -18,6 +18,7 @@ use wasm_bindgen::prelude::*;
 struct Chapter {
     pub id: i64,
     pub title: String,
+    pub scanlator: String,
     pub uploaded: NaiveDateTime,
     pub read_at: Mutable<Option<NaiveDateTime>>,
     pub last_page_read: Mutable<Option<i64>>,
@@ -70,6 +71,7 @@ impl Manga {
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
+                        scanlator: chapter.scanlator.clone(),
                         uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
                         read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
                         last_page_read: Mutable::new(chapter.last_page_read)
@@ -97,6 +99,7 @@ impl Manga {
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
+                        scanlator: chapter.scanlator.clone(),
                         uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
                         read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
                         last_page_read: Mutable::new(chapter.last_page_read)
@@ -452,21 +455,28 @@ impl Manga {
                                                         .text(&chapter.title)
                                                     }),
                                                     html!("div", {
+                                                        .style("margin-bottom", "0.5rem")
                                                         .children(&mut [
                                                             html!("span", {
-                                                                .style("font-size", "small")
+                                                                .style("font-size", "smaller")
                                                                 .style("font-weight", "400")
                                                                 .style("margin-right", "0.5rem")
                                                                 .text(&chapter.uploaded.date().to_string())
                                                             }),
+                                                            html!("span", {
+                                                                .style("font-size", "small")
+                                                                .style("font-weight", "400")
+                                                                .style("margin-right", "0.5rem")
+                                                                .text(&chapter.scanlator)
+                                                            })
                                                         ])
-                                                        .child_signal(chapter.last_page_read.signal().map(|x| x.map(|page| html!("span", {
-                                                            .style("font-size", "small")
-                                                            .style("font-weight", "400")
-                                                            .text(format!("Page: {}", page + 1).as_str())
-                                                        }))))
                                                     })
                                                 ])
+                                                .child_signal(chapter.last_page_read.signal().map(|x| x.map(|page| html!("span", {
+                                                    .style("font-size", "smaller")
+                                                    .style("font-weight", "400")
+                                                    .text(format!("Page: {}", page + 1).as_str())
+                                                }))))
                                             }),
                                             svg!("svg", {
                                                 .attribute("xmlns", "http://www.w3.org/2000/svg")
@@ -509,7 +519,7 @@ impl Manga {
                 html!("div", {
                    .class("topbar-spacing")
                 }),
-                
+
             ])
             .child_signal(manga_page.loader.is_loading().map(clone!(manga_page => move |x| if x {
                 Some(Spinner::render_spinner(false))

@@ -11,6 +11,7 @@ query FetchMangaBySourcePath($sourceId: Int, $path: String) {
     chapters {
       id
       title
+      scanlator
       uploaded
       readAt
       lastPageRead
