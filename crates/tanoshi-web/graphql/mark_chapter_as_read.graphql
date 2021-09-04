@@ -1,0 +1,3 @@
+mutation MarkChapterAsRead($chapterIds: [Int]) {
+  markChapterAsRead(chapterIds:$chapterIds)
+}

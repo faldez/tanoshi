@@ -990,6 +990,61 @@ impl Db {
         .map_err(|e| anyhow::anyhow!(e))
     }
 
+    pub async fn update_chapters_read_at(&self, user_id: i64, chapter_ids: &[i64]) -> Result<u64> {
+        if chapter_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let mut values = vec![];
+        values.resize(chapter_ids.len(), "(?, ?, ?, ?)");
+
+        let query_str = format!(
+            r#"INSERT OR IGNORE INTO 
+            user_history(user_id, chapter_id, last_page, read_at) VALUES {}"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+
+        let now = chrono::Local::now();
+        for chapter_id in chapter_ids.iter() {
+            query = query.bind(user_id).bind(chapter_id).bind(0).bind(now);
+        }
+
+        query
+            .execute(&self.pool)
+            .await
+            .map(|res| res.rows_affected())
+            .map_err(|e| anyhow::anyhow!(e))
+    }
+
+    pub async fn delete_chapters_read_at(&self, user_id: i64, chapter_ids: &[i64]) -> Result<u64> {
+        if chapter_ids.is_empty() {
+            return Ok(0);
+        }
+
+        let mut values = vec![];
+        values.resize(chapter_ids.len(), "?");
+
+        let query_str = format!(
+            r#"DELETE FROM user_history
+            WHERE user_id = ? AND chapter_id IN ({})"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+
+        for chapter_id in chapter_ids.iter() {
+            query = query.bind(chapter_id);
+        }
+
+        query
+            .execute(&self.pool)
+            .await
+            .map(|res| res.rows_affected())
+            .map_err(|e| anyhow::anyhow!(e))
+    }
+
     pub async fn get_user_history_last_read(
         &self,
         user_id: i64,

@@ -6,7 +6,7 @@ use crate::utils::window;
 use crate::utils::{proxied_image_url, AsyncLoader};
 use chrono::NaiveDateTime;
 use dominator::with_node;
-use dominator::{clone, events, html, link, routing, svg, Dom};
+use dominator::{clone, events, html, routing, svg, Dom};
 use futures_signals::signal::SignalExt;
 use futures_signals::{
     signal::Mutable,
@@ -128,7 +128,19 @@ impl Manga {
         }
 
         manga.loader.load(clone!(manga => async move {
+            match query::mark_chapter_as_read(&selected_chapter_id).await {
+                Ok(_) => {},
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
 
+            manga.is_edit_chapter.set(false);
+            if manga.id.get() != 0 {
+                Self::fetch_detail(manga.clone(), false);
+            } else if manga.source_id.get() != 0 && manga.path.get_cloned() != "" {
+                Self::fetch_detail_by_source_path(manga.clone());
+            }
         }))
     }
 
@@ -141,7 +153,19 @@ impl Manga {
         }
 
         manga.loader.load(clone!(manga => async move {
+            match query::mark_chapter_as_unread(&selected_chapter_id).await {
+                Ok(_) => {},
+                Err(err) => {
+                    snackbar::show(format!("{}", err));
+                }
+            }
 
+            manga.is_edit_chapter.set(false);
+            if manga.id.get() != 0 {
+                Self::fetch_detail(manga.clone(), false);
+            } else if manga.source_id.get() != 0 && manga.path.get_cloned() != "" {
+                Self::fetch_detail_by_source_path(manga.clone());
+            }
         }))
     }
 

@@ -71,6 +71,14 @@ type MutationRoot {
     # page
     page: Int!
   ): Int!
+  markChapterAsRead(
+    # chapter ids
+    chapterIds: [Int!]!
+  ): Int!
+  markChapterAsUnread(
+    # chapter ids
+    chapterIds: [Int!]!
+  ): Int!
   register(
     # username
     username: String!

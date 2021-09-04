@@ -507,3 +507,37 @@ pub async fn test_telegram(chat_id: i64) -> Result<(), Box<dyn Error>> {
     let _ = post_graphql::<TestTelegram>(var).await?;
     Ok(())
 }
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/mark_chapter_as_read.graphql",
+    response_derives = "Debug"
+)]
+pub struct MarkChapterAsRead;
+
+pub async fn mark_chapter_as_read(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
+    let var = mark_chapter_as_read::Variables {
+        chapter_ids: Some(chapter_ids.iter().map(|id| Some(*id)).collect()),
+    };
+
+    let _ = post_graphql::<MarkChapterAsRead>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/mark_chapter_as_unread.graphql",
+    response_derives = "Debug"
+)]
+pub struct MarkChapterAsUnread;
+
+pub async fn mark_chapter_as_unread(chapter_ids: &[i64]) -> Result<(), Box<dyn Error>> {
+    let var = mark_chapter_as_unread::Variables {
+        chapter_ids: Some(chapter_ids.iter().map(|id| Some(*id)).collect()),
+    };
+
+    let _ = post_graphql::<MarkChapterAsUnread>(var).await?;
+    Ok(())
+}

@@ -290,4 +290,38 @@ impl LibraryMutationRoot {
             Err(err) => Err(format!("error update page read_at: {}", err).into()),
         }
     }
+
+    async fn mark_chapter_as_read(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "chapter ids")] chapter_ids: Vec<i64>,
+    ) -> Result<u64> {
+        let user = user::get_claims(ctx)?;
+        match ctx
+            .data::<GlobalContext>()?
+            .mangadb
+            .update_chapters_read_at(user.sub, &chapter_ids)
+            .await
+        {
+            Ok(rows) => Ok(rows),
+            Err(err) => Err(format!("error update chapter read_at: {}", err).into()),
+        }
+    }
+
+    async fn mark_chapter_as_unread(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "chapter ids")] chapter_ids: Vec<i64>,
+    ) -> Result<u64> {
+        let user = user::get_claims(ctx)?;
+        match ctx
+            .data::<GlobalContext>()?
+            .mangadb
+            .delete_chapters_read_at(user.sub, &chapter_ids)
+            .await
+        {
+            Ok(rows) => Ok(rows),
+            Err(err) => Err(format!("error delete chapter read_at: {}", err).into()),
+        }
+    }
 }
