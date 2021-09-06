@@ -102,6 +102,29 @@ pub fn proxied_image_url(image_url: &str) -> String {
     format!("/image/{}", image_url)
 }
 
+pub fn apply_theme(theme: Option<String>) {
+    match theme {
+        Some(theme) if theme == "dark" => {
+            body().class_list().add_1("dark").unwrap_throw();
+        }
+        Some(theme) if theme == "light" => {
+            body().class_list().remove_1("dark").unwrap_throw();
+        }
+        None | Some(_) => {
+            if window()
+                .match_media("(prefers-color-scheme: dark)")
+                .unwrap_throw()
+                .map(|m| m.matches())
+                .unwrap_or(false)
+            {
+                body().class_list().add_1("dark").unwrap_throw();
+            } else {
+                body().class_list().remove_1("dark").unwrap_throw();
+            }
+        }
+    }
+}
+
 pub fn window() -> Window {
     WINDOW.with(|s| s.clone())
 }

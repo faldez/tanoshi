@@ -16,9 +16,10 @@ mod updates;
 mod utils;
 
 use utils::{local_storage, window};
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{prelude::*, JsCast};
 
 use app::App;
+use web_sys::{Event, MediaQueryList, MediaQueryListEvent};
 
 #[wasm_bindgen(start)]
 pub async fn main_js() -> Result<(), JsValue> {
@@ -26,25 +27,18 @@ pub async fn main_js() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::default());
 
-    match local_storage().get("theme").unwrap_throw() {
-        Some(theme) if theme == "dark" => {
+    utils::apply_theme(local_storage().get("theme").unwrap_throw());
+
+    let closure = Closure::wrap(Box::new(|e: MediaQueryListEvent| {
+        if e.matches() {
             utils::body().class_list().add_1("dark").unwrap_throw();
-        }
-        Some(theme) if theme == "light" => {
+        } else {
             utils::body().class_list().remove_1("dark").unwrap_throw();
         }
-        None | Some(_) => {
-            if window()
-                .match_media("(prefers-color-scheme: dark)")
-                .unwrap_throw()
-                .map(|m| m.matches())
-                .unwrap_or(false)
-            {
-                utils::body().class_list().add_1("dark").unwrap_throw();
-            } else {
-                utils::body().class_list().remove_1("dark").unwrap_throw();
-            }
-        }
+    }) as Box<dyn FnMut(_)>);
+
+    if let Ok(Some(media_query_list)) = window().match_media("prefers-color-scheme: dark)") {
+        media_query_list.set_onchange(Some(closure.as_ref().unchecked_ref()))
     }
 
     dominator::append_dom(&dominator::body(), App::render(App::new()));

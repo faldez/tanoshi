@@ -50,6 +50,7 @@ features = [
   'Storage',
   'PopStateEvent',
   'MediaQueryList',
+  'MediaQueryListEvent',
 ]
 
 [dev-dependencies]

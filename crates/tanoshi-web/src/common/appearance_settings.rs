@@ -3,7 +3,7 @@ use futures_signals::signal::{Mutable, SignalExt};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
-use crate::utils::local_storage;
+use crate::utils::{self, local_storage};
 
 #[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum Theme {
@@ -48,8 +48,11 @@ impl AppearanceSettings {
         html!("button", {
             .text("Apply")
             .event(clone!(reader => move |_: events::Click| {
+                let theme = reader.theme.get().to_string();
                 let _ = local_storage().set_item("settings:appearance", &serde_json::to_string(reader.as_ref()).unwrap());
-                let _ = local_storage().set_item("theme", &reader.theme.get().to_string());
+                let _ = local_storage().set_item("theme", &theme);
+
+                utils::apply_theme(Some(theme));
             }))
         })
     }
