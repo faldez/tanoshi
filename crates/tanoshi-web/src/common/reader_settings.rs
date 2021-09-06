@@ -96,12 +96,6 @@ impl Default for Fit {
     }
 }
 
-#[derive(PartialEq, Clone)]
-pub struct Page {
-    id: i64,
-    url: String,
-}
-
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct ReaderSettings {
     #[serde(skip)]

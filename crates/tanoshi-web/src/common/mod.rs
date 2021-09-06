@@ -10,6 +10,9 @@ pub use cover::Cover;
 mod spinner;
 pub use spinner::Spinner;
 
+mod appearance_settings;
+pub use appearance_settings::*;
+
 mod reader_settings;
 pub use reader_settings::*;
 

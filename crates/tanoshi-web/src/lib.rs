@@ -27,14 +27,13 @@ pub async fn main_js() -> Result<(), JsValue> {
     wasm_logger::init(wasm_logger::Config::default());
 
     match local_storage().get("theme").unwrap_throw() {
-        Some(theme) => {
-            if theme == "dark" {
-                utils::body().class_list().add_1("dark").unwrap_throw();
-            } else {
-                utils::body().class_list().remove_1("dark").unwrap_throw();
-            }
+        Some(theme) if theme == "dark" => {
+            utils::body().class_list().add_1("dark").unwrap_throw();
         }
-        None => {
+        Some(theme) if theme == "light" => {
+            utils::body().class_list().remove_1("dark").unwrap_throw();
+        }
+        None | Some(_) => {
             if window()
                 .match_media("(prefers-color-scheme: dark)")
                 .unwrap_throw()

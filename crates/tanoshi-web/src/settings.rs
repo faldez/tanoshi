@@ -1,4 +1,4 @@
-use crate::{common::{Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
+use crate::{common::{AppearanceSettings, Login, Profile, ReaderSettings, Route, SettingCategory, Source, Spinner, User, events, snackbar}, query, utils::{AsyncLoader, window}};
 use dominator::svg;
 use dominator::{clone, html, link, routing, Dom};
 use futures_signals::{signal::{Mutable, SignalExt}, signal_vec::{MutableSignalVec, MutableVec}, signal_vec::SignalVecExt};
@@ -11,6 +11,7 @@ pub struct Settings {
     available_sources: MutableVec<Source>,
     me: Mutable<Option<User>>,
     users: MutableVec<User>,
+    appearance_settings: Rc<AppearanceSettings>,
     reader_settings: Rc<ReaderSettings>,
     loader: AsyncLoader,
 }
@@ -24,6 +25,7 @@ impl Settings {
             available_sources: MutableVec::new(),
             me: Mutable::new(None),
             users: MutableVec::new(),
+            appearance_settings: AppearanceSettings::new(),
             reader_settings: ReaderSettings::new(true, false),
             loader: AsyncLoader::new(),
         })
@@ -250,6 +252,7 @@ impl Settings {
                     .text_signal(settings.page.signal_cloned().map(|x|
                         match x {
                             SettingCategory::None => "Settings",
+                            SettingCategory::Appearance => "Appearance",
                             SettingCategory::Reader => "Reader",
                             SettingCategory::Source(_) => "Sources",
                             SettingCategory::Users => "Users",
@@ -262,6 +265,9 @@ impl Settings {
                     .style("justify-self", "end")
                     .child_signal(settings.page.signal_cloned().map(move |page| {
                         match page {
+                            SettingCategory::Appearance => {
+                                Some(AppearanceSettings::render_apply_button(settings.appearance_settings.clone()))
+                            }
                             SettingCategory::Reader => {
                                 Some(ReaderSettings::render_apply_button(settings.reader_settings.clone()))
                             }
@@ -284,6 +290,10 @@ impl Settings {
         html!("ul", {
             .class(["list", "group"])
             .children(&mut [
+                link!(Route::Settings(SettingCategory::Appearance).url(), {
+                    .class("list-item")
+                    .text("Appearance")
+                }),
                 link!(Route::Settings(SettingCategory::Reader).url(), {
                     .class("list-item")
                     .text("Reader")
@@ -541,6 +551,7 @@ impl Settings {
                             })
                         ])
                     })),
+                    SettingCategory::Appearance =>  Some(AppearanceSettings::render(settings.appearance_settings.clone())),
                     SettingCategory::Reader => Some(ReaderSettings::render(settings.reader_settings.clone())),
                     SettingCategory::Source(source_id) => Some(Self::render_source_settings(settings.clone(), source_id)),
                     SettingCategory::Users => Some(Self::render_users_management(settings.clone())),
