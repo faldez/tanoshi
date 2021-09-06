@@ -74,7 +74,7 @@ impl Reader {
 
                     reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| (page.clone(), false)).collect());
 
-                    reader.reader_settings.load_manga_reader_setting(result.manga.id);
+                    reader.reader_settings.load_by_manga_id(result.manga.id);
 
                     let page;
                     match nav {

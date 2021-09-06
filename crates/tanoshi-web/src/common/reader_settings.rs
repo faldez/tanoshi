@@ -96,25 +96,21 @@ impl Default for Fit {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Default, Serialize, Deserialize)]
-pub struct Settings {
-    pub reader_mode: ReaderMode,
-    pub display_mode: DisplayMode,
-    pub direction: Direction,
-    pub background: Background,
-    pub fit: Fit,
-}
-
 #[derive(PartialEq, Clone)]
 pub struct Page {
     id: i64,
     url: String,
 }
 
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct ReaderSettings {
+    #[serde(skip)]
     use_modal: Mutable<bool>,
+    #[serde(skip)]
     first_render: Mutable<bool>,
+    #[serde(skip)]
     show: Mutable<bool>,
+    #[serde(skip)]
     manga_id: Mutable<i64>,
     pub reader_mode: Mutable<ReaderMode>,
     pub display_mode: Mutable<DisplayMode>,
@@ -125,43 +121,47 @@ pub struct ReaderSettings {
 
 impl ReaderSettings {
     pub fn new(show: bool, use_modal: bool) -> Rc<Self> {
-        let settings = if let Ok(Some(settings)) = local_storage().get_item("settings:reader") {
-            serde_json::from_str::<Settings>(&settings).unwrap_or_default()
+        Self::load_manga_reader_setting(show, use_modal, 0)
+    }
+
+    pub fn load_manga_reader_setting(show: bool, use_modal: bool, manga_id: i64) -> Rc<Self> {
+        let mut key = "settings:reader".to_string();
+        if manga_id > 0 {
+            key = [key, manga_id.to_string()].join(":");
+        }
+
+        let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
+            serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default()
         } else {
-            Settings::default()
+            ReaderSettings::default()
         };
 
         Rc::new(ReaderSettings {
             use_modal: Mutable::new(use_modal),
             first_render: Mutable::new(use_modal),
             show: Mutable::new(show),
-            manga_id: Mutable::new(0),
-            reader_mode: Mutable::new(settings.reader_mode),
-            display_mode: Mutable::new(settings.display_mode),
-            direction: Mutable::new(settings.direction),
-            background: Mutable::new(settings.background),
-            fit: Mutable::new(settings.fit),
+            manga_id: Mutable::new(manga_id),
+            ..settings
         })
     }
 
-    pub fn load_manga_reader_setting(&self, manga_id: i64) {
+    pub fn load_by_manga_id(&self, manga_id: i64) {
         if manga_id == 0 {
             return;
         }
 
         self.manga_id.replace(manga_id);
 
-        let key = ["settings:reader", &manga_id.to_string()].join(":");
+        let key = ["settings:reader".to_string(), manga_id.to_string()].join(":");
         let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
-            serde_json::from_str::<Settings>(&settings).unwrap_or_default()
+            serde_json::from_str::<ReaderSettings>(&settings).unwrap_or_default()
         } else {
             return;
         };
-
-        self.reader_mode.replace(settings.reader_mode);
-        self.display_mode.replace(settings.display_mode);
-        self.direction.replace(settings.direction);
-        self.background.replace(settings.background);
+        self.reader_mode.replace(settings.reader_mode.get());
+        self.display_mode.replace(settings.display_mode.get());
+        self.direction.replace(settings.direction.get());
+        self.background.replace(settings.background.get());
     }
 
     pub fn toggle_show(&self) {
@@ -173,20 +173,12 @@ impl ReaderSettings {
         html!("button", {
             .text("Apply")
             .event(clone!(reader => move |_: events::Click| {
-                let settings = Settings {
-                    reader_mode: reader.reader_mode.get(),
-                    display_mode: reader.display_mode.get(),
-                    direction: reader.direction.get(),
-                    background: reader.background.get(),
-                    fit: reader.fit.get(),
-                };
-
                 let mut key = "settings:reader".to_string();
                 if *reader.manga_id.lock_ref() > 0 {
                     key = [key, (*reader.manga_id.lock_ref()).to_string()].join(":");
                 }
 
-                let _ = local_storage().set_item(&key, &serde_json::to_string(&settings).unwrap());
+                let _ = local_storage().set_item(&key, &serde_json::to_string(reader.as_ref()).unwrap());
                 if *reader.use_modal.lock_ref() {
                     reader.show.set_neq(false);
                 }
