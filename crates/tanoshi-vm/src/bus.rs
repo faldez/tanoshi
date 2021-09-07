@@ -57,7 +57,8 @@ impl ExtensionBus {
         contents: &Bytes,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let path = self.path.join(name).with_extension("tanoshi");
-        ExtensionProxy::compile(contents, &path)?;
+        // ExtensionProxy::compile(contents, &path)?;
+        tokio::fs::write(&path, contents).await?;
 
         Ok(self.tx.send(Command::Load(
             path.to_str().ok_or("path can't to string")?.to_string(),

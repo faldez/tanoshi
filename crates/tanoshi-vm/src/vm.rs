@@ -7,6 +7,8 @@ use tokio::{
     task::JoinHandle,
     time::Instant,
 };
+#[cfg(not(feature = "disable-compiler"))]
+use wasmer::Target;
 use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
 
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
@@ -61,16 +63,18 @@ impl ExtensionProxy {
     }
 
     #[cfg(not(feature = "disable-compiler"))]
-    fn init_store() -> Store {
+    fn init_store(target: Target) -> Store {
         #[cfg(feature = "cranelift")]
         let compiler = wasmer_compiler_cranelift::Cranelift::new();
         #[cfg(all(feature = "llvm", not(feature = "cranelift")))]
         let compiler = wasmer_compiler_llvm::LLVM::new();
 
         #[cfg(feature = "universal")]
-        let engine = wasmer::Universal::new(compiler).engine();
+        let engine = wasmer::Universal::new(compiler).target(target).engine();
         #[cfg(all(feature = "dylib", not(feature = "universal")))]
-        let engine = wasmer_engine_dylib::Dylib::new(compiler).engine();
+        let engine = wasmer_engine_dylib::Dylib::new(compiler)
+            .target(target)
+            .engine();
 
         Store::new(&engine)
     }
@@ -85,15 +89,18 @@ impl ExtensionProxy {
     }
 
     #[cfg(not(feature = "disable-compiler"))]
-    pub fn compile_from_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn compile_from_file<P: AsRef<Path>>(
+        path: P,
+        target: Target,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let wasm_bytes = std::fs::read(&path)?;
 
         let output = std::path::PathBuf::new()
             .join(&path)
             .with_extension("tanoshi");
-        Self::compile(&wasm_bytes, output)?;
+        Self::compile(&wasm_bytes, output, target)?;
 
-        std::fs::remove_file(path)?;
+        // std::fs::remove_file(path)?;
         Ok(())
     }
 
@@ -101,8 +108,9 @@ impl ExtensionProxy {
     pub fn compile<P: AsRef<Path>>(
         wasm_bytes: &[u8],
         output: P,
+        target: Target,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let store = Self::init_store();
+        let store = Self::init_store(target);
 
         debug!("compiling extension");
         let module = Module::new(&store, wasm_bytes)?;
@@ -111,6 +119,7 @@ impl ExtensionProxy {
         debug!("remove wasm file");
         Ok(module.serialize_to_file(output)?)
     }
+
     fn call<T>(&self, name: &str) -> Result<T, Box<dyn std::error::Error>>
     where
         T: DeserializeOwned,
@@ -223,6 +232,25 @@ pub async fn load<P: AsRef<Path>>(
 
 #[cfg(not(feature = "disable-compiler"))]
 pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
+    compile_with_target(path, env!("TARGET")).await?;
+
+    Ok(())
+}
+
+#[cfg(not(feature = "disable-compiler"))]
+pub async fn compile_with_target<P: AsRef<Path>>(
+    path: P,
+    triple: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::str::FromStr;
+    use wasmer::{CpuFeature, RuntimeError, Triple};
+
+    info!("compile wasm for {}", triple);
+
+    let triple = Triple::from_str(triple).map_err(|error| RuntimeError::new(error.to_string()))?;
+    let cpu_feature = CpuFeature::set();
+    let target = Target::new(triple, cpu_feature);
+
     match std::fs::read_dir(&path) {
         Ok(_) => {}
         Err(_) => {
@@ -237,7 +265,7 @@ pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::
     {
         let path = entry.path();
         info!("found wasm file at {:?}", path.clone());
-        ExtensionProxy::compile_from_file(path).map_err(|e| format!("{}", e))?;
+        ExtensionProxy::compile_from_file(path, target.clone()).map_err(|e| format!("{}", e))?;
     }
 
     Ok(())
@@ -258,9 +286,9 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                     extension_map.insert(source_id, (source, proxy));
                 }
                 Command::Load(path) => {
-                    info!("load plugin from {:?}", path.clone());
+                    info!("load plugin from {:?}", path);
                     let now = Instant::now();
-                    match ExtensionProxy::load(&store, path) {
+                    match ExtensionProxy::load(&store, &path) {
                         Ok(proxy) => {
                             let source = proxy.detail();
                             info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
@@ -270,6 +298,11 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                             error!("error load extension: {}", e);
                         }
                     }
+                    info!(
+                        "Extension {} loaded in {:?} ms",
+                        path,
+                        now.elapsed().as_millis()
+                    );
                 }
                 Command::Unload(source_id) => {
                     extension_map.remove(&source_id);

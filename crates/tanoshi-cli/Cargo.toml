@@ -15,7 +15,10 @@ disable-compiler = ["tanoshi-vm/disable-compiler"]
 
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib", version = "0.25.1" }
-tanoshi-vm = { path = "../tanoshi-vm", version = "0.4.1" }
+tanoshi-vm = { path = "../tanoshi-vm", version = "0.4.1", default-features = false, features = [
+    "llvm",
+    "dylib",
+] }
 serde_yaml = "0.8"
 tokio = { version = "1", features = ["full"] }
 clap = "3.0.0-beta.4"

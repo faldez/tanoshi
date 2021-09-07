@@ -56,7 +56,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match opts.subcmd {
         #[cfg(not(feature = "disable-compiler"))]
         SubCommand::Compile => {
-            vm::compile(&extension_path).await?;
+            let triples = [
+                "x86_64-unknown-linux-gnu",
+                "aarch64-unknown-linux-gnu",
+                "x86_64-apple-darwin",
+                "x86_64-pc-windows-msvc",
+            ];
+            for triple in triples {
+                vm::compile_with_target(&extension_path, triple).await?;
+            }
         }
         SubCommand::GenerateJson => {
             generate::generate_json(extension_bus).await?;
