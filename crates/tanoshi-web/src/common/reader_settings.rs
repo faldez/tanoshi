@@ -156,6 +156,7 @@ impl ReaderSettings {
         self.display_mode.replace(settings.display_mode.get());
         self.direction.replace(settings.direction.get());
         self.background.replace(settings.background.get());
+        self.fit.replace(settings.fit.get());
     }
 
     pub fn toggle_show(&self) {
