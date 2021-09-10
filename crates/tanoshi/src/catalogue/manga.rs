@@ -234,4 +234,14 @@ impl Manga {
         let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
         Ok(db.get_chapter_by_id(id).await?.into())
     }
+
+    async fn next_chapter(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Option<Chapter>> {
+        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let user = user::get_claims(ctx)?;
+
+        Ok(db.get_next_chapter_by_manga_id(user.sub, self.id).await?.map(|c| c.into()))
+    }
 }

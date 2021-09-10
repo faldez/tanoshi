@@ -735,6 +735,111 @@ impl Db {
         })?)
     }
 
+    pub async fn get_next_chapter_by_manga_id(
+        &self,
+        user_id: i64,
+        manga_id: i64
+    ) -> Result<Option<Chapter>> {
+        let stream = sqlx::query(
+            r#"
+            WITH last_reading_session AS (
+                SELECT
+                    chapter_id,
+                    is_complete,
+                    number as chapter_number
+                FROM
+                    user_history
+                    INNER JOIN chapter on chapter.id = user_history.chapter_id
+                    AND manga_id = ?
+                WHERE
+                    user_history.user_id = ?
+                ORDER BY
+                    user_history.read_at DESC
+                LIMIT
+                    1
+            ), first_unread_chapter AS (
+                SELECT
+                    id
+                FROM
+                    chapter
+                    LEFT JOIN user_history ON user_history.chapter_id = chapter.id
+                    AND user_history.user_id = ?
+                WHERE
+                    manga_id = ?
+                    AND user_history.is_complete IS NOT true
+                ORDER BY
+                    chapter.id ASC
+                LIMIT
+                    1
+            ), resume_chapter AS (
+                SELECT
+                    COALESCE(
+                        CASE
+                            WHEN is_complete THEN (
+                                SELECT
+                                    id
+                                FROM
+                                    chapter
+                                    LEFT JOIN user_history ON user_history.chapter_id = chapter.id
+                                    AND user_history.user_id = ?
+                                WHERE
+                                    chapter.number > chapter_number
+                                    AND manga_id = ?
+                                    AND user_history.is_complete IS NOT true
+                                ORDER BY
+                                    number ASC
+                                LIMIT
+                                    1
+                            )
+                            ELSE chapter_id
+                        END,
+                        first_unread_chapter.id
+                    ) AS id
+                FROM
+                    (SELECT null)
+                    LEFT JOIN first_unread_chapter
+                    LEFT JOIN last_reading_session
+            )
+            SELECT
+                chapter.*,
+                (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE page.chapter_id = chapter.id) pages,
+                (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
+                (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
+            FROM
+                chapter
+            WHERE
+                chapter.id = (
+                    SELECT
+                        id
+                    FROM
+                        resume_chapter
+                )"#,
+        )
+        .bind(manga_id)
+        .bind(user_id)
+        .bind(user_id)
+        .bind(manga_id)
+        .bind(user_id)
+        .bind(manga_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(stream.map(|row| Chapter {
+            id: row.get(0),
+            source_id: row.get(1),
+            manga_id: row.get(2),
+            title: row.get(3),
+            path: row.get(4),
+            number: row.get(5),
+            scanlator: row.get(6),
+            uploaded: row.get(7),
+            date_added: row.get(8),
+            pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
+            prev: row.get(10),
+            next: row.get(11),
+        }))
+    }
+
     #[allow(dead_code)]
     pub async fn get_chapter_by_source_path(&self, source_id: i64, path: &str) -> Option<Chapter> {
         let stream = sqlx::query(
