@@ -1,5 +1,5 @@
 use dominator::{html, link, Dom};
-use futures_signals::signal::Mutable;
+use futures_signals::signal::{self, Mutable, SignalExt};
 use serde::{Deserialize, Serialize};
 
 use crate::common::route::Route;
@@ -13,6 +13,7 @@ pub struct Cover {
     pub title: String,
     pub cover_url: String,
     pub is_favorite: Mutable<bool>,
+    pub unread_chapter_count: i64,
 }
 
 impl Cover {
@@ -23,6 +24,7 @@ impl Cover {
         title: String,
         cover_url: String,
         is_favorite: bool,
+        unread_chapter_count: i64,
     ) -> Self {
         let cover_url = proxied_image_url(&cover_url);
         Self {
@@ -32,6 +34,7 @@ impl Cover {
             title,
             cover_url,
             is_favorite: Mutable::new(is_favorite),
+            unread_chapter_count,
         }
     }
 
@@ -60,6 +63,16 @@ impl Cover {
                     .attribute("loading", "lazy")
                 }),
                 html!("div", {
+                    .class("unread-badge")
+                    .visible_signal(signal::always(self.unread_chapter_count).map(|count| count > 0))
+                    .children(&mut [
+                        html!("span", {
+                            .text(format!("{}", self.unread_chapter_count).as_str())
+                        })
+                    ])
+                }),
+                html!("div", {
+                    .class("title")
                     .children(&mut [
                         html!("span", {
                             .text(&self.title)

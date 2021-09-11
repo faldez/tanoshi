@@ -87,6 +87,7 @@ pub async fn fetch_manga_from_source(
                 item.title.clone(),
                 item.cover_url.clone(),
                 item.is_favorite,
+                0,
             )
         })
         .collect();
@@ -118,6 +119,7 @@ pub async fn fetch_manga_from_favorite(refresh: bool) -> Result<Vec<Cover>, Box<
                 item.title.clone(),
                 item.cover_url.clone(),
                 false,
+                item.unread_chapter_count,
             )
         })
         .collect())

@@ -44,6 +44,7 @@ type Manga {
   coverUrl: String!
   isFavorite: Boolean!
   dateAdded: NaiveDateTime!
+  unreadChapterCount: Int!
   source: Source!
   chapters(
     # refresh data from source
