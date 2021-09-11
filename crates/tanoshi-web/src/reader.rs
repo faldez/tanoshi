@@ -748,12 +748,17 @@ impl Reader {
         html!("div", {
             .class("reader")
             .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
-                Self::update_page_read(reader.clone(), page);
+                // just opening a chapter shouldn't be considered as reading
+                if page > 0 {
+                    Self::update_page_read(reader.clone(), page);
+                }
+
                 if page == 0 {
                     reader.prev_page.set(None);
                 } else if page + 1 == reader.pages_len.get() {
                     reader.next_page.set(None);
                 }
+
                 async {}
             })))
             .future(reader.chapter_id.signal().for_each(clone!(reader => move |chapter_id| {
