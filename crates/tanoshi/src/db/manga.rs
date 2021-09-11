@@ -149,10 +149,10 @@ impl Db {
             chapter.uploaded
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
-        JOIN user_library ON 
-            user_library.manga_id = manga.id 
+        JOIN user_library ON
+            user_library.manga_id = manga.id
             AND user_library.user_id = ?
-        WHERE 
+        WHERE
             (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
             (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
         ORDER BY chapter.uploaded DESC, chapter.id DESC"#,
@@ -198,10 +198,10 @@ impl Db {
             chapter.uploaded
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
-        JOIN user_library ON 
-            user_library.manga_id = manga.id 
+        JOIN user_library ON
+            user_library.manga_id = manga.id
             AND user_library.user_id = ?
-        WHERE 
+        WHERE
             (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
             (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
         ORDER BY chapter.uploaded DESC, chapter.id DESC
@@ -250,10 +250,10 @@ impl Db {
                 chapter.uploaded
             FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
-            JOIN user_library ON 
-                user_library.manga_id = manga.id 
+            JOIN user_library ON
+                user_library.manga_id = manga.id
                 AND user_library.user_id = ?
-            WHERE 
+            WHERE
                 (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?) AND
                 (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
             ORDER BY chapter.uploaded ASC, chapter.id ASC
@@ -290,10 +290,10 @@ impl Db {
                 chapter.uploaded
             FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
-            JOIN user_library ON 
-                user_library.manga_id = manga.id 
+            JOIN user_library ON
+                user_library.manga_id = manga.id
                 AND user_library.user_id = ?
-            WHERE 
+            WHERE
                 (uploaded, chapter.id) < (datetime(?, 'unixepoch'), ?)
             ORDER BY chapter.uploaded DESC, chapter.id DESC"#,
         )
@@ -319,10 +319,10 @@ impl Db {
             chapter.uploaded
         FROM chapter
         JOIN manga ON manga.id = chapter.manga_id
-        JOIN user_library ON 
-            user_library.manga_id = manga.id 
+        JOIN user_library ON
+            user_library.manga_id = manga.id
             AND user_library.user_id = ?
-        WHERE 
+        WHERE
             (uploaded, chapter.id) > (datetime(?, 'unixepoch'), ?)
         ORDER BY chapter.uploaded DESC, chapter.id DESC"#,
         )
@@ -344,8 +344,8 @@ impl Db {
     pub async fn get_chapter_len(&self) -> Result<i64> {
         let stream = sqlx::query(
             r#"
-            SELECT COUNT(id) 
-            FROM chapter 
+            SELECT COUNT(id)
+            FROM chapter
             JOIN manga ON manga.id = chapter.manga_id
             WHERE manga.is_favorite = true"#,
         )
@@ -380,7 +380,7 @@ impl Db {
         FROM user_history
         JOIN chapter ON chapter.id = user_history.chapter_id
         JOIN manga ON manga.id = chapter.manga_id
-        WHERE 
+        WHERE
             user_history.user_id = ? AND
             manga.id NOT IN (?, ?) AND
             user_history.read_at < datetime(?, 'unixepoch') AND
@@ -438,7 +438,7 @@ impl Db {
         FROM user_history
         JOIN chapter ON chapter.id = user_history.chapter_id
         JOIN manga ON manga.id = chapter.manga_id
-        WHERE 
+        WHERE
             user_history.user_id = ? AND
             manga.id NOT IN (?, ?) AND
             user_history.read_at < datetime(?, 'unixepoch') AND
@@ -482,7 +482,7 @@ impl Db {
         let mut stream = sqlx::query(
             r#"
         SELECT * FROM (
-            SELECT 
+            SELECT
                 manga.id,
                 chapter.id,
                 manga.title,
@@ -493,7 +493,7 @@ impl Db {
             FROM user_history
             JOIN chapter ON chapter.id = user_history.chapter_id
             JOIN manga ON manga.id = chapter.manga_id
-            WHERE 
+            WHERE
                 user_history.user_id = ? AND
                 manga.id NOT IN (?, ?) AND
                 user_history.read_at < datetime(?, 'unixepoch') AND
@@ -539,7 +539,7 @@ impl Db {
                 	MAX(user_history.read_at) as read_at
             	FROM user_history
             	JOIN chapter ON user_history.chapter_id = chapter.id
-            	WHERE 
+            	WHERE
                 user_history.user_id = ? AND
                 	chapter.manga_id <> ? AND
                 	user_history.read_at < datetime(?, 'unixepoch')
@@ -575,7 +575,7 @@ impl Db {
                 	MAX(user_history.read_at) as read_at
             	FROM user_history
             	JOIN chapter ON user_history.chapter_id = chapter.id
-            	WHERE 
+            	WHERE
                     user_history.user_id = ? AND
                 	chapter.manga_id <> ? AND
                 	user_history.read_at > datetime(?, 'unixepoch')
@@ -601,14 +601,14 @@ impl Db {
         let row_id = sqlx::query(
             r#"
             INSERT INTO manga(
-                source_id, 
-                title, 
-                author, 
-                genre, 
-                status, 
-                description, 
-                path, 
-                cover_url, 
+                source_id,
+                title,
+                author,
+                genre,
+                status,
+                description,
+                path,
+                cover_url,
                 date_added
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(source_id, path)
@@ -709,10 +709,10 @@ impl Db {
     pub async fn get_chapter_by_id(&self, id: i64) -> Result<Chapter> {
         let stream = sqlx::query(
             r#"
-            SELECT *, 
+            SELECT *,
             (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM chapter WHERE id = ?"#,
         )
         .bind(id)
@@ -743,7 +743,7 @@ impl Db {
             SELECT *,
             (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM chapter WHERE source_id = ? AND path = ?"#,
         )
         .bind(source_id)
@@ -775,7 +775,7 @@ impl Db {
             SELECT *,
             (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM chapter WHERE manga_id = ? ORDER BY number DESC"#
         )
         .bind(manga_id)
@@ -812,7 +812,7 @@ impl Db {
             SELECT *,
             (SELECT JSON_GROUP_ARRAY(remote_url) FROM page WHERE chapter_id = chapter.id) pages,
             (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev,
-            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next 
+            (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next
             FROM chapter WHERE manga_id = ? ORDER BY uploaded DESC LIMIT 1"#
         )
         .bind(manga_id)
@@ -843,11 +843,11 @@ impl Db {
             r#"INSERT INTO chapter(
                 source_id,
                 manga_id,
-                title, 
-                path, 
+                title,
+                path,
                 number,
                 scanlator,
-                uploaded, 
+                uploaded,
                 date_added
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"#,
         )
@@ -881,18 +881,18 @@ impl Db {
             r#"INSERT INTO chapter(
             source_id,
             manga_id,
-            title, 
-            path, 
+            title,
+            path,
             number,
             scanlator,
-            uploaded, 
+            uploaded,
             date_added
         ) VALUES {} ON CONFLICT(source_id, path) DO UPDATE SET
             manga_id=excluded.manga_id,
-            title=excluded.title, 
+            title=excluded.title,
             number=excluded.number,
             scanlator=excluded.scanlator,
-            uploaded=excluded.uploaded, 
+            uploaded=excluded.uploaded,
             date_added=excluded.date_added
         "#,
             values.join(",")
@@ -929,8 +929,8 @@ impl Db {
 
         let query_str = format!(
             r#"INSERT INTO page (
-                chapter_id, 
-                rank, 
+                chapter_id,
+                rank,
                 remote_url
             ) VALUES {} ON CONFLICT(chapter_id, rank) DO UPDATE SET
                 remote_url=excluded.remote_url
@@ -975,11 +975,11 @@ impl Db {
         page: i64,
     ) -> Result<u64> {
         sqlx::query(
-            r#"INSERT INTO 
+            r#"INSERT INTO
             user_history(user_id, chapter_id, last_page, read_at) VALUES(?, ?, ?, ?)
-            ON CONFLICT(user_id, chapter_id) 
-            DO UPDATE SET 
-            last_page = excluded.last_page, 
+            ON CONFLICT(user_id, chapter_id)
+            DO UPDATE SET
+            last_page = excluded.last_page,
             read_at = excluded.read_at"#,
         )
         .bind(user_id)
@@ -997,21 +997,34 @@ impl Db {
             return Ok(0);
         }
 
-        let mut values = vec![];
-        values.resize(chapter_ids.len(), "(?, ?, ?, ?)");
-
         let query_str = format!(
-            r#"INSERT OR IGNORE INTO 
-            user_history(user_id, chapter_id, last_page, read_at) VALUES {}"#,
-            values.join(",")
+            r#"
+            WITH mark_as_read_chapter AS (
+                SELECT id, (SELECT COUNT(*) - 1 FROM page WHERE page.chapter_id = chapter.id) as page_count
+                FROM chapter
+                WHERE id IN ({})
+            )
+            INSERT INTO
+            user_history(user_id, chapter_id, last_page, read_at)
+            SELECT ?, id, page_count, DATETIME('now')
+            FROM mark_as_read_chapter
+            WHERE true
+            ON CONFLICT(user_id, chapter_id)
+            DO UPDATE SET
+            last_page = excluded.last_page,
+            read_at = excluded.read_at
+            WHERE user_history.last_page != excluded.last_page
+            "#,
+            vec!["?"; chapter_ids.len()].join(",")
         );
 
         let mut query = sqlx::query(&query_str);
 
-        let now = chrono::Local::now();
         for chapter_id in chapter_ids.iter() {
-            query = query.bind(user_id).bind(chapter_id).bind(0).bind(now);
+            query = query.bind(chapter_id);
         }
+
+        query = query.bind(user_id);
 
         query
             .execute(&self.pool)
