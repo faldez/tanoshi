@@ -30,9 +30,21 @@ struct Chapter {
 }
 
 #[derive(Clone)]
+pub enum Sort {
+    Number,
+    ReadAt,
+}
+
+#[derive(Clone)]
 pub enum Order {
     Asc,
     Desc,
+}
+
+#[derive(Clone)]
+struct ChapterSort {
+    by: Sort,
+    order: Order,
 }
 
 #[derive(Clone)]
@@ -57,7 +69,7 @@ pub struct Manga {
     chapters: MutableVec<Rc<Chapter>>,
     is_edit_chapter: Mutable<bool>,
     chapter_menu: Rc<Modal>,
-    order: Mutable<Order>,
+    order: Mutable<ChapterSort>,
     filter: Mutable<Filter>,
     loader: AsyncLoader,
 }
@@ -79,7 +91,10 @@ impl Manga {
             chapters: MutableVec::new(),
             is_edit_chapter: Mutable::new(false),
             chapter_menu: Modal::new(),
-            order: Mutable::new(Order::Desc),
+            order: Mutable::new(ChapterSort {
+                by: Sort::Number,
+                order: Order::Desc,
+            }),
             filter: Mutable::new(Filter::None),
             loader: AsyncLoader::new(),
         })
@@ -681,6 +696,34 @@ impl Manga {
         })
     }
 
+    fn render_sort_setting(manga: Rc<Self>) -> Dom {
+        html!("div", {
+            .children(&mut [
+                html!("label", {
+                    .style("margin", "0.5rem")
+                    .text("Sort")
+                }),
+                html!("div", {
+                    .class("reader-settings-row")
+                    .children(&mut [
+                        html!("button", {
+                            .style("width", "50%")
+                            .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.by, Sort::Number)))
+                            .text("Number")
+                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: Sort::Number, order: manga.order.get_cloned().order})))
+                        }),
+                        html!("button", {
+                            .style("width", "50%")
+                            .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.by, Sort::ReadAt)))
+                            .text("Recently Read")
+                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: Sort::ReadAt, order: manga.order.get_cloned().order})))
+                        }),
+                    ])
+                })
+            ])
+        })
+    }
+
     fn render_order_setting(manga: Rc<Self>) -> Dom {
         html!("div", {
             .children(&mut [
@@ -693,15 +736,15 @@ impl Manga {
                     .children(&mut [
                         html!("button", {
                             .style("width", "50%")
-                            .class_signal("active", manga.order.signal_cloned().map(|x| matches!(x, Order::Asc)))
+                            .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.order, Order::Asc)))
                             .text("Ascending")
-                            .event(clone!(manga => move |_: events::Click| manga.order.set(Order::Asc)))
+                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: manga.order.get_cloned().by.clone(), order: Order::Asc})))
                         }),
                         html!("button", {
                             .style("width", "50%")
-                            .class_signal("active", manga.order.signal_cloned().map(|x| matches!(x, Order::Desc)))
+                            .class_signal("active", manga.order.signal_cloned().map(|sort| matches!(sort.order, Order::Desc)))
                             .text("Descending")
-                            .event(clone!(manga => move |_: events::Click| manga.order.set(Order::Desc)))
+                            .event(clone!(manga => move |_: events::Click| manga.order.set(ChapterSort { by: manga.order.get_cloned().by.clone(), order: Order::Desc})))
                         }),
                     ])
                 })
@@ -751,11 +794,21 @@ impl Manga {
         }
 
         html!("div", {
-            .future(manga_page.order.signal_cloned().for_each(clone!(manga_page => move |order| {
+            .future(manga_page.order.signal_cloned().for_each(clone!(manga_page => move |sort| {
                 let mut chapters = manga_page.chapters.lock_ref().to_vec();
-                chapters.sort_by(|a, b| match order {
-                    Order::Asc => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
-                    Order::Desc => b.number.partial_cmp(&a.number).unwrap_or(std::cmp::Ordering::Equal),
+                chapters.sort_by(|a, b| match sort {
+                    ChapterSort { by: Sort::Number, order: Order::Asc} => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
+                    ChapterSort { by: Sort::Number, order: Order::Desc} => b.number.partial_cmp(&a.number).unwrap_or(std::cmp::Ordering::Equal),
+                    ChapterSort { by: Sort::ReadAt, order: Order::Asc} => {
+                        let a = a.read_at.get_cloned().unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.read_at.get_cloned().unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        a.cmp(&b)
+                    },
+                    ChapterSort { by: Sort::ReadAt, order: Order::Desc} => {
+                        let a = a.read_at.get_cloned().unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.read_at.get_cloned().unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        b.cmp(&a)
+                    }
                 });
                 manga_page.chapters.lock_mut().replace_cloned(chapters);
 
@@ -791,6 +844,7 @@ impl Manga {
                     .style("display", "flex")
                     .style("flex-direction", "column")
                     .children(&mut [
+                        Self::render_sort_setting(manga_page.clone()),
                         Self::render_order_setting(manga_page.clone()),
                         Self::render_filter_setting(manga_page.clone()),
                     ])
