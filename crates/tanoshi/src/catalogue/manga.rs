@@ -15,6 +15,7 @@ pub struct Manga {
     pub path: String,
     pub cover_url: String,
     pub date_added: chrono::NaiveDateTime,
+    pub unread_chapter_count: i64,
 }
 
 impl From<&tanoshi_lib::data::Manga> for Manga {
@@ -36,6 +37,7 @@ impl From<tanoshi_lib::data::Manga> for Manga {
             path: m.path,
             cover_url: m.cover_url,
             date_added: chrono::NaiveDateTime::from_timestamp(0, 0),
+            unread_chapter_count: 0,
         }
     }
 }
@@ -53,6 +55,7 @@ impl From<crate::db::model::Manga> for Manga {
             path: val.path,
             cover_url: val.cover_url,
             date_added: val.date_added,
+            unread_chapter_count: 0,
         }
     }
 }
@@ -161,6 +164,17 @@ impl Manga {
 
     async fn date_added(&self) -> chrono::NaiveDateTime {
         self.date_added
+    }
+
+    async fn unread_chapter_count(&self, ctx: &Context<'_>) -> Result<i64> {
+        let user = user::get_claims(ctx)?;
+        let mangadb = &ctx.data::<GlobalContext>()?.mangadb;
+
+        let unread_chapter_count = mangadb
+            .get_user_library_unread_chapter(user.sub, self.id)
+            .await?;
+
+        Ok(unread_chapter_count)
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {

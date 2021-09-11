@@ -1087,4 +1087,19 @@ impl Db {
             Ok(None)
         }
     }
+
+    pub async fn get_user_library_unread_chapter(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+    ) -> Result<i64> {
+        let row =
+            sqlx::query(r#"SELECT COUNT(1) FROM chapter c WHERE NOT EXISTS(SELECT 1 FROM user_history WHERE user_id = ? AND chapter_id = c.id) AND c.manga_id = ?;"#)
+                .bind(user_id)
+                .bind(manga_id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        Ok(row.get::<i64, _>(0))
+    }
 }
