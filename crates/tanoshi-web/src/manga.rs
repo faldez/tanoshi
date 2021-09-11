@@ -1,4 +1,5 @@
 use crate::common::snackbar;
+use crate::common::Modal;
 use crate::common::Route;
 use crate::common::Spinner;
 use crate::query;
@@ -20,11 +21,25 @@ use web_sys::HtmlInputElement;
 struct Chapter {
     pub id: i64,
     pub title: String,
+    pub number: f64,
     pub scanlator: String,
     pub uploaded: NaiveDateTime,
     pub read_at: Mutable<Option<NaiveDateTime>>,
     pub last_page_read: Mutable<Option<i64>>,
     pub selected: Mutable<bool>,
+}
+
+#[derive(Clone)]
+pub enum Order {
+    Asc,
+    Desc,
+}
+
+#[derive(Clone)]
+pub enum Filter {
+    None,
+    Read,
+    Unread,
 }
 
 pub struct Manga {
@@ -39,8 +54,11 @@ pub struct Manga {
     description: Mutable<Option<String>>,
     status: Mutable<Option<String>>,
     is_favorite: Mutable<bool>,
-    chapters: MutableVec<Chapter>,
+    chapters: MutableVec<Rc<Chapter>>,
     is_edit_chapter: Mutable<bool>,
+    chapter_menu: Rc<Modal>,
+    order: Mutable<Order>,
+    filter: Mutable<Filter>,
     loader: AsyncLoader,
 }
 
@@ -60,6 +78,9 @@ impl Manga {
             is_favorite: Mutable::new(false),
             chapters: MutableVec::new(),
             is_edit_chapter: Mutable::new(false),
+            chapter_menu: Modal::new(),
+            order: Mutable::new(Order::Desc),
+            filter: Mutable::new(Filter::None),
             loader: AsyncLoader::new(),
         })
     }
@@ -76,15 +97,16 @@ impl Manga {
                     manga.description.set_neq(result.description);
                     manga.status.set_neq(result.status);
                     manga.is_favorite.set_neq(result.is_favorite);
-                    manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Chapter{
+                    manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Rc::new(Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
+                        number: chapter.number,
                         scanlator: chapter.scanlator.clone(),
                         uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
                         read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
                         last_page_read: Mutable::new(chapter.last_page_read),
                         selected: Mutable::new(false)
-                    }).collect());
+                    })).collect());
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
@@ -106,15 +128,16 @@ impl Manga {
                     manga.description.set_neq(result.description);
                     manga.status.set_neq(result.status);
                     manga.is_favorite.set_neq(result.is_favorite);
-                    manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Chapter{
+                    manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Rc::new(Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
+                        number: chapter.number,
                         scanlator: chapter.scanlator.clone(),
                         uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
                         read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
                         last_page_read: Mutable::new(chapter.last_page_read),
                         selected: Mutable::new(false)
-                    }).collect());
+                    })).collect());
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
@@ -481,6 +504,8 @@ impl Manga {
 
     pub fn render_chapters(manga: Rc<Self>) -> Dom {
         let is_edit_chapter = manga.is_edit_chapter.clone();
+        let filter = manga.filter.clone();
+
         html!("div", {
             .attribute("id", "chapters")
             .children(&mut [
@@ -490,22 +515,86 @@ impl Manga {
                     .children(&mut [
                         html!("span", {
                             .class("header")
-                            .style("margin", "0.5rem")
+                            .style("margin-left", "0.5rem")
                             .text("Chapters")
                         }),
-                        html!("button", {
-                            .style("margin", "0.5rem")
-                            .text_signal( manga.is_edit_chapter.signal().map(|is_edit| if is_edit { "Done" } else { "Edit" }))
-                            .event(clone!(manga => move |_: events::Click| {
-                                manga.is_edit_chapter.set(!manga.is_edit_chapter.get());
-                            }))
+                        html!("div", {
+                            .children(&mut [
+                                html!("button", {
+                                    .style("margin", "0.25rem")
+                                    .child_signal( manga.is_edit_chapter.signal().map(|is_edit| if is_edit {
+                                        Some(svg!("svg", {
+                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                            .attribute("fill", "none")
+                                            .attribute("viewBox", "0 0 24 24")
+                                            .attribute("stroke", "currentColor")
+                                            .class("icon")
+                                            .children(&mut [
+                                                svg!("path", {
+                                                    .attribute("stroke-linecap", "round")
+                                                    .attribute("stroke-linejoin", "round")
+                                                    .attribute("stroke-width", "2")
+                                                    .attribute("d", "M6 18L18 6M6 6l12 12")
+                                                })
+                                            ])
+                                        }))
+                                    } else {
+                                        Some(svg!("svg", {
+                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                            .attribute("fill", "none")
+                                            .attribute("viewBox", "0 0 24 24")
+                                            .attribute("stroke", "currentColor")
+                                            .class("icon")
+                                            .children(&mut [
+                                                svg!("path", {
+                                                    .attribute("stroke-linecap", "round")
+                                                    .attribute("stroke-linejoin", "round")
+                                                    .attribute("stroke-width", "2")
+                                                    .attribute("d", "M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z")
+                                                })
+                                            ])
+                                        }))
+                                    }))
+                                    .event(clone!(manga => move |_: events::Click| {
+                                        manga.is_edit_chapter.set(!manga.is_edit_chapter.get());
+                                    }))
+                                }),
+                                html!("button", {
+                                    .style("margin", "0.25rem")
+                                    .event(clone!(manga => move |_: events::Click| {
+                                        manga.chapter_menu.toggle_show()
+                                    }))
+                                    .children(&mut [
+                                        svg!("svg", {
+                                            .attribute("xmlns", "http://www.w3.org/2000/svg")
+                                            .attribute("fill", "none")
+                                            .attribute("viewBox", "0 0 24 24")
+                                            .attribute("stroke", "currentColor")
+                                            .class("icon")
+                                            .children(&mut [
+                                                svg!("path", {
+                                                    .attribute("stroke-linecap", "round")
+                                                    .attribute("stroke-linejoin", "round")
+                                                    .attribute("stroke-width", "2")
+                                                    .attribute("d", "M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z")
+                                                })
+                                            ])
+                                        }),
+                                    ])
+                                })
+                            ])
                         })
                     ])
                 }),
                 html!("ul", {
                     .class("list")
-                    .children_signal_vec(manga.chapters.signal_vec_cloned().map(clone!(is_edit_chapter => move |chapter| html!("li", {
+                    .children_signal_vec(manga.chapters.signal_vec_cloned().map(clone!(filter, is_edit_chapter => move |chapter| html!("li", {
                         .class("list-item")
+                        .visible_signal(filter.signal_cloned().map(clone!(chapter => move |filter| match filter {
+                            Filter::None => true,
+                            Filter::Read => chapter.read_at.get().is_some(),
+                            Filter::Unread => chapter.read_at.get().is_none(),
+                        })))
                         .child_signal(is_edit_chapter.signal().map(clone!(chapter => move |is_edit_chapter| if is_edit_chapter {
                             Some(html!("input" => HtmlInputElement, {
                                 .attribute("type", "checkbox")
@@ -592,6 +681,68 @@ impl Manga {
         })
     }
 
+    fn render_order_setting(manga: Rc<Self>) -> Dom {
+        html!("div", {
+            .children(&mut [
+                html!("label", {
+                    .style("margin", "0.5rem")
+                    .text("Order")
+                }),
+                html!("div", {
+                    .class("reader-settings-row")
+                    .children(&mut [
+                        html!("button", {
+                            .style("width", "50%")
+                            .class_signal("active", manga.order.signal_cloned().map(|x| matches!(x, Order::Asc)))
+                            .text("Ascending")
+                            .event(clone!(manga => move |_: events::Click| manga.order.set(Order::Asc)))
+                        }),
+                        html!("button", {
+                            .style("width", "50%")
+                            .class_signal("active", manga.order.signal_cloned().map(|x| matches!(x, Order::Desc)))
+                            .text("Descending")
+                            .event(clone!(manga => move |_: events::Click| manga.order.set(Order::Desc)))
+                        }),
+                    ])
+                })
+            ])
+        })
+    }
+
+    fn render_filter_setting(manga: Rc<Self>) -> Dom {
+        html!("div", {
+            .children(&mut [
+                html!("label", {
+                    .style("margin", "0.5rem")
+                    .text("Filter")
+                }),
+                html!("div", {
+                    .class("reader-settings-row")
+                    .children(&mut [
+                        html!("button", {
+                            .style("width", "33%")
+                            .class_signal("active", manga.filter.signal_cloned().map(|x| matches!(x, Filter::None)))
+                            .text("None")
+                            .event(clone!(manga => move |_: events::Click| manga.filter.set(Filter::None)))
+                        }),
+                        html!("button", {
+                            .style("width", "33%")
+                            .class_signal("active", manga.filter.signal_cloned().map(|x| matches!(x, Filter::Read)))
+                            .text("Read")
+                            .event(clone!(manga => move |_: events::Click| manga.filter.set(Filter::Read)))
+                        }),
+                        html!("button", {
+                            .style("width", "33%")
+                            .class_signal("active", manga.filter.signal_cloned().map(|x| matches!(x, Filter::Unread)))
+                            .text("Unread")
+                            .event(clone!(manga => move |_: events::Click| manga.filter.set(Filter::Unread)))
+                        }),
+                    ])
+                })
+            ])
+        })
+    }
+
     pub fn render(manga_page: Rc<Self>) -> Dom {
         if manga_page.id.get() != 0 {
             Self::fetch_detail(manga_page.clone(), false);
@@ -600,6 +751,16 @@ impl Manga {
         }
 
         html!("div", {
+            .future(manga_page.order.signal_cloned().for_each(clone!(manga_page => move |order| {
+                let mut chapters = manga_page.chapters.lock_ref().to_vec();
+                chapters.sort_by(|a, b| match order {
+                    Order::Asc => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
+                    Order::Desc => b.number.partial_cmp(&a.number).unwrap_or(std::cmp::Ordering::Equal),
+                });
+                manga_page.chapters.lock_mut().replace_cloned(chapters);
+
+                async {}
+            })))
             .style("display", "flex")
             .style("flex-direction", "column")
             .children(&mut [
@@ -625,6 +786,15 @@ impl Manga {
                     .visible_signal(manga_page.is_edit_chapter.signal())
                     .class("bottombar-spacing")
                 }),
+                Modal::render(manga_page.chapter_menu.clone(), clone!(manga_page => html!("div", {
+                    .style("width", "100%")
+                    .style("display", "flex")
+                    .style("flex-direction", "column")
+                    .children(&mut [
+                        Self::render_order_setting(manga_page.clone()),
+                        Self::render_filter_setting(manga_page.clone()),
+                    ])
+                })))
             ])
             .child_signal(manga_page.is_edit_chapter.signal().map(clone!(manga_page => move |is_edit| if is_edit {
                 Some(html!("div",{

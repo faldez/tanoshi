@@ -28,3 +28,6 @@ mod profile;
 pub use profile::Profile;
 
 pub mod snackbar;
+
+mod modal;
+pub use modal::*;
