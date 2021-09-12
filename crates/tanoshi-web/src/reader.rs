@@ -79,7 +79,23 @@ impl Reader {
                     let page;
                     match nav {
                         Nav::None => {
-                            page = 0;
+                            let current_page = reader.current_page.get();
+                            page = match reader.reader_settings.reader_mode.get() {
+                                ReaderMode::Continous => current_page,
+                                ReaderMode::Paged => {
+                                    match reader.reader_settings.display_mode.get().get() {
+                                        // display_mode.get() shouldn't return auto, here to satisfy compiler
+                                        DisplayMode::Single | DisplayMode::Auto => current_page,
+                                        DisplayMode::Double => {
+                                            if current_page % 2 == 0 {
+                                                current_page
+                                            } else {
+                                                current_page - 1
+                                            }
+                                        }
+                                    }
+                                }
+                            };
                         },
                         Nav::Prev => {
                             page = match reader.reader_settings.reader_mode.get() {
@@ -98,14 +114,13 @@ impl Reader {
                                     }
                                 }
                             };
-
-                            reader.current_page.set_neq(page);
                         },
                         Nav::Next => {
                             page = 0;
-                            reader.current_page.set_neq(page);
                         },
                     }
+
+                    reader.current_page.set_neq(page);
 
                     Self::replace_state_with_url(chapter_id, page + 1);
                 },
@@ -750,6 +765,23 @@ impl Reader {
             .future(reader.current_page.signal().for_each(clone!(reader => move |page| {
                 // just opening a chapter shouldn't be considered as reading
                 if page > 0 {
+                    let page = match reader.reader_settings.reader_mode.get() {
+                        ReaderMode::Continous => page,
+                        ReaderMode::Paged => {
+                            match reader.reader_settings.display_mode.get().get() {
+                                // display_mode.get() shouldn't return auto, here to satisfy compiler
+                                DisplayMode::Single | DisplayMode::Auto => page,
+                                DisplayMode::Double => {
+                                    if page + 2 == reader.pages_len.get() {
+                                        page + 1
+                                    } else {
+                                        page
+                                    }
+                                }
+                            }
+                        }
+                    };
+
                     Self::update_page_read(reader.clone(), page);
                 }
 
