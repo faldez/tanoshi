@@ -458,7 +458,7 @@ impl Reader {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .attribute("id", index.to_string().as_str())
+                        .attribute("id", format!("page-{}", index).as_str())
                         .attribute("src", &proxied_image_url(&page))
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
@@ -527,7 +527,7 @@ impl Reader {
                 let body_top = window().scroll_y().unwrap_throw();
                 for i in 0..reader.pages_len.get() {
                     let page_top = document()
-                        .get_element_by_id(i.to_string().as_str())
+                        .get_element_by_id(format!("page-{}", i).as_str())
                         .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
                         .map(|el| el.offset_top() as f64)
                         .unwrap_or_default();
@@ -536,7 +536,11 @@ impl Reader {
                         break;
                     }
                 }
-                reader.current_page.set_neq(page_no as usize);
+                let is_last_page = reader.pages_len.get() == reader.current_page.get() + 1;
+                info!("is_last_page: {} page_no: {}", is_last_page, page_no);
+                if !(is_last_page && page_no == 0) {
+                    reader.current_page.set_neq(page_no as usize);
+                }
             }))
         })
     }
