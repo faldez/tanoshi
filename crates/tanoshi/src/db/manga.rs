@@ -1107,7 +1107,11 @@ impl Db {
         manga_id: i64,
     ) -> Result<i64> {
         let row =
-            sqlx::query(r#"SELECT COUNT(1) FROM chapter c WHERE NOT EXISTS(SELECT 1 FROM user_history WHERE user_id = ? AND chapter_id = c.id) AND c.manga_id = ?;"#)
+            sqlx::query(r#"
+                SELECT COUNT(1) FROM (
+                    SELECT IFNULL(user_history.is_complete, false) AS is_complete FROM chapter c LEFT JOIN user_history ON user_history.user_id = ? AND user_history.chapter_id = c.id WHERE c.manga_id = ?
+                )
+                WHERE is_complete = false"#)
                 .bind(user_id)
                 .bind(manga_id)
                 .fetch_one(&self.pool)
