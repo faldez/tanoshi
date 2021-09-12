@@ -17,8 +17,11 @@ query FetchMangaBySourcePath($sourceId: Int, $path: String) {
       number
       scanlator
       uploaded
-      readAt
-      lastPageRead
+      readProgress {
+        at
+        lastPage
+        isComplete
+      }
     }
   }
 }

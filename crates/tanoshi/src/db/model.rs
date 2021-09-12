@@ -44,13 +44,12 @@ pub struct Chapter {
     pub next: Option<i64>,
     pub uploaded: NaiveDateTime,
     pub date_added: NaiveDateTime,
-    pub last_page_read: Option<i64>,
     pub pages: Vec<String>,
 }
 
 impl Default for Chapter {
     fn default() -> Self {
-        Self{
+        Self {
             id: 0,
             source_id: 0,
             manga_id: 0,
@@ -62,7 +61,6 @@ impl Default for Chapter {
             next: None,
             uploaded: NaiveDateTime::from_timestamp(0, 0),
             date_added: NaiveDateTime::from_timestamp(0, 0),
-            last_page_read: None,
             pages: vec![],
         }
     }
@@ -76,9 +74,8 @@ pub struct User {
     pub is_admin: bool,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    pub telegram_chat_id: Option<i64>
+    pub telegram_chat_id: Option<i64>,
 }
-
 
 impl Default for User {
     fn default() -> Self {
@@ -92,4 +89,11 @@ impl Default for User {
             telegram_chat_id: None,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ReadProgress {
+    pub at: NaiveDateTime,
+    pub last_page: i64,
+    pub is_complete: bool,
 }

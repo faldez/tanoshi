@@ -1,7 +1,24 @@
 use super::Manga;
 use crate::{context::GlobalContext, user, utils};
-use async_graphql::{Context, Object, Result};
+use async_graphql::{Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
+
+#[derive(Debug, Clone, SimpleObject)]
+pub struct ReadProgress {
+    pub at: NaiveDateTime,
+    pub last_page: i64,
+    pub is_complete: bool,
+}
+
+impl From<crate::db::model::ReadProgress> for ReadProgress {
+    fn from(val: crate::db::model::ReadProgress) -> Self {
+        Self {
+            at: val.at,
+            last_page: val.last_page,
+            is_complete: val.is_complete,
+        }
+    }
+}
 
 /// A type represent chapter, normalized across source
 #[derive(Debug, Clone)]
@@ -17,7 +34,7 @@ pub struct Chapter {
     pub next: Option<i64>,
     pub uploaded: chrono::NaiveDateTime,
     pub date_added: chrono::NaiveDateTime,
-    pub last_page_read: Option<i64>,
+    pub read_progress: Option<ReadProgress>,
     pub pages: Vec<String>,
 }
 
@@ -35,7 +52,7 @@ impl From<tanoshi_lib::data::Chapter> for Chapter {
             next: None,
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
-            last_page_read: None,
+            read_progress: None,
             pages: vec![],
         }
     }
@@ -55,7 +72,7 @@ impl From<crate::db::model::Chapter> for Chapter {
             next: val.next,
             uploaded: val.uploaded,
             date_added: val.date_added,
-            last_page_read: val.last_page_read,
+            read_progress: None,
             pages: val.pages,
         }
     }
@@ -75,7 +92,6 @@ impl From<tanoshi_lib::data::Chapter> for crate::db::model::Chapter {
             next: None,
             uploaded: ch.uploaded,
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
-            last_page_read: None,
             pages: vec![],
         }
     }
@@ -95,7 +111,6 @@ impl From<Chapter> for crate::db::model::Chapter {
             next: val.next,
             uploaded: val.uploaded,
             date_added: val.date_added,
-            last_page_read: val.last_page_read,
             pages: val.pages,
         }
     }
@@ -131,15 +146,16 @@ impl Chapter {
         self.next
     }
 
-    async fn read_at(&self, ctx: &Context<'_>) -> Result<Option<chrono::NaiveDateTime>> {
+    async fn read_progress(&self, ctx: &Context<'_>) -> Result<Option<ReadProgress>> {
         let user = user::get_claims(ctx)?;
-        let read_at = ctx
+        let progress = ctx
             .data_unchecked::<GlobalContext>()
             .mangadb
-            .get_user_history_read_at(user.sub, self.id)
-            .await?;
+            .get_user_history_progress(user.sub, self.id)
+            .await?
+            .map(|r| r.into());
 
-        Ok(read_at)
+        Ok(progress)
     }
 
     async fn uploaded(&self) -> NaiveDateTime {
@@ -148,17 +164,6 @@ impl Chapter {
 
     async fn date_added(&self) -> chrono::NaiveDateTime {
         self.date_added
-    }
-
-    async fn last_page_read(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
-        let user = user::get_claims(ctx)?;
-        let last_page = ctx
-            .data::<GlobalContext>()?
-            .mangadb
-            .get_user_history_last_read(user.sub, self.id)
-            .await?;
-
-        Ok(last_page)
     }
 
     async fn manga(&self, ctx: &Context<'_>) -> Result<Manga> {

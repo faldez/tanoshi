@@ -14,10 +14,9 @@ type Chapter {
   scanlator: String!
   prev: Int
   next: Int
-  readAt: NaiveDateTime
+  readProgress: ReadProgress
   uploaded: NaiveDateTime!
   dateAdded: NaiveDateTime!
-  lastPageRead: Int
   manga: Manga!
   pages(
     # fetch from source
@@ -194,6 +193,12 @@ type QueryRoot {
     # telegram chat id
     chatId: Int!
   ): Boolean!
+}
+
+type ReadProgress {
+  at: NaiveDateTime!
+  lastPage: Int!
+  isComplete: Boolean!
 }
 
 type RecentChapter {
