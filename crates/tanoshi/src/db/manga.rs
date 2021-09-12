@@ -1,4 +1,4 @@
-use super::model::{Chapter, Manga};
+use super::model::{Chapter, Manga, ReadProgress};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use sqlx::sqlite::{SqliteArguments, SqlitePool};
@@ -732,7 +732,6 @@ impl Db {
             pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
             prev: row.get(10),
             next: row.get(11),
-            last_page_read: None,
         })?)
     }
 
@@ -765,7 +764,6 @@ impl Db {
             pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
             prev: row.get(10),
             next: row.get(11),
-            last_page_read: None,
         })
     }
 
@@ -796,7 +794,6 @@ impl Db {
                 pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
                 prev: row.get(10),
                 next: row.get(11),
-                last_page_read: None,
             });
         }
         if chapters.is_empty() {
@@ -833,7 +830,6 @@ impl Db {
             pages: serde_json::from_str(row.get(9)).unwrap_or_default(),
             prev: row.get(10),
             next: row.get(11),
-            last_page_read: None,
         })
     }
 
@@ -975,17 +971,22 @@ impl Db {
         page: i64,
     ) -> Result<u64> {
         sqlx::query(
-            r#"INSERT INTO
-            user_history(user_id, chapter_id, last_page, read_at) VALUES(?, ?, ?, ?)
+            r#"
+            INSERT INTO
+            user_history(user_id, chapter_id, last_page, read_at, is_complete)
+            VALUES(?, ?, ?, ?, ? = (SELECT COUNT(*) - 1 FROM page WHERE chapter_id = ?))
             ON CONFLICT(user_id, chapter_id)
             DO UPDATE SET
             last_page = excluded.last_page,
-            read_at = excluded.read_at"#,
+            read_at = excluded.read_at,
+            is_complete = CASE is_complete WHEN 0 THEN excluded.is_complete ELSE is_complete END"#,
         )
         .bind(user_id)
         .bind(chapter_id)
         .bind(page)
         .bind(chrono::Local::now())
+        .bind(page)
+        .bind(chapter_id)
         .execute(&self.pool)
         .await
         .map(|res| res.rows_affected())
@@ -1005,8 +1006,8 @@ impl Db {
                 WHERE id IN ({})
             )
             INSERT INTO
-            user_history(user_id, chapter_id, last_page, read_at)
-            SELECT ?, id, page_count, DATETIME('now')
+            user_history(user_id, chapter_id, last_page, read_at, is_complete)
+            SELECT ?, id, page_count, DATETIME('now'), true
             FROM mark_as_read_chapter
             WHERE true
             ON CONFLICT(user_id, chapter_id)
@@ -1081,24 +1082,23 @@ impl Db {
         }
     }
 
-    pub async fn get_user_history_read_at(
+    pub async fn get_user_history_progress(
         &self,
         user_id: i64,
         chapter_id: i64,
-    ) -> Result<Option<chrono::NaiveDateTime>> {
-        let stream =
-            sqlx::query(r#"SELECT read_at FROM user_history WHERE user_id = ? AND chapter_id = ?"#)
+    ) -> Result<Option<ReadProgress>> {
+        let progress= sqlx::query(r#"SELECT read_at, last_page, is_complete FROM user_history WHERE user_id = ? AND chapter_id = ?"#)
                 .bind(user_id)
                 .bind(chapter_id)
-                .fetch_one(&self.pool)
-                .await
-                .ok();
+                .fetch_optional(&self.pool)
+                .await?
+                .map(|row| ReadProgress {
+                    at: row.get::<chrono::NaiveDateTime, _>(0),
+                    last_page: row.get::<i64, _>(1),
+                    is_complete: row.get::<bool, _>(2),
+                });
 
-        if let Some(row) = stream {
-            Ok(Some(row.get::<chrono::NaiveDateTime, _>(0)))
-        } else {
-            Ok(None)
-        }
+        Ok(progress)
     }
 
     pub async fn get_user_library_unread_chapter(

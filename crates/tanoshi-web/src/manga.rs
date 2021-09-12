@@ -8,6 +8,7 @@ use crate::utils::{proxied_image_url, AsyncLoader};
 use chrono::NaiveDateTime;
 use dominator::with_node;
 use dominator::{clone, events, html, routing, svg, Dom};
+use futures_signals::signal;
 use futures_signals::signal::SignalExt;
 use futures_signals::{
     signal::Mutable,
@@ -18,14 +19,20 @@ use wasm_bindgen::prelude::*;
 use web_sys::HtmlInputElement;
 
 #[derive(Clone)]
+struct ReadProgress {
+    pub at: NaiveDateTime,
+    pub last_page: i64,
+    pub is_complete: bool,
+}
+
+#[derive(Clone)]
 struct Chapter {
     pub id: i64,
     pub title: String,
     pub number: f64,
     pub scanlator: String,
     pub uploaded: NaiveDateTime,
-    pub read_at: Mutable<Option<NaiveDateTime>>,
-    pub last_page_read: Mutable<Option<i64>>,
+    pub read_progress: Option<ReadProgress>,
     pub selected: Mutable<bool>,
 }
 
@@ -118,8 +125,11 @@ impl Manga {
                         number: chapter.number,
                         scanlator: chapter.scanlator.clone(),
                         uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
-                        read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
-                        last_page_read: Mutable::new(chapter.last_page_read),
+                        read_progress: chapter.read_progress.as_ref().map(|progress| ReadProgress {
+                            at: NaiveDateTime::parse_from_str(&progress.at, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"),
+                            last_page: progress.last_page,
+                            is_complete: progress.is_complete,
+                        }),
                         selected: Mutable::new(false)
                     })).collect());
                 },
@@ -149,8 +159,11 @@ impl Manga {
                         number: chapter.number,
                         scanlator: chapter.scanlator.clone(),
                         uploaded: NaiveDateTime::parse_from_str(&chapter.uploaded, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse uploaded date"),
-                        read_at: Mutable::new(chapter.read_at.as_ref().map(|time| NaiveDateTime::parse_from_str(&time, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"))),
-                        last_page_read: Mutable::new(chapter.last_page_read),
+                        read_progress: chapter.read_progress.as_ref().map(|progress| ReadProgress {
+                            at: NaiveDateTime::parse_from_str(&progress.at, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"),
+                            last_page: progress.last_page,
+                            is_complete: progress.is_complete,
+                        }),
                         selected: Mutable::new(false)
                     })).collect());
                 },
@@ -607,8 +620,8 @@ impl Manga {
                         .class("list-item")
                         .visible_signal(filter.signal_cloned().map(clone!(chapter => move |filter| match filter {
                             Filter::None => true,
-                            Filter::Read => chapter.read_at.get().is_some(),
-                            Filter::Unread => chapter.read_at.get().is_none(),
+                            Filter::Read => chapter.read_progress.as_ref().map(|progress| progress.is_complete).unwrap_or(false),
+                            Filter::Unread => chapter.read_progress.as_ref().map(|progress| !progress.is_complete).unwrap_or(true),
                         })))
                         .child_signal(is_edit_chapter.signal().map(clone!(chapter => move |is_edit_chapter| if is_edit_chapter {
                             Some(html!("input" => HtmlInputElement, {
@@ -644,7 +657,8 @@ impl Manga {
                                 .style("display", "inline-flex")
                                 .style("padding", "0.5rem")
                                 .style("width", "100%")
-                                .style_signal("opacity", chapter.read_at.signal().map(|x| if x.is_some() {"0.5"} else {"1"}))
+                                // .style_signal("opacity", chapter.read_progress.signal().map(|x| if x.is_some() {"0.5"} else {"1"}))
+                                .style_signal("opacity", signal::always(chapter.read_progress.clone()).map(|x| x.map(|progress| progress.is_complete).map(|read| if read {"0.5"} else {"1"})))
                                 .children(&mut [
                                     html!("div", {
                                         .style("display", "flex")
@@ -679,10 +693,11 @@ impl Manga {
                                                         ])
                                                     })
                                                 ])
-                                                .child_signal(chapter.last_page_read.signal().map(|x| x.map(|page| html!("span", {
+                                                .child_signal(signal::always(chapter.read_progress.clone()).map(|x| x.map(|progress| html!("span", {
                                                     .style("font-size", "smaller")
                                                     .style("font-weight", "400")
-                                                    .text(format!("Page: {}", page + 1).as_str())
+                                                    .visible_signal(signal::always(progress.last_page).map(|page| page >= 0))
+                                                    .text(format!("Page: {}", progress.last_page + 1).as_str())
                                                 }))))
                                             }),
                                         ])
@@ -800,13 +815,13 @@ impl Manga {
                     ChapterSort { by: Sort::Number, order: Order::Asc} => a.number.partial_cmp(&b.number).unwrap_or(std::cmp::Ordering::Equal),
                     ChapterSort { by: Sort::Number, order: Order::Desc} => b.number.partial_cmp(&a.number).unwrap_or(std::cmp::Ordering::Equal),
                     ChapterSort { by: Sort::ReadAt, order: Order::Asc} => {
-                        let a = a.read_at.get_cloned().unwrap_or(NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.read_at.get_cloned().unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or(NaiveDateTime::from_timestamp(0, 0));
                         a.cmp(&b)
                     },
                     ChapterSort { by: Sort::ReadAt, order: Order::Desc} => {
-                        let a = a.read_at.get_cloned().unwrap_or(NaiveDateTime::from_timestamp(0, 0));
-                        let b = b.read_at.get_cloned().unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        let a = a.read_progress.as_ref().map(|progress| progress.at).unwrap_or(NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.read_progress.as_ref().map(|progress| progress.at).unwrap_or(NaiveDateTime::from_timestamp(0, 0));
                         b.cmp(&a)
                     }
                 });
