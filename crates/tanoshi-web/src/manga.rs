@@ -651,7 +651,7 @@ impl Manga {
                                     if is_edit_chapter.get() {
                                         chapter.selected.set(!chapter.selected.get());
                                     }  else {
-                                        routing::go_to_url(Route::Chapter(chapter.id, 0).url().as_str());
+                                        routing::go_to_url(Route::Chapter(chapter.id, chapter.read_progress.as_ref().map(|progress| progress.last_page).unwrap_or(0)).url().as_str());
                                     }
                                 }))
                                 .style("display", "inline-flex")
