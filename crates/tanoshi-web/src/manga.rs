@@ -178,6 +178,15 @@ impl Manga {
                     manga.description.set_neq(result.description);
                     manga.status.set_neq(result.status);
                     manga.is_favorite.set_neq(result.is_favorite);
+                    manga.next_chapter.set(result.next_chapter.map(|chapter| Chapter {
+                        id: chapter.id,
+                        read_progress: chapter.read_progress.as_ref().map(|progress| ReadProgress {
+                            at: NaiveDateTime::parse_from_str(&progress.at, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"),
+                            last_page: progress.last_page,
+                            is_complete: progress.is_complete,
+                        }),
+                        ..Default::default()
+                    }));
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Rc::new(Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
