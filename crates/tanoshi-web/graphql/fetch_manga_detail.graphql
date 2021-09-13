@@ -11,6 +11,14 @@ query FetchMangaDetail($id: Int, $refresh: Boolean) {
     source {
       name
     }
+    nextChapter {
+      id
+      readProgress {
+        at
+        lastPage
+        isComplete
+      }
+    }
     chapters(refresh: $refresh) {
       id
       title

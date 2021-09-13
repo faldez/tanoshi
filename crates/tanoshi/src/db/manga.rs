@@ -738,7 +738,7 @@ impl Db {
     pub async fn get_next_chapter_by_manga_id(
         &self,
         user_id: i64,
-        manga_id: i64
+        manga_id: i64,
     ) -> Result<Option<Chapter>> {
         let stream = sqlx::query(
             r#"
@@ -768,7 +768,7 @@ impl Db {
                     manga_id = ?
                     AND user_history.is_complete IS NOT true
                 ORDER BY
-                    chapter.id ASC
+                    chapter.number ASC
                 LIMIT
                     1
             ), resume_chapter AS (

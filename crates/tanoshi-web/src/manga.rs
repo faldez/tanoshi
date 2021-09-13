@@ -36,6 +36,20 @@ struct Chapter {
     pub selected: Mutable<bool>,
 }
 
+impl Default for Chapter {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            title: Default::default(),
+            number: Default::default(),
+            scanlator: Default::default(),
+            uploaded: NaiveDateTime::from_timestamp(0, 0),
+            read_progress: Default::default(),
+            selected: Default::default(),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum Sort {
     Number,
@@ -73,6 +87,7 @@ pub struct Manga {
     description: Mutable<Option<String>>,
     status: Mutable<Option<String>>,
     is_favorite: Mutable<bool>,
+    next_chapter: Mutable<Option<Chapter>>,
     chapters: MutableVec<Rc<Chapter>>,
     is_edit_chapter: Mutable<bool>,
     chapter_menu: Rc<Modal>,
@@ -95,6 +110,7 @@ impl Manga {
             description: Mutable::new(None),
             status: Mutable::new(None),
             is_favorite: Mutable::new(false),
+            next_chapter: Mutable::new(None),
             chapters: MutableVec::new(),
             is_edit_chapter: Mutable::new(false),
             chapter_menu: Modal::new(),
@@ -119,6 +135,15 @@ impl Manga {
                     manga.description.set_neq(result.description);
                     manga.status.set_neq(result.status);
                     manga.is_favorite.set_neq(result.is_favorite);
+                    manga.next_chapter.set(result.next_chapter.map(|chapter| Chapter {
+                        id: chapter.id,
+                        read_progress: chapter.read_progress.as_ref().map(|progress| ReadProgress {
+                            at: NaiveDateTime::parse_from_str(&progress.at, "%Y-%m-%dT%H:%M:%S%.f").expect_throw("failed to parse read at date"),
+                            last_page: progress.last_page,
+                            is_complete: progress.is_complete,
+                        }),
+                        ..Default::default()
+                    }));
                     manga.chapters.lock_mut().replace_cloned(result.chapters.iter().map(|chapter| Rc::new(Chapter{
                         id: chapter.id,
                         title: chapter.title.clone(),
@@ -475,8 +500,35 @@ impl Manga {
                     .event(clone!(manga => move |_: events::Click| {
                         Self::add_to_or_remove_from_library(manga.clone());
                     }))
-                })
+                }),
             ])
+            .child_signal(manga.next_chapter.signal_cloned().map(|next_chapter| next_chapter.map(|chapter| html!("button", {
+                .style("display", "flex")
+                .style("padding", "0.5rem")
+                .style("align-items", "center")
+                .children(&mut [
+                    svg!("svg", {
+                        .attribute("xmlns", "http://www.w3.org/2000/svg")
+                        .attribute("viewBox", "0 0 24 24")
+                        .attribute("stroke", "currentColor")
+                        .class("icon")
+                        .children(&mut [
+                            svg!("path", {
+                                .attribute("stroke-linecap", "round")
+                                .attribute("stroke-linejoin", "round")
+                                .attribute("stroke-width", "1")
+                                .attribute("d", "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253")
+                            })
+                        ])
+                    }),
+                    html!("span", {
+                        .text("Resume")
+                    })
+                ])
+                .event(clone!(chapter => move |_: events::Click| {
+                    routing::go_to_url(Route::Chapter(chapter.id, chapter.read_progress.as_ref().map(|progress| progress.last_page).unwrap_or(0)).url().as_str());
+                }))
+            }))))
         })
     }
 

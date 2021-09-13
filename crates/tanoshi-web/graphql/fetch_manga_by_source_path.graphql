@@ -11,6 +11,14 @@ query FetchMangaBySourcePath($sourceId: Int, $path: String) {
     source {
       name
     }
+    nextChapter {
+      id
+      readProgress {
+        at
+        lastPage
+        isComplete
+      }
+    }
     chapters {
       id
       title

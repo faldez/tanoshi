@@ -53,6 +53,7 @@ type Manga {
     # chapter id
     id: Int!
   ): Chapter!
+  nextChapter: Chapter
 }
 
 type MutationRoot {
