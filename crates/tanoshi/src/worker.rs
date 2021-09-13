@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Display, str::FromStr};
 
+use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
 use tanoshi_vm::prelude::ExtensionBus;
 use teloxide::{
@@ -53,7 +54,11 @@ impl Worker {
         telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
     ) -> Self {
         #[cfg(not(debug_assertions))]
-        let period = if period < 3600 { 3600 } else { period };
+        let period = if period > 0 && period < 3600 {
+            3600
+        } else {
+            period
+        };
         info!("periodic updates every {} secons", period);
         Self {
             period,
@@ -165,8 +170,63 @@ impl Worker {
         Ok(())
     }
 
+    async fn check_extension_update(&self) -> Result<(), anyhow::Error> {
+        #[derive(Debug, Clone, Deserialize)]
+        pub struct SourceIndex {
+            pub id: i64,
+            pub name: String,
+            pub path: String,
+            pub version: String,
+            pub icon: String,
+        }
+
+        let available_sources_map = {
+            let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+                .to_string();
+            let available_sources = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
+            let mut available_sources_map = HashMap::new();
+            for source in available_sources {
+                available_sources_map.insert(source.id, source);
+            }
+            available_sources_map
+        };
+
+        let updates = {
+            let installed_sources = self
+                .extension_bus
+                .list()
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+            let mut updates: Vec<String> = vec![];
+            for source in installed_sources {
+                if let Some(index) = available_sources_map.get(&source.id) {
+                    if Version::from_str(&index.version)? > source.version {
+                        updates.push(format!("<b>{}</b> extension update available", source.name));
+                    }
+                }
+            }
+
+            updates
+        };
+
+        for update in updates {
+            info!("new extension update found!");
+            if let Some(bot) = self.telegram_bot.as_ref() {
+                let admins = self.userdb.get_admins().await?;
+                for admin in admins {
+                    if let Some(chat_id) = admin.telegram_chat_id {
+                        bot.send_message(chat_id, &update).await?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     async fn check_server_update(&self) -> Result<(), anyhow::Error> {
-        #[derive(Debug, serde::Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct Release {
             pub tag_name: String,
             pub body: String,
@@ -212,7 +272,8 @@ impl Worker {
 
     async fn run(&self, rx: UnboundedReceiver<Command>) {
         let mut rx = rx;
-        let mut chapter_update_interval = time::interval(time::Duration::from_secs(self.period));
+        let period = if self.period == 0 { 3600 } else { self.period };
+        let mut chapter_update_interval = time::interval(time::Duration::from_secs(period));
         let mut server_update_interval = time::interval(time::Duration::from_secs(86400));
 
         loop {
@@ -229,6 +290,10 @@ impl Worker {
                     }
                 }
                 start = chapter_update_interval.tick() => {
+                    if self.period == 0 {
+                        continue;
+                    }
+
                     info!("start periodic updates");
 
                     if let Err(e) = self.check_chapter_update().await {
@@ -242,6 +307,12 @@ impl Worker {
 
                     if let Err(e) = self.check_server_update().await {
                         error!("failed check server update: {}", e)
+                    }
+
+                    info!("check extension update");
+
+                    if let Err(e) = self.check_extension_update().await {
+                        error!("failed check extension update: {}", e)
                     }
                 }
             }
