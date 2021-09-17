@@ -92,11 +92,12 @@ jobs:
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y libssl-dev libarchive-dev build-essential cmake llvm clang libicu-dev nettle-dev libacl1-dev liblzma-dev libzstd-dev liblz4-dev libbz2-dev zlib1g-dev libxml2-dev
       - name: Install deps
         if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install icu4c libarchive bzip2 lz4 zlib expat
+        run: brew install icu4c libarchive bzip2 lz4 zlib expat llvm
       - name: Install LLVM and Clang
+        if: ${{ matrix.os != 'macos-latest' }}
         uses: KyleMayes/install-llvm-action@v1
         with:
-          version: "11.0"
+          version: "11.1"
       - name: Cache vcpkg
         uses: actions/cache@v2
         if: ${{ matrix.os == 'windows-latest' }}
@@ -124,13 +125,13 @@ jobs:
         with:
           command: test
         env:
-          PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
-          LLSM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
+          PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfigenv:
+          LLSM_SYS_110_PREFIX: /usr/local/opt/llvm
       - name: Test
         if: ${{ matrix.os == 'windows-latest' }}
         uses: actions-rs/cargo@v1
         with:
           command: test
         env:
-          LIBCLANG_PATH: C:\Program Files\LLVM\bin
           LLSM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
+          LIBCLANG_PATH: ${{ env.LLVM_PATH }}\bin
