@@ -117,7 +117,7 @@ jobs:
         with:
           command: test
         env:
-          LLSM_SYS_110_PREFIX: ${{ env.LLVM_PATH }
+          LLSM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
       - name: Test
         if: ${{ matrix.os == 'macos-latest' }}
         uses: actions-rs/cargo@v1
