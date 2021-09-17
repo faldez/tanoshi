@@ -97,7 +97,7 @@ impl ExtensionProxy {
 
         let output = std::path::PathBuf::new()
             .join(&path)
-            .with_extension("tanoshi");
+            .with_extension(format!("{}.tanoshi", target.triple()));
         Self::compile(&wasm_bytes, output, target)?;
 
         // std::fs::remove_file(path)?;

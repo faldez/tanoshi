@@ -57,10 +57,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         #[cfg(not(feature = "disable-compiler"))]
         SubCommand::Compile => {
             let triples = [
-                "x86_64-unknown-linux-gnu",
-                "aarch64-unknown-linux-gnu",
                 "x86_64-apple-darwin",
                 "x86_64-pc-windows-msvc",
+                "x86_64-unknown-linux-gnu",
+                "aarch64-unknown-linux-gnu",
             ];
             for triple in triples {
                 vm::compile_with_target(&extension_path, triple).await?;
