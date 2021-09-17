@@ -133,5 +133,5 @@ jobs:
         with:
           command: test
         env:
-          LLVM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
-          LIBCLANG_PATH: ${{ env.LLVM_PATH }}\bin
+          LLVM_SYS_110_PREFIX: C:\Program Files\LLVM\bin
+          LIBCLANG_PATH: C:\Program Files\LLVM\bin
