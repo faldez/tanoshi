@@ -10,7 +10,6 @@ license = "MIT"
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib" }
 tanoshi-vm = { path = "../tanoshi-vm", default-features = false, features = [
-    "llvm",
     "dylib",
     "disable-compiler",
 ] }
