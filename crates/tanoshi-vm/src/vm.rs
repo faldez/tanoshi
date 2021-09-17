@@ -212,6 +212,11 @@ pub async fn load<P: AsRef<Path>>(
     for entry in std::fs::read_dir(&path)?
         .into_iter()
         .filter_map(Result::ok)
+        .filter(|path| {
+            path.file_name()
+                .to_str()
+                .map_or(false, |name| name.contains(env!("TARGET")))
+        })
         .filter(move |path| {
             path.path()
                 .extension()
