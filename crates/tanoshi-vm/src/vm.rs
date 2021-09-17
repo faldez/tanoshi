@@ -100,7 +100,6 @@ impl ExtensionProxy {
             .with_extension(format!("{}.tanoshi", target.triple()));
         Self::compile(&wasm_bytes, output, target)?;
 
-        // std::fs::remove_file(path)?;
         Ok(())
     }
 
@@ -116,7 +115,6 @@ impl ExtensionProxy {
         let module = Module::new(&store, wasm_bytes)?;
         debug!("done");
 
-        debug!("remove wasm file");
         Ok(module.serialize_to_file(output)?)
     }
 
@@ -232,7 +230,7 @@ pub async fn load<P: AsRef<Path>>(
 
 #[cfg(not(feature = "disable-compiler"))]
 pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
-    compile_with_target(path, env!("TARGET")).await?;
+    compile_with_target(path, env!("TARGET"), true).await?;
 
     Ok(())
 }
@@ -241,6 +239,7 @@ pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::
 pub async fn compile_with_target<P: AsRef<Path>>(
     path: P,
     triple: &str,
+    remove_wasm: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::str::FromStr;
     use wasmer::{CpuFeature, RuntimeError, Triple};
@@ -265,7 +264,12 @@ pub async fn compile_with_target<P: AsRef<Path>>(
     {
         let path = entry.path();
         info!("found wasm file at {:?}", path.clone());
-        ExtensionProxy::compile_from_file(path, target.clone()).map_err(|e| format!("{}", e))?;
+        ExtensionProxy::compile_from_file(&path, target.clone()).map_err(|e| format!("{}", e))?;
+
+        if remove_wasm {
+            debug!("remove wasm file");
+            std::fs::remove_file(path)?;
+        }
     }
 
     Ok(())
