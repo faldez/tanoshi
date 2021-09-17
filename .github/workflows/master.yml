@@ -125,7 +125,7 @@ jobs:
         with:
           command: test
         env:
-          PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfigenv:
+          PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
           LLSM_SYS_110_PREFIX: /usr/local/opt/llvm
       - name: Test
         if: ${{ matrix.os == 'windows-latest' }}
