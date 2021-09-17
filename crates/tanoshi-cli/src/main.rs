@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(feature = "disable-compiler")]
     vm::load(&extension_path, extension_tx.clone()).await?;
 
-    let extension_bus = ExtensionBus::new("target/wasm32-wasi/release".to_string(), extension_tx);
+    let extension_bus = ExtensionBus::new(extension_path, extension_tx);
 
     match opts.subcmd {
         #[cfg(not(feature = "disable-compiler"))]
