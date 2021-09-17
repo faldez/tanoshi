@@ -11,7 +11,8 @@ license = "MIT"
 tanoshi-lib = { path = "../tanoshi-lib" }
 tanoshi-vm = { path = "../tanoshi-vm", default-features = false, features = [
     "llvm",
-    "universal",
+    "dylib",
+    "disable-compiler",
 ] }
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1.5"
