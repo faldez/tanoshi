@@ -118,7 +118,7 @@ jobs:
         with:
           command: test
         env:
-          LLSM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
+          LLVM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
       - name: Test
         if: ${{ matrix.os == 'macos-latest' }}
         uses: actions-rs/cargo@v1
@@ -126,12 +126,12 @@ jobs:
           command: test
         env:
           PKG_CONFIG_PATH: /usr/local/opt/icu4c/lib/pkgconfig:/usr/local/opt/libarchive/lib/pkgconfig:/usr/local/opt/zlib/lib/pkgconfig:/usr/local/opt/expat/lib/pkgconfig
-          LLSM_SYS_110_PREFIX: /usr/local/opt/llvm
+          LLVM_SYS_110_PREFIX: /usr/local/opt/llvm
       - name: Test
         if: ${{ matrix.os == 'windows-latest' }}
         uses: actions-rs/cargo@v1
         with:
           command: test
         env:
-          LLSM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
+          LLVM_SYS_110_PREFIX: ${{ env.LLVM_PATH }}
           LIBCLANG_PATH: ${{ env.LLVM_PATH }}\bin
