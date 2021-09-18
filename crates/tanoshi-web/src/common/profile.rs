@@ -15,6 +15,7 @@ pub struct Profile {
     new_password: Mutable<String>,
     confirm_password: Mutable<String>,
     telegram_chat_id: Mutable<Option<String>>,
+    pushover_user_key: Mutable<Option<String>>,
     pub loader: AsyncLoader,
 }
 
@@ -25,6 +26,7 @@ impl Profile {
             new_password: Mutable::new("".to_string()),
             confirm_password: Mutable::new("".to_string()),
             telegram_chat_id: Mutable::new(None),
+            pushover_user_key: Mutable::new(None),
             loader: AsyncLoader::new(),
         })
     }
@@ -32,7 +34,10 @@ impl Profile {
     fn fetch_me(profile: Rc<Self>) {
         profile.loader.load(clone!(profile => async move {
             match query::fetch_me().await {
-                Ok(result) => profile.telegram_chat_id.set(result.settings.telegram_chat_id.map(|id| id.to_string())),
+                Ok(result) => {
+                    profile.telegram_chat_id.set(result.telegram_chat_id.map(|id| id.to_string()));
+                    profile.pushover_user_key.set(result.pushover_user_key.map(|id| id.to_string()));
+                },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
                 }
@@ -57,13 +62,26 @@ impl Profile {
         }
     }
 
+    fn test_pushover(profile: Rc<Self>) {
+        if let Some(user_key) = profile.pushover_user_key.get_cloned() {
+            profile.loader.load(async move {
+                match query::test_pushover(&user_key).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+            });
+        }
+    }
+
     fn change_password(profile: Rc<Self>) {
         profile.loader.load(clone!(profile => async move {
             let old_password = profile.old_password.get_cloned();
             let new_password = profile.new_password.get_cloned();
             match query::change_password(old_password, new_password).await {
                 Ok(_) => {
-                    routing::go_to_url(Route::Settings(SettingCategory::None).url().as_str());
+                    // routing::go_to_url(Route::Settings(SettingCategory::None).url().as_str());
                 },
                 Err(e) => {
                     snackbar::show(format!("change password error: {}", e));
@@ -75,9 +93,10 @@ impl Profile {
     fn update_profile(profile: Rc<Self>) {
         profile.loader.load(clone!(profile => async move {
             let telegram_chat_id = profile.telegram_chat_id.get_cloned().and_then(|telegram_chat_id| telegram_chat_id.parse().ok());
-            match query::update_profile(telegram_chat_id).await {
+            let pushover_user_key = profile.pushover_user_key.get_cloned();
+            match query::update_profile(telegram_chat_id, pushover_user_key).await {
                 Ok(_) => {
-                    routing::go_to_url(Route::Settings(SettingCategory::None).url().as_str());
+                    // routing::go_to_url(Route::Settings(SettingCategory::None).url().as_str());
                 },
                 Err(e) => {
                     snackbar::show(format!("change password error: {}", e));
@@ -95,6 +114,10 @@ impl Profile {
             .style("margin-right", "auto")
             .style("border-radius", "0.5rem")
             .children(&mut [
+                html!("span", {
+                    .style("margin-left", "0.5rem")
+                    .text("Change Password")
+                }),
                 html!("input" => HtmlInputElement, {
                     .attribute("type", "password")
                     .attribute("placeholder", "Current Password")
@@ -168,7 +191,7 @@ impl Profile {
         })
     }
 
-    pub fn render_telegram_setting(profile: Rc<Self>) -> Dom {
+    pub fn render_notification_setting(profile: Rc<Self>) -> Dom {
         Self::fetch_me(profile.clone());
 
         html!("form", {
@@ -179,6 +202,10 @@ impl Profile {
             .style("margin-right", "auto")
             .style("border-radius", "0.5rem")
             .children(&mut [
+                html!("span", {
+                    .style("margin-left", "0.5rem")
+                    .text("Notification")
+                }),
                 html!("input" => HtmlInputElement, {
                     .attribute("type", "text")
                     .attribute("placeholder", "Telegram chat id, get from telegram bot")
@@ -192,17 +219,53 @@ impl Profile {
                 html!("div", {
                     .style("display", "flex")
                     .style("justify-content", "flex-end")
-                    .style("margin", "0.5rem")
+                    .style("margin-right", "0.5rem")
+                    .style("margin-top", "0.5rem")
                     .children(&mut [
                         html!("input", {
                             .attribute("type", "button")
                             .attribute("value", "Test")
-                            .text("Test")
+                            .text("Test Telegram")
                             .event_preventable(clone!(profile => move |e: events::Click| {
                                 e.prevent_default();
                                 Self::test_telegram(profile.clone());
                             }))
                         }),
+                    ])
+                }),
+                html!("input" => HtmlInputElement, {
+                    .attribute("type", "text")
+                    .attribute("placeholder", "Pushover user key, get from pushover dashboard")
+                    .property_signal("value", profile.pushover_user_key.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
+                    .with_node!(input => {
+                        .event(clone!(profile => move |_: events::Input| {
+                            profile.pushover_user_key.set(Some(input.value()));
+                        }))
+                    })
+                }),
+                html!("div", {
+                    .style("display", "flex")
+                    .style("justify-content", "flex-end")
+                    .style("margin-right", "0.5rem")
+                    .style("margin-top", "0.5rem")
+                    .children(&mut [
+                        html!("input", {
+                            .attribute("type", "button")
+                            .attribute("value", "Test")
+                            .text("Test Pushover")
+                            .event_preventable(clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
+                                Self::test_pushover(profile.clone());
+                            }))
+                        }),
+                    ])
+                }),
+                html!("div", {
+                    .style("display", "flex")
+                    .style("justify-content", "flex-end")
+                    .style("margin-right", "0.5rem")
+                    .style("margin-top", "0.5rem")
+                    .children(&mut [
                         html!("input", {
                             .attribute("type", "submit")
                             .text("Submit")
@@ -212,7 +275,7 @@ impl Profile {
                             }))
                         })
                     ])
-                })
+                }),
             ])
         })
     }
@@ -221,7 +284,7 @@ impl Profile {
         html!("div", {
             .children(&mut [
                 Self::render_change_password(profile.clone()),
-                Self::render_telegram_setting(profile)
+                Self::render_notification_setting(profile.clone()),
             ])
         })
     }

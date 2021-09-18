@@ -78,6 +78,7 @@ impl Db {
                 created_at: row.get(4),
                 updated_at: row.get(5),
                 telegram_chat_id: row.get(6),
+                pushover_user_key: row.get(7),
             })
         }
 
@@ -106,6 +107,7 @@ impl Db {
                 created_at: row.get(4),
                 updated_at: row.get(5),
                 telegram_chat_id: row.get(6),
+                pushover_user_key: row.get(7),
             });
         }
         Ok(users)
@@ -125,6 +127,7 @@ impl Db {
             created_at: row.get(4),
             updated_at: row.get(5),
             telegram_chat_id: row.get(6),
+            pushover_user_key: row.get(7),
         })?)
     }
 
@@ -142,6 +145,7 @@ impl Db {
             created_at: row.get(4),
             updated_at: row.get(5),
             telegram_chat_id: row.get(6),
+            pushover_user_key: row.get(7),
         })?)
     }
 
@@ -150,7 +154,9 @@ impl Db {
         let mut arguments = SqliteArguments::default();
 
         column_to_update.push("telegram_chat_id = ?");
+        column_to_update.push("pushover_user_key = ?");
         arguments.add(user.telegram_chat_id);
+        arguments.add(user.pushover_user_key.clone());
         arguments.add(user.id);
 
         if column_to_update.is_empty() {

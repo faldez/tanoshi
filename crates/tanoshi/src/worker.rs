@@ -15,10 +15,17 @@ use tokio::{
     time::{self, Instant},
 };
 
-use crate::db::{model::Chapter, MangaDatabase, UserDatabase};
+use crate::{
+    db::{
+        model::{Chapter, User},
+        MangaDatabase, UserDatabase,
+    },
+    notifier::pushover::Pushover,
+};
 
 pub enum Command {
     TelegramMessage(i64, String),
+    PushoverMessage(String, String),
 }
 
 #[derive(Debug, Clone)]
@@ -43,6 +50,7 @@ struct Worker {
     userdb: UserDatabase,
     extension_bus: ExtensionBus,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+    pushover: Option<Pushover>,
 }
 
 impl Worker {
@@ -52,6 +60,7 @@ impl Worker {
         userdb: UserDatabase,
         extension_bus: ExtensionBus,
         telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+        pushover: Option<Pushover>,
     ) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
@@ -59,13 +68,14 @@ impl Worker {
         } else {
             period
         };
-        info!("periodic updates every {} secons", period);
+        info!("periodic updates every {} seconds", period);
         Self {
             period,
             mangadb,
             userdb,
             extension_bus,
             telegram_bot,
+            pushover,
         }
     }
 
@@ -73,30 +83,29 @@ impl Worker {
         let manga_in_library = self.mangadb.get_all_user_library().await?;
 
         let mut new_manga_chapter: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
-        let mut new_users_chapters: HashMap<i64, Vec<ChapterUpdate>> = HashMap::new();
+        let mut manga_user_map: HashMap<i64, Vec<i64>> = HashMap::new();
+        let mut user_map: HashMap<i64, User> = HashMap::new();
 
-        for (telegram_chat_id, manga) in manga_in_library {
-            if let Some(chapters) = new_manga_chapter.get(&manga.id) {
-                if let Some(telegram_chat_id) = telegram_chat_id {
-                    match new_users_chapters.get_mut(&telegram_chat_id) {
-                        Some(user_chapters) => {
-                            user_chapters.extend_from_slice(chapters);
-                        }
-                        None => {
-                            new_users_chapters.insert(telegram_chat_id, chapters.clone());
-                        }
-                    }
+        for item in manga_in_library {
+            manga_user_map.insert(item.manga.id, item.user_ids.clone());
+            for user_id in item.user_ids.iter() {
+                if user_map.get(&user_id).is_none() {
+                    let user = self.userdb.get_user_by_id(*user_id).await?;
+                    user_map.insert(*user_id, user);
                 }
-                continue;
             }
 
             let last_uploaded_chapter = self
                 .mangadb
-                .get_last_uploaded_chapters_by_manga_id(manga.id)
-                .await;
+                .get_last_uploaded_chapters_by_manga_id(item.manga.id)
+                .await
+                .map(|ch| ch.uploaded);
+
+            info!("Checking updates: {}", item.manga.title);
+
             let chapters = match self
                 .extension_bus
-                .get_chapters(manga.source_id, manga.path.clone())
+                .get_chapters(item.manga.source_id, item.manga.path.clone())
                 .await
             {
                 Ok(chapters) => {
@@ -104,7 +113,7 @@ impl Worker {
                         .into_iter()
                         .map(|ch| {
                             let mut c: Chapter = ch.into();
-                            c.manga_id = manga.id;
+                            c.manga_id = item.manga.id;
                             c
                         })
                         .collect();
@@ -124,47 +133,74 @@ impl Worker {
             let chapters = if let Some(last_uploaded_chapter) = last_uploaded_chapter {
                 chapters
                     .into_iter()
-                    .filter(|ch| ch.uploaded > last_uploaded_chapter.uploaded)
+                    .filter(|ch| ch.uploaded > last_uploaded_chapter)
                     .collect()
             } else {
                 chapters
             };
 
-            let chapters: Vec<ChapterUpdate> = chapters
+            if chapters.is_empty() {
+                continue;
+            }
+
+            let chapters = chapters
                 .iter()
                 .map(|ch| ChapterUpdate {
-                    manga_title: manga.title.clone(),
-                    cover_url: manga.cover_url.clone(),
+                    manga_title: item.manga.title.clone(),
+                    cover_url: item.manga.cover_url.clone(),
                     title: ch.title.clone(),
                 })
                 .collect();
 
-            new_manga_chapter.insert(manga.id, chapters.clone());
-            if let Some(telegram_chat_id) = telegram_chat_id {
-                match new_users_chapters.get_mut(&telegram_chat_id) {
-                    Some(user_chapters) => {
-                        user_chapters.extend_from_slice(&chapters);
-                    }
-                    None => {
-                        new_users_chapters.insert(telegram_chat_id, chapters);
-                    }
-                }
-            }
+            new_manga_chapter.insert(item.manga.id, chapters);
 
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         }
 
-        info!("users' new chapters: {:?}", new_users_chapters);
+        debug!("new chapters: {:?}", new_manga_chapter);
 
-        if let Some(bot) = self.telegram_bot.as_ref() {
-            for (chat_id, chapters) in new_users_chapters.into_iter() {
-                for chapter in chapters {
-                    if let Err(e) = bot.send_message(chat_id, chapter.to_string()).await {
-                        error!("failed to send message, reason: {}", e);
+        if self.telegram_bot.is_none() && self.pushover.is_none() {
+            return Ok(());
+        }
+
+        for (manga_id, updates) in new_manga_chapter.iter() {
+            let user_ids = if let Some(user_ids) = manga_user_map.get(&manga_id) {
+                user_ids
+                    .clone()
+                    .iter()
+                    .filter_map(|user_id| user_map.get(user_id).cloned())
+                    .map(|user| (user.telegram_chat_id, user.pushover_user_key.clone()))
+                    .collect::<Vec<(Option<i64>, Option<String>)>>()
+            } else {
+                continue;
+            };
+
+            for (telegram_chat_id, pushover_user_key) in user_ids {
+                for update in updates {
+                    if let Some((bot, chat_id)) = self.telegram_bot.as_ref().zip(telegram_chat_id) {
+                        if let Err(e) = bot.send_message(chat_id, update.to_string()).await {
+                            error!("failed to send message, reason: {}", e);
+                        }
                     }
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+                    if let Some((pushover, user_key)) =
+                        self.pushover.as_ref().zip(pushover_user_key.as_ref())
+                    {
+                        if let Err(e) = pushover
+                            .send_notification_with_title(
+                                user_key,
+                                &update.manga_title,
+                                &update.title,
+                            )
+                            .await
+                        {
+                            error!("failed to send PushoverMessage, reason: {}", e);
+                        }
+                    }
                 }
             }
+
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }
 
         Ok(())
@@ -291,6 +327,13 @@ impl Worker {
                                 }
                             }
                         }
+                        Command::PushoverMessage(user_key, message) => {
+                            if let Some(pushover) = self.pushover.as_ref() {
+                                if let Err(e) = pushover.send_notification(&user_key, &message).await {
+                                    error!("failed to send PushoverMessage, reason: {}", e);
+                                }
+                            }
+                        }
                     }
                 }
                 start = chapter_update_interval.tick() => {
@@ -330,9 +373,17 @@ pub fn start(
     userdb: UserDatabase,
     extension_bus: ExtensionBus,
     telegram_bot: Option<DefaultParseMode<AutoSend<Bot>>>,
+    pushover: Option<Pushover>,
 ) -> (JoinHandle<()>, UnboundedSender<Command>) {
     let (tx, rx) = unbounded_channel();
-    let worker = Worker::new(period, mangadb, userdb, extension_bus, telegram_bot);
+    let worker = Worker::new(
+        period,
+        mangadb,
+        userdb,
+        extension_bus,
+        telegram_bot,
+        pushover,
+    );
 
     let handle = tokio::spawn(async move {
         worker.run(rx).await;

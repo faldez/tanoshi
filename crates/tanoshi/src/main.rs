@@ -21,6 +21,7 @@ mod worker;
 use crate::{
     config::Config,
     context::GlobalContext,
+    notifier::pushover::Pushover,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
 };
 use clap::Clap;
@@ -87,12 +88,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         telegram_bot = Some(bot);
     }
 
+    let pushover = config
+        .pushover
+        .map(|pushover_cfg| Pushover::new(pushover_cfg.application_key.clone()));
+
     let (worker_handle, worker_tx) = worker::start(
         config.update_interval,
         mangadb.clone(),
         userdb.clone(),
         extension_bus.clone(),
         telegram_bot,
+        pushover,
     );
 
     let schema: TanoshiSchema = Schema::build(

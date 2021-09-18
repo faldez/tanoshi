@@ -3,8 +3,7 @@ query FetchMe {
     id
     username
     isAdmin
-    settings {
-      telegramChatId
-    }
+    telegramChatId
+    pushoverUserKey
   }
 }

@@ -1,3 +1,4 @@
+pub mod pushover;
 pub mod telegram;
 
 use crate::{context::GlobalContext, user, worker::Command as WorkerCommand};
@@ -17,6 +18,21 @@ impl NotificationRoot {
         let ctx = ctx.data::<GlobalContext>()?;
         ctx.worker_tx.send(WorkerCommand::TelegramMessage(
             chat_id,
+            "Test Notification".to_string(),
+        ))?;
+
+        Ok(true)
+    }
+
+    async fn test_pushover(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "pushover user key")] user_key: String,
+    ) -> Result<bool> {
+        let _ = user::get_claims(ctx)?;
+        let ctx = ctx.data::<GlobalContext>()?;
+        ctx.worker_tx.send(WorkerCommand::PushoverMessage(
+            user_key,
             "Test Notification".to_string(),
         ))?;
 

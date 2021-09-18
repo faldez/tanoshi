@@ -1,5 +1,5 @@
 use crate::context::GlobalContext;
-use async_graphql::{Context, Object, Result};
+use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;
 
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
@@ -15,12 +15,6 @@ pub struct Claims {
 }
 
 use async_graphql::SimpleObject;
-
-#[derive(Debug, Default, SimpleObject)]
-pub struct Settings {
-    telegram_chat_id: Option<i64>,
-}
-
 #[derive(Debug, SimpleObject)]
 pub struct User {
     pub id: i64,
@@ -28,7 +22,8 @@ pub struct User {
     #[graphql(skip)]
     pub password: String,
     pub is_admin: bool,
-    pub settings: Settings,
+    telegram_chat_id: Option<i64>,
+    pushover_user_key: Option<String>,
 }
 
 impl From<crate::db::model::User> for User {
@@ -38,9 +33,8 @@ impl From<crate::db::model::User> for User {
             username: val.username,
             password: val.password,
             is_admin: val.is_admin,
-            settings: Settings {
-                telegram_chat_id: val.telegram_chat_id,
-            },
+            telegram_chat_id: val.telegram_chat_id,
+            pushover_user_key: val.pushover_user_key,
         }
     }
 }
@@ -55,6 +49,12 @@ impl From<User> for crate::db::model::User {
             ..Default::default()
         }
     }
+}
+
+#[derive(InputObject)]
+struct ProfileInput {
+    pub telegram_chat_id: Option<i64>,
+    pub pushover_user_key: Option<String>,
 }
 
 #[derive(Default)]
@@ -194,11 +194,7 @@ impl UserMutationRoot {
         Ok(affected)
     }
 
-    async fn update_profile(
-        &self,
-        ctx: &Context<'_>,
-        #[graphql(desc = "telegram chat id")] telegram_chat_id: Option<i64>,
-    ) -> Result<u64> {
+    async fn update_profile(&self, ctx: &Context<'_>, input: ProfileInput) -> Result<u64> {
         debug!("update_profile");
         let claims = get_claims(ctx)?;
 
@@ -206,7 +202,8 @@ impl UserMutationRoot {
         let mut user = userdb.get_user_by_id(claims.sub).await?;
         debug!("update_profile");
 
-        user.telegram_chat_id = telegram_chat_id;
+        user.telegram_chat_id = input.telegram_chat_id;
+        user.pushover_user_key = input.pushover_user_key;
 
         let row = userdb.update_user_setting(&user).await?;
 

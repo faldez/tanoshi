@@ -1,4 +1,4 @@
-use super::model::{Chapter, Manga, ReadProgress};
+use super::model::{Chapter, Manga, ReadProgress, UserMangaLibrary};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use sqlx::sqlite::{SqliteArguments, SqlitePool};
@@ -83,19 +83,21 @@ impl Db {
         Ok(mangas)
     }
 
-    pub async fn get_all_user_library(&self) -> Result<Vec<(Option<i64>, Manga)>> {
+    pub async fn get_all_user_library(&self) -> Result<Vec<UserMangaLibrary>> {
         let mut stream = sqlx::query(
-            r#"SELECT manga.*, user.telegram_chat_id FROM manga
+            r#"SELECT manga.*, JSON_GROUP_ARRAY(user.id) FROM manga
             JOIN user_library ON user_library.manga_id = manga.id
-            JOIN user ON user.id = user_library.user_id"#,
+            JOIN user ON user.id = user_library.user_id
+            GROUP BY user_library.manga_id"#,
         )
         .fetch(&self.pool);
 
         let mut mangas = vec![];
         while let Some(row) = stream.try_next().await? {
-            mangas.push((
-                row.get(10),
-                Manga {
+            mangas.push(UserMangaLibrary {
+                user_ids: serde_json::from_str(row.get::<String, _>(10).as_str())
+                    .unwrap_or_default(),
+                manga: Manga {
                     id: row.get(0),
                     source_id: row.get(1),
                     title: row.get(2),
@@ -109,7 +111,7 @@ impl Db {
                     cover_url: row.get(8),
                     date_added: row.get(9),
                 },
-            ));
+            });
         }
         Ok(mangas)
     }

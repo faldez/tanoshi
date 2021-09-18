@@ -11,6 +11,11 @@ pub struct TelegramConfig {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PushoverConfig {
+    pub application_key: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
     #[serde(skip)]
     path: PathBuf,
@@ -29,6 +34,7 @@ pub struct Config {
     #[serde(default)]
     pub enable_playground: bool,
     pub telegram: Option<TelegramConfig>,
+    pub pushover: Option<PushoverConfig>,
 }
 
 impl Default for Config {
@@ -43,6 +49,7 @@ impl Default for Config {
             local_path: default_local_path(),
             enable_playground: false,
             telegram: None,
+            pushover: None,
         }
     }
 }

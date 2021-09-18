@@ -471,8 +471,16 @@ pub async fn change_password(
 )]
 pub struct UpdateProfile;
 
-pub async fn update_profile(telegram_chat_id: Option<i64>) -> Result<(), Box<dyn Error>> {
-    let var = update_profile::Variables { telegram_chat_id };
+pub async fn update_profile(
+    telegram_chat_id: Option<i64>,
+    pushover_user_key: Option<String>,
+) -> Result<(), Box<dyn Error>> {
+    let var = update_profile::Variables {
+        input: update_profile::ProfileInput {
+            telegramChatId: telegram_chat_id,
+            pushoverUserKey: pushover_user_key,
+        },
+    };
     let _ = post_graphql::<UpdateProfile>(var).await?;
     Ok(())
 }
@@ -505,6 +513,22 @@ pub async fn test_telegram(chat_id: i64) -> Result<(), Box<dyn Error>> {
         chat_id: Some(chat_id),
     };
     let _ = post_graphql::<TestTelegram>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/test_pushover.graphql",
+    response_derives = "Debug"
+)]
+pub struct TestPushover;
+
+pub async fn test_pushover(user_key: &str) -> Result<(), Box<dyn Error>> {
+    let var = test_pushover::Variables {
+        user_key: Some(user_key.to_string()),
+    };
+    let _ = post_graphql::<TestPushover>(var).await?;
     Ok(())
 }
 

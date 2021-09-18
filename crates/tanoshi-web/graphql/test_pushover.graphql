@@ -1,0 +1,3 @@
+query TestPushover($userKey: String) {
+  testPushover(userKey: $userKey)
+}

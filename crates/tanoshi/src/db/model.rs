@@ -75,6 +75,7 @@ pub struct User {
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub telegram_chat_id: Option<i64>,
+    pub pushover_user_key: Option<String>,
 }
 
 impl Default for User {
@@ -87,6 +88,7 @@ impl Default for User {
             created_at: NaiveDateTime::from_timestamp(0, 0),
             updated_at: NaiveDateTime::from_timestamp(0, 0),
             telegram_chat_id: None,
+            pushover_user_key: None,
         }
     }
 }
@@ -96,4 +98,10 @@ pub struct ReadProgress {
     pub at: NaiveDateTime,
     pub last_page: i64,
     pub is_complete: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserMangaLibrary {
+    pub user_ids: Vec<i64>,
+    pub manga: Manga,
 }

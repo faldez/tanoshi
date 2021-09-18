@@ -97,10 +97,7 @@ type MutationRoot {
     # new password
     newPassword: String!
   ): Int!
-  updateProfile(
-    # telegram chat id
-    telegramChatId: Int
-  ): Int!
+  updateProfile(input: ProfileInput!): Int!
   installSource(sourceId: Int!): Int!
   uninstallSource(sourceId: Int!): Int!
   updateSource(sourceId: Int!): Int!
@@ -121,6 +118,11 @@ type PageInfo {
 
   # When paginating forwards, the cursor to continue.
   endCursor: String
+}
+
+input ProfileInput {
+  telegramChatId: Int
+  pushoverUserKey: String
 }
 
 type QueryRoot {
@@ -194,6 +196,10 @@ type QueryRoot {
     # telegram chat id
     chatId: Int!
   ): Boolean!
+  testPushover(
+    # pushover user key
+    userKey: String!
+  ): Boolean!
 }
 
 type ReadProgress {
@@ -255,10 +261,6 @@ type RecentUpdateEdge {
   cursor: String!
 }
 
-type Settings {
-  telegramChatId: Int
-}
-
 # A type represent sort parameter for query manga from source, normalized across sources
 enum SortByParam {
   LAST_UPDATED
@@ -292,5 +294,6 @@ type User {
   id: Int!
   username: String!
   isAdmin: Boolean!
-  settings: Settings!
+  telegramChatId: Int
+  pushoverUserKey: String
 }
