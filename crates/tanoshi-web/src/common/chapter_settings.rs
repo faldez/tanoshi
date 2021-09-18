@@ -109,10 +109,13 @@ impl ChapterSettings {
         let settings = if let Ok(Some(settings)) = local_storage().get_item(&key) {
             serde_json::from_str::<Self>(&settings).unwrap_or_default()
         } else {
+            self.sort.set(self.sort.get_cloned());
+            self.filter.set(self.filter.get_cloned());
             return;
         };
-        self.sort.replace(settings.sort.get_cloned());
-        self.filter.replace(settings.filter.get_cloned());
+
+        self.sort.set(settings.sort.get_cloned());
+        self.filter.set(settings.filter.get_cloned());
     }
 
     pub fn toggle_show(&self) {
