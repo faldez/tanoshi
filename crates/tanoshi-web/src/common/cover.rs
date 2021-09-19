@@ -43,7 +43,7 @@ impl Cover {
         self.is_favorite.set(favorite);
     }
 
-    fn link(&self) -> String {
+    pub fn link(&self) -> String {
         if self.id != 0 {
             Route::Manga(self.id).url()
         } else if self.source_id != 0 && !self.path.is_empty() {

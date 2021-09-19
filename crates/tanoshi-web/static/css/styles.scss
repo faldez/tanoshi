@@ -217,7 +217,7 @@ input {
     background-color: var(--bottombar-background-color);
     border-top: 1px solid var(--background-color-100);
 
-    a {
+    a, button {
         display: flex;
         padding-left: 0.5rem;
         padding-right: 0.5rem;

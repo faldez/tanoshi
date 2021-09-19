@@ -1,8 +1,10 @@
 use std::rc::Rc;
 
-use dominator::{html, link, svg, Dom};
-use futures_signals::signal::SignalExt;
+use crate::{common::events, utils::local_storage};
+
 use super::{Route, SettingCategory};
+use dominator::{html, link, routing, svg, Dom};
+use futures_signals::signal::SignalExt;
 
 pub struct Bottombar {}
 
@@ -40,9 +42,13 @@ impl Bottombar {
                         })
                     ])
                 }),
-                link!(Route::Catalogue{id: 0, latest: false}.url(), {
+                html!("button", {
                     // .class(LINK_CLASS)
                     .class_signal("active", Route::signal().map(|x| matches!(x, Route::Catalogue{id: _, latest: _})))
+                    .event_preventable(|_:events::Click| {
+                        local_storage().delete("catalogue").unwrap();
+                        routing::go_to_url(Route::Catalogue{id: 0, latest: false}.url().as_str());
+                    })
                     .children(&mut [
                         svg!("svg", {
                             .attribute("xmlns", "http://www.w3.org/2000/svg")
