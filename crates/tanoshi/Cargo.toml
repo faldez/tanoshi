@@ -9,7 +9,7 @@ license = "MIT"
 
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib" }
-tanoshi-vm = { path = "../tanoshi-vm" }
+tanoshi-vm = { path = "../tanoshi-vm", default-features = false }
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1.5"
 serde = { version = "1.0", features = ["derive"] }

@@ -7,6 +7,8 @@ use tokio::{
     task::JoinHandle,
     time::Instant,
 };
+#[cfg(feature = "compiler")]
+use wasmer::Target;
 use wasmer::{imports, ChainableNamedResolver, Function, Instance, Module, Store, WasmerEnv};
 
 use wasmer_wasi::{Pipe, WasiEnv, WasiState};
@@ -60,57 +62,53 @@ impl ExtensionProxy {
         Ok(Arc::new(ExtensionProxy { instance, env }))
     }
 
-    #[cfg(not(feature = "disable-compiler"))]
-    fn init_store() -> Store {
-        #[cfg(feature = "cranelift")]
-        let compiler = wasmer_compiler_cranelift::Cranelift::new();
-        #[cfg(all(feature = "llvm", not(feature = "cranelift")))]
+    #[cfg(feature = "compiler")]
+    fn init_store(target: Target) -> Store {
         let compiler = wasmer_compiler_llvm::LLVM::new();
 
-        #[cfg(feature = "universal")]
-        let engine = wasmer::Universal::new(compiler).engine();
-        #[cfg(all(feature = "dylib", not(feature = "universal")))]
-        let engine = wasmer_engine_dylib::Dylib::new(compiler).engine();
+        let engine = wasmer_engine_dylib::Dylib::new(compiler)
+            .target(target)
+            .engine();
 
         Store::new(&engine)
     }
 
     fn init_store_headless() -> Store {
-        #[cfg(feature = "dylib")]
         let engine = wasmer_engine_dylib::Dylib::headless().engine();
-        #[cfg(feature = "universal")]
-        let engine = wasmer::Universal::headless().engine();
 
         Store::new(&engine)
     }
 
-    #[cfg(not(feature = "disable-compiler"))]
-    pub fn compile_from_file<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(feature = "compiler")]
+    pub fn compile_from_file<P: AsRef<Path>>(
+        path: P,
+        target: Target,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let wasm_bytes = std::fs::read(&path)?;
 
         let output = std::path::PathBuf::new()
             .join(&path)
-            .with_extension("tanoshi");
-        Self::compile(&wasm_bytes, output)?;
+            .with_extension(format!("{}.tanoshi", target.triple()));
+        Self::compile(&wasm_bytes, output, target)?;
 
-        std::fs::remove_file(path)?;
         Ok(())
     }
 
-    #[cfg(not(feature = "disable-compiler"))]
+    #[cfg(feature = "compiler")]
     pub fn compile<P: AsRef<Path>>(
         wasm_bytes: &[u8],
         output: P,
+        target: Target,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let store = Self::init_store();
+        let store = Self::init_store(target);
 
         debug!("compiling extension");
         let module = Module::new(&store, wasm_bytes)?;
         debug!("done");
 
-        debug!("remove wasm file");
         Ok(module.serialize_to_file(output)?)
     }
+
     fn call<T>(&self, name: &str) -> Result<T, Box<dyn std::error::Error>>
     where
         T: DeserializeOwned,
@@ -199,7 +197,7 @@ pub async fn load<P: AsRef<Path>>(
         }
     }
 
-    #[cfg(not(feature = "disable-compiler"))]
+    #[cfg(feature = "compiler")]
     compile(&path).await?;
 
     for entry in std::fs::read_dir(&path)?
@@ -221,8 +219,28 @@ pub async fn load<P: AsRef<Path>>(
     Ok(())
 }
 
-#[cfg(not(feature = "disable-compiler"))]
+#[cfg(feature = "compiler")]
 pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
+    compile_with_target(path, env!("TARGET"), true).await?;
+
+    Ok(())
+}
+
+#[cfg(feature = "compiler")]
+pub async fn compile_with_target<P: AsRef<Path>>(
+    path: P,
+    triple: &str,
+    remove_wasm: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use std::str::FromStr;
+    use wasmer::{CpuFeature, RuntimeError, Triple};
+
+    info!("compile wasm for {}", triple);
+
+    let triple = Triple::from_str(triple).map_err(|error| RuntimeError::new(error.to_string()))?;
+    let cpu_feature = CpuFeature::set();
+    let target = Target::new(triple, cpu_feature);
+
     match std::fs::read_dir(&path) {
         Ok(_) => {}
         Err(_) => {
@@ -237,7 +255,12 @@ pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::
     {
         let path = entry.path();
         info!("found wasm file at {:?}", path.clone());
-        ExtensionProxy::compile_from_file(path).map_err(|e| format!("{}", e))?;
+        ExtensionProxy::compile_from_file(&path, target.clone()).map_err(|e| format!("{}", e))?;
+
+        if remove_wasm {
+            debug!("remove wasm file");
+            std::fs::remove_file(path)?;
+        }
     }
 
     Ok(())
@@ -258,9 +281,9 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                     extension_map.insert(source_id, (source, proxy));
                 }
                 Command::Load(path) => {
-                    info!("load plugin from {:?}", path.clone());
+                    info!("load plugin from {:?}", path);
                     let now = Instant::now();
-                    match ExtensionProxy::load(&store, path) {
+                    match ExtensionProxy::load(&store, &path) {
                         Ok(proxy) => {
                             let source = proxy.detail();
                             info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
@@ -270,6 +293,11 @@ async fn thread(extension_receiver: UnboundedReceiver<Command>) {
                             error!("error load extension: {}", e);
                         }
                     }
+                    info!(
+                        "Extension {} loaded in {:?} ms",
+                        path,
+                        now.elapsed().as_millis()
+                    );
                 }
                 Command::Unload(source_id) => {
                     extension_map.remove(&source_id);
@@ -339,12 +367,10 @@ fn process<F, T>(
     match extension_map.get(&source_id) {
         Some(proxy) => {
             let (_, proxy) = proxy.clone();
-            tokio::spawn(async move {
-                let res = f(proxy);
-                if tx.send(res).is_err() {
-                    error!("[process] receiver dropped");
-                }
-            });
+            let res = f(proxy);
+            if tx.send(res).is_err() {
+                error!("[process] receiver dropped");
+            }
         }
         None => {
             error!("extension with id {} not found", source_id);

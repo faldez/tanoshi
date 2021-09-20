@@ -10,8 +10,8 @@ readme = "README.md"
 exclude = [".github/*"]
 
 [features]
-default = []
-disable-compiler = ["tanoshi-vm/disable-compiler"]
+default = ["tanoshi-vm/compiler"]
+disable-compiler = []
 
 [dependencies]
 tanoshi-lib = { path = "../tanoshi-lib", version = "0.25.1" }

@@ -20,7 +20,7 @@ struct Opts {
 #[derive(Clap)]
 enum SubCommand {
     #[cfg(not(feature = "disable-compiler"))]
-    Compile,
+    Compile(CompileOption),
     GenerateJson,
     Test(TestOption),
 }
@@ -29,6 +29,14 @@ enum SubCommand {
 struct TestOption {
     #[clap(long)]
     selector: Option<String>,
+}
+
+#[derive(Clap)]
+struct CompileOption {
+    #[clap(long)]
+    target: String,
+    #[clap(long)]
+    remove_wasm: bool,
 }
 
 #[tokio::main]
@@ -43,20 +51,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let (_, extension_tx) = vm::start();
-    #[cfg(not(feature = "disable-compiler"))]
-    if !matches!(opts.subcmd, SubCommand::Compile) {
+    if !matches!(opts.subcmd, SubCommand::Compile(_)) {
         vm::load(&extension_path, extension_tx.clone()).await?;
     }
 
-    #[cfg(feature = "disable-compiler")]
-    vm::load(&extension_path, extension_tx.clone()).await?;
-
-    let extension_bus = ExtensionBus::new("target/wasm32-wasi/release".to_string(), extension_tx);
+    let extension_bus = ExtensionBus::new(extension_path.clone(), extension_tx);
 
     match opts.subcmd {
-        #[cfg(not(feature = "disable-compiler"))]
-        SubCommand::Compile => {
-            vm::compile(&extension_path).await?;
+        SubCommand::Compile(opts) => {
+            // let triples = [
+            //     "x86_64-apple-darwin",
+            //     "x86_64-pc-windows-msvc",
+            //     "x86_64-unknown-linux-gnu",
+            //     "aarch64-unknown-linux-gnu",
+            // ];
+            vm::compile_with_target(&extension_path, &opts.target, opts.remove_wasm).await?;
         }
         SubCommand::GenerateJson => {
             generate::generate_json(extension_bus).await?;

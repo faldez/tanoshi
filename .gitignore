@@ -9,3 +9,4 @@ config.yml
 *.db-shm
 *.db-wal
 node_modules
+extensions/

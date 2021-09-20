@@ -174,8 +174,9 @@ impl SourceMutationRoot {
             return Err("source installed, use updateSource to update".into());
         }
 
-        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
-            .to_string();
+        // let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+        //     .to_string();
+        let url = "https://faldez.github.io/tanoshi-extensions".to_string();
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let source: SourceIndex = source_indexes
             .iter()
@@ -184,8 +185,9 @@ impl SourceMutationRoot {
             .clone();
 
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/{}",
-            source.path,
+            "https://faldez.github.io/tanoshi-extensions/library/{}.{}.tanoshi",
+            source.name,
+            env!("TARGET")
         );
 
         let raw = reqwest::get(url).await?.bytes().await?;
@@ -216,8 +218,10 @@ impl SourceMutationRoot {
         let extensions = ctx.extensions.clone();
         extensions.exist(source_id).await?;
 
-        let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
-            .to_string();
+        // let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+        //     .to_string();
+
+        let url = "https://faldez.github.io/tanoshi-extensions".to_string();
 
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
         let source: SourceIndex = source_indexes
@@ -231,8 +235,9 @@ impl SourceMutationRoot {
         }
 
         let url = format!(
-            "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/{}",
-            source.path,
+            "https://faldez.github.io/tanoshi-extensions/library/{}.{}.tanoshi",
+            source.name,
+            env!("TARGET")
         );
         let raw = reqwest::get(url).await?.bytes().await?;
 

@@ -191,8 +191,11 @@ impl Worker {
         }
 
         let available_sources_map = {
-            let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
-                .to_string();
+            // let url = "https://raw.githubusercontent.com/faldez/tanoshi-extensions/repo/index.json"
+            //     .to_string();
+
+            let url = "https://faldez.github.io/tanoshi-extensions".to_string();
+
             let available_sources = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
             let mut available_sources_map = HashMap::new();
             for source in available_sources {
