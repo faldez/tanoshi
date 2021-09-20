@@ -34,3 +34,6 @@ pub use modal::*;
 
 mod chapter_settings;
 pub use chapter_settings::*;
+
+mod library_settings;
+pub use library_settings::*;
