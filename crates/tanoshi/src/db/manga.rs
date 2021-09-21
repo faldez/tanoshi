@@ -1,6 +1,7 @@
 use super::model::{Chapter, Manga, ReadProgress, UserMangaLibrary};
 use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
+use chrono::NaiveDateTime;
 use sqlx::sqlite::{SqliteArguments, SqlitePool};
 use sqlx::{Arguments, Row};
 use tokio_stream::StreamExt;
@@ -706,6 +707,25 @@ impl Db {
             .rows_affected();
 
         Ok(rows_affected)
+    }
+
+    pub async fn get_last_read_at_by_user_id_and_manga_id(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+    ) -> Result<Option<NaiveDateTime>> {
+        let row = sqlx::query(
+            "SELECT read_at FROM (SELECT MAX(user_history.read_at) as read_at FROM chapter
+            JOIN user_history ON user_history.chapter_id = chapter.id AND user_history.user_id = ?
+            WHERE chapter.manga_id = ?)
+            WHERE read_at IS NOT NULL",
+        )
+        .bind(user_id)
+        .bind(manga_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| r.get::<chrono::NaiveDateTime, _>(0)))
     }
 
     pub async fn get_chapter_by_id(&self, id: i64) -> Result<Chapter> {

@@ -44,6 +44,7 @@ type Manga {
   isFavorite: Boolean!
   dateAdded: NaiveDateTime!
   unreadChapterCount: Int!
+  lastReadAt: NaiveDateTime
   source: Source!
   chapters(
     # refresh data from source

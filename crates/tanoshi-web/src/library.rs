@@ -227,8 +227,18 @@ impl Library {
             .future(library.library_settings.sort.signal_cloned().for_each(clone!(library => move |sort| {
                 let mut covers = library.cover_list.lock_ref().to_vec();
                 covers.sort_by(|a, b| match sort {
-                    LibrarySort { order: LibraryOrder::Asc, .. } => a.title.partial_cmp(&b.title).unwrap_or(std::cmp::Ordering::Equal),
-                    LibrarySort { order: LibraryOrder::Desc, ..} => b.title.partial_cmp(&a.title).unwrap_or(std::cmp::Ordering::Equal),
+                    LibrarySort { by: LibrarySortBy::Alphabetical, order: LibraryOrder::Asc } => a.title.partial_cmp(&b.title).unwrap_or(std::cmp::Ordering::Equal),
+                    LibrarySort { by: LibrarySortBy::Alphabetical, order: LibraryOrder::Desc } => b.title.partial_cmp(&a.title).unwrap_or(std::cmp::Ordering::Equal),
+                    LibrarySort { by: LibrarySortBy::RecentlyRead, order: LibraryOrder::Asc} => {
+                        let a = a.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        a.cmp(&b)
+                    },
+                    LibrarySort { by: LibrarySortBy::RecentlyRead, order: LibraryOrder::Desc} => {
+                        let a = a.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        let b = b.last_read_at.unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
+                        b.cmp(&a)
+                    },
                 });
                 library.cover_list.lock_mut().replace_cloned(covers);
 

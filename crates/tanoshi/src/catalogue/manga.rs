@@ -1,6 +1,7 @@
 use super::{Chapter, Source};
 use crate::{context::GlobalContext, user, utils};
 use async_graphql::{Context, Object, Result};
+use chrono::NaiveDateTime;
 
 /// A type represent manga details, normalized across source
 #[derive(Debug)]
@@ -15,7 +16,6 @@ pub struct Manga {
     pub path: String,
     pub cover_url: String,
     pub date_added: chrono::NaiveDateTime,
-    pub unread_chapter_count: i64,
 }
 
 impl From<&tanoshi_lib::data::Manga> for Manga {
@@ -37,7 +37,6 @@ impl From<tanoshi_lib::data::Manga> for Manga {
             path: m.path,
             cover_url: m.cover_url,
             date_added: chrono::NaiveDateTime::from_timestamp(0, 0),
-            unread_chapter_count: 0,
         }
     }
 }
@@ -55,7 +54,6 @@ impl From<crate::db::model::Manga> for Manga {
             path: val.path,
             cover_url: val.cover_url,
             date_added: val.date_added,
-            unread_chapter_count: 0,
         }
     }
 }
@@ -175,6 +173,15 @@ impl Manga {
             .await?;
 
         Ok(unread_chapter_count)
+    }
+
+    async fn last_read_at(&self, ctx: &Context<'_>) -> Result<Option<NaiveDateTime>> {
+        let user = user::get_claims(ctx)?;
+        let mangadb = &ctx.data::<GlobalContext>()?.mangadb;
+
+        Ok(mangadb
+            .get_last_read_at_by_user_id_and_manga_id(user.sub, self.id)
+            .await?)
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {

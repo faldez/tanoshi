@@ -85,6 +85,7 @@ pub async fn fetch_manga_from_source(
                 item.title.clone(),
                 item.cover_url.clone(),
                 item.is_favorite,
+                None,
                 0,
             )
         })
@@ -117,6 +118,9 @@ pub async fn fetch_manga_from_favorite(refresh: bool) -> Result<Vec<Cover>, Box<
                 item.title.clone(),
                 item.cover_url.clone(),
                 false,
+                item.last_read_at.as_ref().and_then(|read_at| {
+                    chrono::NaiveDateTime::parse_from_str(&read_at, "%Y-%m-%dT%H:%M:%S%.f").ok()
+                }),
                 item.unread_chapter_count,
             )
         })

@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use dominator::{html, link, Dom};
 use futures_signals::signal::{self, Mutable, SignalExt};
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,7 @@ pub struct Cover {
     pub title: String,
     pub cover_url: String,
     pub is_favorite: Mutable<bool>,
+    pub last_read_at: Option<NaiveDateTime>,
     pub unread_chapter_count: i64,
 }
 
@@ -24,6 +26,7 @@ impl Cover {
         title: String,
         cover_url: String,
         is_favorite: bool,
+        last_read_at: Option<NaiveDateTime>,
         unread_chapter_count: i64,
     ) -> Self {
         let cover_url = proxied_image_url(&cover_url);
@@ -34,6 +37,7 @@ impl Cover {
             title,
             cover_url,
             is_favorite: Mutable::new(is_favorite),
+            last_read_at,
             unread_chapter_count,
         }
     }
