@@ -9,8 +9,6 @@ FROM faldez/tanoshi-builder:latest AS builder
 COPY --from=planner /app/recipe.json recipe.json
 ARG BUILD_WEB
 ENV BUILD_WEB=${BUILD_WEB:-true}
-RUN if [ x${BUILD_WEB} = x"true" ]; then echo $BUILD_WEB; cargo install trunk wasm-bindgen-cli; fi
-RUN if [ x${BUILD_WEB} = x"true" ]; then rustup target add wasm32-unknown-unknown; fi
 RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY crates/ /app/crates/
