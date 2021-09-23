@@ -1,9 +1,12 @@
-use crate::context::GlobalContext;
+use crate::db::UserDatabase;
 use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;
 
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone)]
+pub struct Secret(pub String);
 
 /// Our claims struct, it needs to derive `Serialize` and/or `Deserialize`
 #[derive(Debug, Serialize, Deserialize)]
@@ -69,8 +72,7 @@ impl UserRoot {
         #[graphql(desc = "password")] password: String,
     ) -> Result<String> {
         let user = ctx
-            .data_unchecked::<GlobalContext>()
-            .userdb
+            .data::<UserDatabase>()?
             .get_user_by_username(username)
             .await?;
 
@@ -78,7 +80,7 @@ impl UserRoot {
             return Err("Wrong username or password".into());
         }
 
-        let secret = ctx.data::<GlobalContext>()?.secret.clone();
+        let secret = ctx.data::<Secret>()?;
         let token = jsonwebtoken::encode(
             &Header::default(),
             &Claims {
@@ -87,7 +89,7 @@ impl UserRoot {
                 is_admin: user.is_admin,
                 exp: 10000000000,
             },
-            &EncodingKey::from_secret(secret.as_bytes()),
+            &EncodingKey::from_secret(secret.0.as_bytes()),
         )?;
 
         Ok(token)
@@ -99,7 +101,7 @@ impl UserRoot {
             return Err("Forbidden".into());
         };
 
-        let users = ctx.data::<GlobalContext>()?.userdb.get_users().await?;
+        let users = ctx.data::<UserDatabase>()?.get_users().await?;
 
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
@@ -107,8 +109,7 @@ impl UserRoot {
     async fn me(&self, ctx: &Context<'_>) -> Result<User> {
         let user = get_claims(ctx)?;
         let user = ctx
-            .data::<GlobalContext>()?
-            .userdb
+            .data::<UserDatabase>()?
             .get_user_by_id(user.sub)
             .await
             .map_err(|_| "user not exist, please relogin")?;
@@ -129,7 +130,7 @@ impl UserMutationRoot {
         #[graphql(desc = "password")] password: String,
         #[graphql(desc = "role", default = false)] is_admin: bool,
     ) -> Result<i64> {
-        let userdb = &ctx.data::<GlobalContext>()?.userdb;
+        let userdb = ctx.data::<UserDatabase>()?;
 
         let user_count = userdb.get_users_count().await?;
 
@@ -171,7 +172,7 @@ impl UserMutationRoot {
     ) -> Result<u64> {
         let claims = get_claims(ctx)?;
 
-        let userdb = &ctx.data::<GlobalContext>()?.userdb;
+        let userdb = ctx.data::<UserDatabase>()?;
 
         let user = userdb.get_user_by_id(claims.sub).await?;
 
@@ -198,7 +199,7 @@ impl UserMutationRoot {
         debug!("update_profile");
         let claims = get_claims(ctx)?;
 
-        let userdb = &ctx.data::<GlobalContext>()?.userdb;
+        let userdb = ctx.data::<UserDatabase>()?;
         let mut user = userdb.get_user_by_id(claims.sub).await?;
         debug!("update_profile");
 
@@ -217,10 +218,10 @@ pub fn get_claims(ctx: &Context<'_>) -> Result<Claims> {
     let token = ctx
         .data::<String>()
         .map_err(|_| "token not exists, please login")?;
-    let secret = ctx.data::<GlobalContext>()?.secret.clone();
+    let secret = ctx.data::<Secret>()?;
     let claims = jsonwebtoken::decode::<Claims>(
         token,
-        &DecodingKey::from_secret(secret.as_bytes()),
+        &DecodingKey::from_secret(secret.0.as_bytes()),
         &Validation::default(),
     )
     .map_err(|e| format!("failed to decode token, reason: {}", e))?;

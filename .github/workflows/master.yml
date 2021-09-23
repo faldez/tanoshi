@@ -69,7 +69,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: true
           tags: faldez/tanoshi:master
           build-args: |
             BUILD_WEB=false

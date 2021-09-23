@@ -3,10 +3,11 @@ use std::{
     str::FromStr,
 };
 
-use crate::{context::GlobalContext, user};
+use crate::user;
 use async_graphql::{Context, Json, Object, Result, SimpleObject};
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{FilterField, Version};
+use tanoshi_vm::prelude::ExtensionBus;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SourceIndex {
@@ -90,7 +91,7 @@ impl Source {
     }
 
     async fn filters(&self, ctx: &Context<'_>) -> Result<Option<Filters>> {
-        let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
+        let extensions = ctx.data::<ExtensionBus>()?;
         if let Some(res) = extensions.filters(self.id).await? {
             Ok(Some(res.into()))
         } else {
@@ -116,7 +117,7 @@ impl SourceRoot {
         };
 
         let sources = {
-            let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
+            let extensions = ctx.data::<ExtensionBus>()?;
             let installed_sources = extensions.list().await?;
 
             let mut sources: Vec<Source> = vec![];
@@ -139,7 +140,7 @@ impl SourceRoot {
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
         let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
-        let extensions = ctx.data::<GlobalContext>()?.extensions.clone();
+        let extensions = ctx.data::<ExtensionBus>()?;
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
@@ -151,7 +152,7 @@ impl SourceRoot {
     }
 
     async fn source(&self, ctx: &Context<'_>, source_id: i64) -> Result<Source> {
-        let exts = ctx.data::<GlobalContext>()?.extensions.clone();
+        let exts = ctx.data::<ExtensionBus>()?;
         Ok(exts.detail(source_id).await?.into())
     }
 }
@@ -166,8 +167,7 @@ impl SourceMutationRoot {
             return Err("Forbidden".into());
         }
 
-        let ctx = ctx.data::<GlobalContext>()?;
-        let extensions = ctx.extensions.clone();
+        let extensions = ctx.data::<ExtensionBus>()?;
         if extensions.exist(source_id).await? {
             return Err("source installed, use updateSource to update".into());
         }
@@ -197,8 +197,7 @@ impl SourceMutationRoot {
             return Err("Forbidden".into());
         }
 
-        let ctx = ctx.data::<GlobalContext>()?;
-        let extensions = ctx.extensions.clone();
+        let extensions = ctx.data::<ExtensionBus>()?;
 
         extensions.unload(source_id).await?;
 
@@ -210,8 +209,7 @@ impl SourceMutationRoot {
             return Err("Forbidden".into());
         }
 
-        let ctx = ctx.data::<GlobalContext>()?;
-        let extensions = ctx.extensions.clone();
+        let extensions = ctx.data::<ExtensionBus>()?;
         extensions.exist(source_id).await?;
 
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();

@@ -6,8 +6,9 @@ pub use manga::Manga;
 
 mod chapter;
 pub use chapter::Chapter;
+use tanoshi_vm::prelude::ExtensionBus;
 
-use crate::context::GlobalContext;
+use crate::db::MangaDatabase;
 
 use async_graphql::{Context, Enum, Object, Result};
 use tanoshi_lib::prelude::Param;
@@ -48,9 +49,8 @@ impl CatalogueRoot {
         let sort_by = sort_by.map(|s| s.into());
         let sort_order = sort_order.map(|s| s.into());
 
-        let ctx = ctx.data::<GlobalContext>()?;
+        let extensions = ctx.data::<ExtensionBus>()?;
         let fetched_manga = {
-            let extensions = ctx.extensions.clone();
             extensions
                 .get_manga_list(
                     source_id,
@@ -78,14 +78,13 @@ impl CatalogueRoot {
         #[graphql(desc = "source id")] source_id: i64,
         #[graphql(desc = "path to manga in source")] path: String,
     ) -> Result<Manga> {
-        let ctx = ctx.data::<GlobalContext>()?;
+        let db = ctx.data::<MangaDatabase>()?;
 
-        let db = ctx.mangadb.clone();
         let manga = if let Ok(manga) = db.get_manga_by_source_path(source_id, &path).await {
             manga
         } else {
             let mut m: crate::db::model::Manga = {
-                let extensions = ctx.extensions.clone();
+                let extensions = ctx.data::<ExtensionBus>()?;
                 extensions.get_manga_info(source_id, path).await?.into()
             };
 
@@ -102,12 +101,11 @@ impl CatalogueRoot {
         #[graphql(desc = "manga id")] id: i64,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Manga> {
-        let ctx = ctx.data::<GlobalContext>()?;
-        let db = ctx.mangadb.clone();
+        let db = ctx.data::<MangaDatabase>()?;
         let manga = db.get_manga_by_id(id).await?;
         if refresh {
             let mut m: crate::db::model::Manga = {
-                let extensions = ctx.extensions.clone();
+                let extensions = ctx.data::<ExtensionBus>()?;
                 extensions
                     .get_manga_info(manga.source_id, manga.path)
                     .await?
@@ -128,7 +126,7 @@ impl CatalogueRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
     ) -> Result<Chapter> {
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let db = ctx.data::<MangaDatabase>()?;
         Ok(db.get_chapter_by_id(id).await?.into())
     }
 }

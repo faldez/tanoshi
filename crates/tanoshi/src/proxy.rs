@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use serde::Deserialize;
-use std::convert::Infallible;
+use std::{convert::Infallible, io::Read};
 use warp::{filters::BoxedFilter, hyper::Response, Filter, Reply};
 
 use crate::utils;
@@ -11,8 +11,8 @@ pub struct Image {
 }
 
 pub fn proxy(secret: String) -> BoxedFilter<(impl Reply,)> {
-    warp::path!("image" / String)
-        .and(warp::get())
+    warp::path("image")
+        .and(warp::path::param())
         .and(with_secret(secret))
         .and_then(get_image)
         .boxed()
@@ -34,23 +34,35 @@ pub async fn get_image(url: String, secret: String) -> Result<impl warp::Reply, 
         }
     };
     debug!("get image from {}", url);
-    match url {
-        url if url.starts_with("http") => Ok(get_image_from_url(url).await?),
-        url if !url.is_empty() => Ok(get_image_from_file(url).await?),
-        _ => Ok(empty_response(400)),
+
+    let content_type = mime_guess::from_path(&url)
+        .first_or_octet_stream()
+        .to_string();
+
+    let res = match url {
+        url if url.starts_with("http") => get_image_from_url(url).await,
+        url if !url.is_empty() => get_image_from_file(url).await,
+        _ => Err(400),
+    };
+
+    match res {
+        Ok(bytes) => Ok(warp::http::Response::builder()
+            .header("Content-Type", content_type)
+            .header("Content-Length", bytes.len())
+            .header("Cache-Control", "max-age=315360000")
+            .body(bytes)
+            .unwrap()),
+        Err(status) => Ok(empty_response(status)),
     }
 }
 
-pub async fn get_image_from_file(file: String) -> Result<Response<Bytes>, Infallible> {
+pub async fn get_image_from_file(file: String) -> Result<Bytes, u16> {
     let file = std::path::PathBuf::from(file);
     // if file is already a file, serve it
     if file.is_file() {
         match std::fs::read(file) {
-            Ok(buf) => Ok(warp::http::Response::builder()
-                .status(200)
-                .body(Bytes::from(buf))
-                .unwrap()),
-            Err(_) => Ok(empty_response(500)),
+            Ok(buf) => Ok(Bytes::from(buf)),
+            Err(_) => Err(500),
         }
     } else {
         // else if its combination of archive files and path inside the archive
@@ -58,11 +70,8 @@ pub async fn get_image_from_file(file: String) -> Result<Response<Bytes>, Infall
         let filename = file.parent().unwrap().to_str().unwrap();
         let path = file.file_name().unwrap().to_str().unwrap();
         match libarchive_rs::extract_archive_file(filename, path) {
-            Ok(buf) => Ok(warp::http::Response::builder()
-                .status(200)
-                .body(Bytes::from(buf))
-                .unwrap()),
-            Err(_) => Ok(empty_response(400)),
+            Ok(buf) => Ok(Bytes::from(buf)),
+            Err(_) => Err(400),
         }
     }
 }
@@ -74,60 +83,26 @@ fn empty_response(status: u16) -> Response<Bytes> {
         .unwrap_or_default()
 }
 
-pub async fn get_image_from_url(url: String) -> Result<Response<Bytes>, Infallible> {
+pub async fn get_image_from_url(url: String) -> Result<Bytes, u16> {
     debug!("get image from {}", url);
     if url.is_empty() {
-        return Ok(empty_response(400));
+        return Err(400);
     }
 
-    let res = match reqwest::get(&url).await {
-        Ok(res) => res,
-        Err(e) => {
-            error!("error fetch image, reason: {}", e);
-            return Ok(empty_response(500));
-        }
-    };
-
-    let content_type = res
-        .headers()
-        .into_iter()
-        .find_map(|(header_name, header_value)| {
-            if header_name.to_string().to_lowercase().eq("content-type") {
-                header_value.to_str().ok()
-            } else {
-                None
+    let res = match ureq::get(&url).call() {
+        Ok(res) => {
+            let mut bytes = Vec::new();
+            let mut reader = res.into_reader();
+            if let Err(_) = reader.read_to_end(&mut bytes) {
+                return Err(500);
             }
-        });
-
-    let content_type = match content_type {
-        Some(content_type) => content_type.to_string(),
-        None => match url.split('.').rev().take(1).next() {
-            Some(ext) => ["image", ext].join("/"),
-            None => "application/octet-stream".to_string(),
-        },
-    };
-
-    let bytes = match res.bytes().await {
-        Ok(bytes) => bytes,
+            bytes
+        }
         Err(e) => {
             error!("error fetch image, reason: {}", e);
-            return Ok(empty_response(500));
+            return Err(500);
         }
     };
 
-    match warp::http::Response::builder()
-        .header("Content-Type", content_type)
-        .header("Content-Length", bytes.len())
-        .header("Cache-Control", "max-age=315360000")
-        .body(bytes)
-    {
-        Ok(res) => Ok(res),
-        Err(e) => {
-            error!("error create response, reason: {}", e);
-            Ok(warp::http::Response::builder()
-                .status(500)
-                .body(bytes::Bytes::new())
-                .unwrap_or_default())
-        }
-    }
+    Ok(Bytes::from(res))
 }

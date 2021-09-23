@@ -1,7 +1,12 @@
 use super::Manga;
-use crate::{context::GlobalContext, user, utils};
+use crate::{
+    db::MangaDatabase,
+    user::{self, Secret},
+    utils,
+};
 use async_graphql::{Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
+use tanoshi_vm::prelude::ExtensionBus;
 
 #[derive(Debug, Clone, SimpleObject)]
 pub struct ReadProgress {
@@ -144,8 +149,7 @@ impl Chapter {
     async fn read_progress(&self, ctx: &Context<'_>) -> Result<Option<ReadProgress>> {
         let user = user::get_claims(ctx)?;
         let progress = ctx
-            .data_unchecked::<GlobalContext>()
-            .mangadb
+            .data_unchecked::<MangaDatabase>()
             .get_user_history_progress(user.sub, self.id)
             .await?
             .map(|r| r.into());
@@ -163,8 +167,7 @@ impl Chapter {
 
     async fn manga(&self, ctx: &Context<'_>) -> Result<Manga> {
         Ok(ctx
-            .data_unchecked::<GlobalContext>()
-            .mangadb
+            .data::<MangaDatabase>()?
             .get_manga_by_id(self.manga_id)
             .await?
             .into())
@@ -175,15 +178,14 @@ impl Chapter {
         ctx: &Context<'_>,
         #[graphql(desc = "fetch from source", default = false)] _fetch: bool,
     ) -> Result<Vec<String>> {
-        let mangadb = &ctx.data::<GlobalContext>()?.mangadb;
+        let mangadb = &ctx.data::<MangaDatabase>()?;
 
         let pages = if let Ok(pages) = mangadb.get_pages_by_chapter_id(self.id).await {
             info!("return pages from db");
             pages
         } else {
             let pages = ctx
-                .data::<GlobalContext>()?
-                .extensions
+                .data::<ExtensionBus>()?
                 .get_pages(self.source_id, self.path.clone())
                 .await?;
 
@@ -193,10 +195,10 @@ impl Chapter {
             pages
         };
 
-        let secret = ctx.data::<GlobalContext>()?.secret.clone();
+        let secret = ctx.data::<Secret>()?;
         let pages = pages
             .iter()
-            .map(|page| utils::encrypt_url(&secret, page).unwrap_or_default())
+            .map(|page| utils::encrypt_url(&secret.0, page).unwrap_or_default())
             .collect();
 
         Ok(pages)

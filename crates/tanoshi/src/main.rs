@@ -5,7 +5,6 @@ extern crate argon2;
 mod assets;
 mod catalogue;
 mod config;
-mod context;
 mod db;
 mod library;
 mod local;
@@ -20,18 +19,19 @@ mod worker;
 
 use crate::{
     config::Config,
-    context::GlobalContext,
     notifier::pushover::Pushover,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
+    user::Secret,
 };
 use clap::Clap;
 use futures::future::OptionFuture;
 use tanoshi_vm::{bus::ExtensionBus, vm};
 
 use async_graphql::{
-    extensions::ApolloTracing,
+    // extensions::ApolloTracing,
     http::{playground_source, GraphQLPlaygroundConfig},
-    EmptySubscription, Schema,
+    EmptySubscription,
+    Schema,
 };
 use async_graphql_warp::{BadRequest, Response};
 use std::{convert::Infallible, sync::Arc};
@@ -106,14 +106,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         MutationRoot::default(),
         EmptySubscription::default(),
     )
-    .extension(ApolloTracing)
-    .data(GlobalContext::new(
-        userdb,
-        mangadb,
-        config.secret.clone(),
-        extension_bus,
-        worker_tx,
-    ))
+    // .extension(ApolloTracing)
+    .data(userdb)
+    .data(mangadb)
+    .data(Secret(config.secret.clone()))
+    .data(extension_bus)
+    .data(worker_tx)
     .finish();
 
     let graphql_post = warp::header::optional::<String>("Authorization")

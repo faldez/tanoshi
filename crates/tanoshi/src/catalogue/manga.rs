@@ -1,7 +1,12 @@
 use super::{Chapter, Source};
-use crate::{context::GlobalContext, user, utils};
+use crate::{
+    db::MangaDatabase,
+    user::{self, Secret},
+    utils,
+};
 use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
+use tanoshi_vm::prelude::ExtensionBus;
 
 /// A type represent manga details, normalized across source
 #[derive(Debug)]
@@ -123,8 +128,8 @@ impl Manga {
     }
 
     async fn cover_url(&self, ctx: &Context<'_>) -> String {
-        if let Ok(ctx) = ctx.data::<GlobalContext>() {
-            match utils::encrypt_url(&ctx.secret, &self.cover_url) {
+        if let Ok(secret) = ctx.data::<Secret>() {
+            match utils::encrypt_url(&secret.0, &self.cover_url) {
                 Ok(encrypted_url) => {
                     return encrypted_url;
                 }
@@ -139,7 +144,7 @@ impl Manga {
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {
         let user = user::get_claims(ctx)?;
-        let mangadb = &ctx.data_unchecked::<GlobalContext>().mangadb;
+        let mangadb = ctx.data::<MangaDatabase>()?;
 
         let mut id = self.id;
         if id == 0 {
@@ -166,7 +171,7 @@ impl Manga {
 
     async fn unread_chapter_count(&self, ctx: &Context<'_>) -> Result<i64> {
         let user = user::get_claims(ctx)?;
-        let mangadb = &ctx.data::<GlobalContext>()?.mangadb;
+        let mangadb = ctx.data::<MangaDatabase>()?;
 
         let unread_chapter_count = mangadb
             .get_user_library_unread_chapter(user.sub, self.id)
@@ -177,7 +182,7 @@ impl Manga {
 
     async fn last_read_at(&self, ctx: &Context<'_>) -> Result<Option<NaiveDateTime>> {
         let user = user::get_claims(ctx)?;
-        let mangadb = &ctx.data::<GlobalContext>()?.mangadb;
+        let mangadb = ctx.data::<MangaDatabase>()?;
 
         Ok(mangadb
             .get_last_read_at_by_user_id_and_manga_id(user.sub, self.id)
@@ -185,8 +190,8 @@ impl Manga {
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
-        let ctx = ctx.data::<GlobalContext>()?;
-        let source = ctx.extensions.detail(self.source_id).await?;
+        let extensions = ctx.data::<ExtensionBus>()?;
+        let source = extensions.detail(self.source_id).await?;
         Ok(source.into())
     }
 
@@ -195,8 +200,7 @@ impl Manga {
         ctx: &Context<'_>,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Vec<Chapter>> {
-        let ctx = ctx.data::<GlobalContext>()?;
-        let db = ctx.mangadb.clone();
+        let db = ctx.data::<MangaDatabase>()?;
 
         if !refresh {
             if let Ok(chapters) = db.get_chapters_by_manga_id(self.id).await {
@@ -205,7 +209,7 @@ impl Manga {
         }
 
         let chapters: Vec<crate::db::model::Chapter> = ctx
-            .extensions
+            .data::<ExtensionBus>()?
             .get_chapters(self.source_id, self.path.clone())
             .await?
             .into_iter()
@@ -238,12 +242,12 @@ impl Manga {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
     ) -> Result<Chapter> {
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let db = ctx.data::<MangaDatabase>()?.clone();
         Ok(db.get_chapter_by_id(id).await?.into())
     }
 
     async fn next_chapter(&self, ctx: &Context<'_>) -> Result<Option<Chapter>> {
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let db = ctx.data::<MangaDatabase>()?.clone();
         let user = user::get_claims(ctx)?;
 
         let mut id = self.id;

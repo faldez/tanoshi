@@ -3368,6 +3368,7 @@ dependencies = [
  "teloxide",
  "tokio",
  "tokio-stream",
+ "ureq",
  "warp",
 ]
 

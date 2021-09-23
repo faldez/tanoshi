@@ -1,7 +1,7 @@
 use async_graphql::{Context, Object};
 use chrono::NaiveDateTime;
 
-use crate::{context::GlobalContext, utils};
+use crate::{user::Secret, utils};
 
 pub struct RecentChapter {
     pub manga_id: i64,
@@ -28,8 +28,8 @@ impl RecentChapter {
     }
 
     async fn cover_url(&self, ctx: &Context<'_>) -> String {
-        if let Ok(ctx) = ctx.data::<GlobalContext>() {
-            match utils::encrypt_url(&ctx.secret, &self.cover_url) {
+        if let Ok(secret) = ctx.data::<Secret>() {
+            match utils::encrypt_url(&secret.0, &self.cover_url) {
                 Ok(encrypted_url) => {
                     return encrypted_url;
                 }
@@ -79,8 +79,8 @@ impl RecentUpdate {
     }
 
     async fn cover_url(&self, ctx: &Context<'_>) -> String {
-        if let Ok(ctx) = ctx.data::<GlobalContext>() {
-            match utils::encrypt_url(&ctx.secret, &self.cover_url) {
+        if let Ok(secret) = ctx.data::<Secret>() {
+            match utils::encrypt_url(&secret.0, &self.cover_url) {
                 Ok(encrypted_url) => {
                     return encrypted_url;
                 }

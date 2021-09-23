@@ -26,16 +26,19 @@ struct ExtensionEnv {
 }
 
 pub struct ExtensionProxy {
-    instance: Instance,
-    env: ExtensionEnv,
+    path: PathBuf,
 }
 
 impl ExtensionProxy {
-    pub fn load<P: AsRef<Path>>(
-        store: &Store,
-        path: P,
-    ) -> Result<Arc<dyn Extension>, Box<dyn std::error::Error>> {
-        let module = unsafe { Module::deserialize_from_file(store, path)? };
+    pub fn new<P: AsRef<Path>>(path: P) -> Arc<dyn Extension> {
+        let path = PathBuf::new().join(path);
+        Arc::new(Self { path })
+    }
+
+    fn load(&self) -> Result<(Instance, ExtensionEnv), Box<dyn std::error::Error>> {
+        let instant = Instant::now();
+        let store = Self::init_store_headless();
+        let module = unsafe { Module::deserialize_from_file(&store, &self.path)? };
 
         let stdin = Pipe::new();
         let stdout = Pipe::new();
@@ -53,18 +56,18 @@ impl ExtensionProxy {
 
         let tanoshi = imports! {
             "tanoshi" => {
-                "host_http_request" => Function::new_native_with_env(store, env.clone(), host_http_request),
-                "host_debug" => Function::new_native_with_env(store, env.clone(), host_debug),
-                "host_error" => Function::new_native_with_env(store, env.clone(), host_error),
-                "host_info" => Function::new_native_with_env(store, env.clone(), host_info),
-                "host_trace" => Function::new_native_with_env(store, env.clone(), host_trace),
-                "host_warn" => Function::new_native_with_env(store, env.clone(), host_warn),
+                "host_http_request" => Function::new_native_with_env(&store, env.clone(), host_http_request),
+                "host_debug" => Function::new_native_with_env(&store, env.clone(), host_debug),
+                "host_error" => Function::new_native_with_env(&store, env.clone(), host_error),
+                "host_info" => Function::new_native_with_env(&store, env.clone(), host_info),
+                "host_trace" => Function::new_native_with_env(&store, env.clone(), host_trace),
+                "host_warn" => Function::new_native_with_env(&store, env.clone(), host_warn),
             }
         };
 
         let instance = Instance::new(&module, &tanoshi.chain_back(import_object))?;
-
-        Ok(Arc::new(ExtensionProxy { instance, env }))
+        debug!("extension loaded in {} ms", instant.elapsed().as_millis());
+        Ok((instance, env))
     }
 
     #[cfg(feature = "compiler")]
@@ -118,9 +121,10 @@ impl ExtensionProxy {
     where
         T: DeserializeOwned,
     {
-        let res = self.instance.exports.get_function(name)?;
+        let (instance, env) = self.load()?;
+        let res = instance.exports.get_function(name)?;
         res.call(&[])?;
-        let object_str = wasi_read(&self.env)?;
+        let object_str = wasi_read(&env)?;
         debug!("call {} => {}", name, object_str);
         Ok(ron::from_str(&object_str)?)
     }
@@ -130,12 +134,13 @@ impl ExtensionProxy {
         T: DeserializeOwned,
         U: Serialize + Debug,
     {
-        let res = self.instance.exports.get_function(name)?;
-        if let Err(e) = wasi_write(&self.env, &param) {
+        let (instance, env) = self.load()?;
+        let res = instance.exports.get_function(name)?;
+        if let Err(e) = wasi_write(&env, &param) {
             error!("error write to wasi: {}", e);
         }
         res.call(&[])?;
-        let object_str = wasi_read(&self.env)?;
+        let object_str = wasi_read(&env)?;
         debug!("call {}({:?}) => {}", name, param, object_str);
         Ok(ron::from_str(&object_str)?)
     }
@@ -225,39 +230,6 @@ pub async fn load<P: AsRef<Path>>(
     Ok(())
 }
 
-pub async fn reload<P: AsRef<Path>>(
-    path: P,
-    store: &Store,
-    extension_map: &mut BTreeMap<i64, (Source, Arc<dyn Extension>)>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let path = PathBuf::new().join(path);
-    for entry in std::fs::read_dir(&path)?
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(move |path| {
-            path.path()
-                .extension()
-                .map_or(false, |ext| ext == "tanoshi")
-        })
-    {
-        let path = entry.path();
-        info!("load plugin from {:?}", path.display());
-        let now = Instant::now();
-        match ExtensionProxy::load(store, &path) {
-            Ok(proxy) => {
-                let source = proxy.detail();
-                info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
-                extension_map.insert(source.id, (source, proxy));
-            }
-            Err(e) => {
-                error!("error load extension: {}", e);
-            }
-        }
-    }
-
-    Ok(())
-}
-
 #[cfg(feature = "compiler")]
 pub async fn compile<P: AsRef<Path>>(path: P) -> Result<(), Box<dyn std::error::Error>> {
     compile_with_target(path, env!("TARGET"), true).await?;
@@ -309,8 +281,6 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedRecei
     let mut recv = extension_receiver;
     let mut extension_map: BTreeMap<i64, (Source, Arc<dyn Extension>)> = BTreeMap::new();
 
-    let mut store = ExtensionProxy::init_store_headless();
-
     while let Some(cmd) = recv.recv().await {
         match cmd {
             Command::Insert(source_id, proxy) => {
@@ -320,18 +290,13 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedRecei
             Command::Load(path) => {
                 info!("load plugin from {:?}", path);
                 let now = Instant::now();
-                match ExtensionProxy::load(&store, &path) {
-                    Ok(proxy) => {
-                        let source = proxy.detail();
-                        info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
-                        extension_map.insert(source.id, (source, proxy));
-                    }
-                    Err(e) => {
-                        error!("error load extension: {}", e);
-                    }
-                }
+                let proxy = ExtensionProxy::new(&path);
+                let source = proxy.detail();
+                info!("loaded in {} ms: {:?}", now.elapsed().as_millis(), source);
+                extension_map.insert(source.id, (source, proxy));
             }
             Command::Unload(source_id, tx) => {
+                drop(extension_map.get_mut(&source_id));
                 let extension_path = if let Some((source, _)) = extension_map.get_mut(&source_id) {
                     PathBuf::new()
                         .join(&path)
@@ -341,24 +306,9 @@ async fn thread_main<P: AsRef<Path>>(path: P, extension_receiver: UnboundedRecei
                     continue;
                 };
 
-                // drop extension map
-                drop(extension_map);
-                // drop extension map
-                drop(store);
-
                 // remove the file
                 if let Err(e) = std::fs::remove_file(&extension_path) {
                     error!("error removing {}: {}", extension_path.display(), e);
-                }
-
-                // assign new extension map
-                extension_map = BTreeMap::new();
-                // initialize new store
-                store = ExtensionProxy::init_store_headless();
-
-                // reload all extension
-                if let Err(e) = reload(&path, &store, &mut extension_map).await {
-                    error!("error reloading extension: {}", e);
                 }
 
                 if tx.send(()).is_err() {

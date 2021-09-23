@@ -1,5 +1,5 @@
 use crate::catalogue::Manga;
-use crate::context::GlobalContext;
+use crate::db::{MangaDatabase, UserDatabase};
 use crate::user;
 use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{Context, Object, Result};
@@ -7,6 +7,7 @@ use chrono::{Local, NaiveDateTime};
 
 mod recent;
 pub use recent::{RecentChapter, RecentUpdate};
+use tanoshi_vm::prelude::ExtensionBus;
 
 #[derive(Default)]
 pub struct LibraryRoot;
@@ -19,14 +20,13 @@ impl LibraryRoot {
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Vec<Manga>> {
         let user = user::get_claims(ctx)?;
-        let ctx = ctx.data_unchecked::<GlobalContext>();
-        let manga = ctx.mangadb.get_library(user.sub).await?;
+        let db = ctx.data::<MangaDatabase>()?;
+        let manga = db.get_library(user.sub).await?;
 
         if refresh {
-            let db = &ctx.mangadb;
+            let extensions = ctx.data::<ExtensionBus>()?;
             for favorite_manga in manga.iter() {
                 let mut m: crate::db::model::Manga = {
-                    let extensions = ctx.extensions.clone();
                     extensions
                         .get_manga_info(favorite_manga.source_id, favorite_manga.path.clone())
                         .await?
@@ -50,7 +50,7 @@ impl LibraryRoot {
         last: Option<i32>,
     ) -> Result<Connection<String, RecentUpdate, EmptyFields, EmptyFields>> {
         let user = user::get_claims(ctx)?;
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let db = ctx.data::<MangaDatabase>()?;
         query(
             after,
             before,
@@ -140,7 +140,7 @@ impl LibraryRoot {
         last: Option<i32>,
     ) -> Result<Connection<String, RecentChapter, EmptyFields, EmptyFields>> {
         let user = user::get_claims(ctx)?;
-        let db = ctx.data_unchecked::<GlobalContext>().mangadb.clone();
+        let db = ctx.data::<MangaDatabase>()?;
         query(
             after,
             before,
@@ -246,8 +246,7 @@ impl LibraryMutationRoot {
     ) -> Result<u64> {
         let user = user::get_claims(ctx)?;
         match ctx
-            .data_unchecked::<GlobalContext>()
-            .mangadb
+            .data::<MangaDatabase>()?
             .insert_user_library(user.sub, manga_id)
             .await
         {
@@ -263,8 +262,7 @@ impl LibraryMutationRoot {
     ) -> Result<u64> {
         let user = user::get_claims(ctx)?;
         match ctx
-            .data_unchecked::<GlobalContext>()
-            .mangadb
+            .data::<MangaDatabase>()?
             .delete_user_library(user.sub, manga_id)
             .await
         {
@@ -281,8 +279,7 @@ impl LibraryMutationRoot {
     ) -> Result<u64> {
         let user = user::get_claims(ctx)?;
         match ctx
-            .data_unchecked::<GlobalContext>()
-            .mangadb
+            .data::<MangaDatabase>()?
             .update_page_read_at(user.sub, chapter_id, page)
             .await
         {
@@ -298,8 +295,7 @@ impl LibraryMutationRoot {
     ) -> Result<u64> {
         let user = user::get_claims(ctx)?;
         match ctx
-            .data::<GlobalContext>()?
-            .mangadb
+            .data::<MangaDatabase>()?
             .update_chapters_read_at(user.sub, &chapter_ids)
             .await
         {
@@ -315,8 +311,7 @@ impl LibraryMutationRoot {
     ) -> Result<u64> {
         let user = user::get_claims(ctx)?;
         match ctx
-            .data::<GlobalContext>()?
-            .mangadb
+            .data::<MangaDatabase>()?
             .delete_chapters_read_at(user.sub, &chapter_ids)
             .await
         {
