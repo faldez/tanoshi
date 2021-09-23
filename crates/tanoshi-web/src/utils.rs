@@ -99,7 +99,8 @@ impl AsyncLoader {
 }
 
 pub fn proxied_image_url(image_url: &str) -> String {
-    format!("/image/{}", image_url)
+    // format!("/image/{}", image_url)
+    image_url.to_string()
 }
 
 pub fn apply_theme(theme: Option<String>) {

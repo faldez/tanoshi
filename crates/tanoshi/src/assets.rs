@@ -1,78 +1,53 @@
-pub mod filter {
-    use super::static_files;
-    use warp::{filters::BoxedFilter, Filter, Reply};
+use std::convert::Infallible;
 
-    pub fn static_files() -> BoxedFilter<(impl Reply,)> {
-        serve().or(serve_index()).boxed()
-    }
+use axum::{
+    body::{Bytes, Full},
+    handler::get,
+    http::{header, Response, StatusCode, Uri},
+    response::{Html, IntoResponse},
+    routing::Router,
+};
 
-    fn serve_index() -> BoxedFilter<(impl Reply,)> {
-        warp::get()
-            .and(with_encoding())
-            .and_then(static_files::serve_index)
-            .boxed()
-    }
+use mime_guess;
+use rust_embed::RustEmbed;
 
-    fn serve() -> BoxedFilter<(impl Reply,)> {
-        warp::get()
-            .and(warp::path::tail())
-            .and(with_encoding())
-            .and_then(static_files::serve_tail)
-            .boxed()
-    }
-
-    fn with_encoding(
-    ) -> impl Filter<Extract = (static_files::Encoding,), Error = warp::reject::Rejection> + Clone
-    {
-        warp::header::header("accept-encoding").map(move |encoding: String| {
-            if encoding.is_empty() {
-                static_files::Encoding::None
-            } else if encoding.contains("br") {
-                static_files::Encoding::Br
-            } else if encoding.contains("gzip") {
-                static_files::Encoding::Gzip
-            } else {
-                static_files::Encoding::None
-            }
-        })
-    }
+pub async fn index_handler() -> impl IntoResponse {
+    static_handler("/index.html".parse::<Uri>().unwrap()).await
 }
 
-mod static_files {
-    use rust_embed::RustEmbed;
-    use warp::http::header::HeaderValue;
-    use warp::path::Tail;
-    use warp::reply::Response;
-    use warp::{Rejection, Reply};
+// static_handler is a handler that serves static files from the
+pub async fn static_handler(uri: Uri) -> impl IntoResponse {
+    let mut path = uri.path().trim_start_matches('/').to_string();
+    StaticFile(path)
+}
 
-    #[derive(RustEmbed)]
-    #[folder = "$CARGO_MANIFEST_DIR/../tanoshi-web/dist"]
-    pub struct Asset;
+#[derive(RustEmbed)]
+#[folder = "$CARGO_MANIFEST_DIR/../tanoshi-web/dist"]
+struct Asset;
+pub struct StaticFile<T>(pub T);
 
-    #[derive(Debug, Clone)]
-    pub enum Encoding {
-        Br,
-        Gzip,
-        None,
-    }
+impl<T> IntoResponse for StaticFile<T>
+where
+    T: Into<String>,
+{
+    type Body = Full<Bytes>;
+    type BodyError = Infallible;
 
-    pub async fn serve_index(encoding: Encoding) -> Result<impl Reply, Rejection> {
-        serve_impl("index.html", encoding)
-    }
-
-    pub async fn serve_tail(path: Tail, encoding: Encoding) -> Result<impl Reply, Rejection> {
-        serve_impl(path.as_str(), encoding)
-    }
-
-    pub fn serve_impl(path: &str, _encoding: Encoding) -> Result<impl Reply, Rejection> {
-        let asset = Asset::get(path).ok_or_else(warp::reject::not_found)?;
-        let mut res = Response::new(asset.data.into());
-
-        let mime = mime_guess::from_path(path).first_or_octet_stream();
-        res.headers_mut().insert(
-            "Content-Type",
-            HeaderValue::from_str(mime.as_ref()).unwrap(),
-        );
-        Ok(res)
+    fn into_response(self) -> Response<Self::Body> {
+        let path = self.0.into();
+        match Asset::get(path.as_str()) {
+            Some(content) => {
+                let body = content.data.into();
+                let mime = mime_guess::from_path(path).first_or_octet_stream();
+                Response::builder()
+                    .header(header::CONTENT_TYPE, mime.as_ref())
+                    .body(body)
+                    .unwrap()
+            }
+            None => Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Full::from("404"))
+                .unwrap(),
+        }
     }
 }
