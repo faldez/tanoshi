@@ -59,7 +59,7 @@ impl Library {
             .class("topbar")
             .child_signal(library.is_search.signal().map(clone!(library => move |is_search|
                 (!is_search).then(|| html!("div", {
-                    .style("width", "5rem")
+                    .style("min-width", "5rem")
                     .children(&mut [
                         html!("button", {
                             .event(clone!(library => move |_: events::Click| {
@@ -112,7 +112,7 @@ impl Library {
             })))
             .children(&mut [
                 html!("div", {
-                    .style("width", "5rem")
+                    .style("min-width", "5rem")
                     .child_signal(library.is_search.signal().map(clone!(library => move |is_search| {
                         if is_search {
                             Some(html!("button", {
