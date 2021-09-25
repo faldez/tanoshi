@@ -13,6 +13,7 @@ use futures_signals::signal_vec::{MutableVec, SignalVec, SignalVecExt};
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use web_sys::HtmlImageElement;
 
+#[derive(Debug)]
 enum Nav {
     None,
     Prev,
@@ -24,6 +25,13 @@ enum PageStatus {
     Initial,
     Loaded,
     Error,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ContinousLoaded {
+    Initial,
+    Loaded,
+    Scrolled
 }
 
 pub struct Reader {
@@ -38,6 +46,7 @@ pub struct Reader {
     next_page: Mutable<Option<usize>>,
     pages: MutableVec<(String, PageStatus)>,
     pages_len: Mutable<usize>,
+    pages_loaded: Mutable<ContinousLoaded>,
     reader_settings: Rc<ReaderSettings>,
     is_bar_visible: Mutable<bool>,
     loader: AsyncLoader,
@@ -58,6 +67,7 @@ impl Reader {
             next_page: Mutable::new(None),
             pages: MutableVec::new(),
             pages_len: Mutable::new(0),
+            pages_loaded: Mutable::new(ContinousLoaded::Initial),
             reader_settings: ReaderSettings::new(false, true),
             is_bar_visible: Mutable::new(true),
             loader: AsyncLoader::new(),
@@ -66,6 +76,7 @@ impl Reader {
     }
 
     fn fetch_detail(reader: Rc<Self>, chapter_id: i64, nav: Nav) {
+        let current_page = reader.current_page.get_cloned();
         reader.spinner.set_active(true);
         reader.loader.load(clone!(reader => async move {
             match query::fetch_chapter(chapter_id).await {
@@ -79,14 +90,13 @@ impl Reader {
                     let len = result.pages.len();
                     reader.pages_len.set_neq(len);
 
-                    reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| (page.clone(), PageStatus::Initial)).collect());
 
                     reader.reader_settings.load_by_manga_id(result.manga.id);
 
                     let page;
                     match nav {
                         Nav::None => {
-                            let current_page = reader.current_page.get();
+                            info!("get current_page {}", current_page);
                             page = match reader.reader_settings.reader_mode.get() {
                                 ReaderMode::Continous => current_page,
                                 ReaderMode::Paged => {
@@ -127,15 +137,19 @@ impl Reader {
                         },
                     }
 
-                    reader.current_page.set_neq(page);
+                    info!("set current_page to {} nav: {:?}", page, nav);
+                    reader.current_page.set(page);
 
+                    reader.pages_loaded.set(ContinousLoaded::Initial);
+                    reader.pages.lock_mut().replace_cloned(result.pages.iter().map(|page| (page.clone(), PageStatus::Initial)).collect());
+                    
                     Self::replace_state_with_url(chapter_id, page + 1);
                 },
                 Err(err) => {
                     snackbar::show(format!("{}", err));
                 }
             }
-
+            
             reader.spinner.set_active(false);
         }));
     }
@@ -144,7 +158,7 @@ impl Reader {
         if let Err(e) = history().replace_state_with_url(
             &JsValue::null(),
             "",
-            Some(format!("/chapter/{}/{}", chapter_id, current_page,).as_str()),
+            Some(format!("/chapter/{}#{}", chapter_id, current_page,).as_str()),
         ) {
             let message = if let Some(msg) = e.as_string() {
                 msg
@@ -443,6 +457,23 @@ impl Reader {
         html!("div", {
             .style("display", "flex")
             .style("flex-direction", "column")
+            .future(reader.pages_loaded.signal_cloned().for_each(clone!(reader => move |loaded| {
+                let page = reader.current_page.get();
+                info!("page: {} loaded: {:?}", page, loaded);
+                if page > 0 && matches!(loaded, ContinousLoaded::Loaded) {
+                    let page_top =  document()
+                        .get_element_by_id(format!("{}", page - 1).as_str())
+                        .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
+                        .map(|el| el.offset_top() as f64)
+                        .unwrap_or_default();
+
+                    info!("scroll to {}", page_top);
+                    window().scroll_to_with_x_and_y(0.0_f64, page_top);
+                    reader.pages_loaded.set_neq(ContinousLoaded::Scrolled);
+                }
+
+                async {}
+            })))
             .children(&mut [
                 html!("button", {
                     .style("width", "100%")
@@ -467,7 +498,7 @@ impl Reader {
                         .class_signal("continuous-image-loading", signal::always(status).map(|s| matches!(s, PageStatus::Initial)))
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .attribute("id", format!("page-{}", index).as_str())
+                        .attribute("id", format!("{}", index).as_str())
                         .attribute("src", &proxied_image_url(&page))
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
@@ -491,6 +522,9 @@ impl Reader {
                             lock.set_cloned(index, (page.clone(), PageStatus::Error));
                         }))
                         .event(clone!(reader, page => move |_: events::Load| {
+                            reader.pages_loaded.set_if(ContinousLoaded::Loaded, |a, _| {
+                                matches!(a, ContinousLoaded::Initial)
+                            });
                             if !matches!(status, PageStatus::Loaded) {
                                 let mut lock = reader.pages.lock_mut();
                                 lock.set_cloned(index, (page.clone(), PageStatus::Loaded));
@@ -530,6 +564,7 @@ impl Reader {
                     .event(clone!(reader => move |_: events::Click| {
                         if let Some(next_chapter) = reader.next_chapter.get() {
                             reader.chapter_id.set(next_chapter);
+                            window().scroll_to_with_x_and_y(0.0_f64, 0.0_f64)
                         } else {
                             info!("no next_page or next_chapter");
                         }
@@ -541,7 +576,7 @@ impl Reader {
                 let body_top = window().scroll_y().unwrap_throw();
                 for i in 0..reader.pages_len.get() {
                     let page_top = document()
-                        .get_element_by_id(format!("page-{}", i).as_str())
+                        .get_element_by_id(format!("{}", i).as_str())
                         .and_then(|el| el.dyn_into::<web_sys::HtmlElement>().ok())
                         .map(|el| el.offset_top() as f64)
                         .unwrap_or_default();
@@ -651,7 +686,7 @@ impl Reader {
                     html!("img" => HtmlImageElement, {
                         .style("margin-left", "auto")
                         .style("margin-right", "auto")
-                        .attribute("id", format!("page-{}", index).as_str())
+                        .attribute("id", format!("{}", index).as_str())
                         .style_signal("max-width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",
                             _ => "100%",
@@ -690,7 +725,7 @@ impl Reader {
                                 if index == current_page {
                                     hidden = false;
                                     if current_page > 0 {
-                                        let is_prev_img_landscape = if let Some(prev_img) = document().get_element_by_id(format!("page-{}", current_page - 1).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
+                                        let is_prev_img_landscape = if let Some(prev_img) = document().get_element_by_id(format!("{}", current_page - 1).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
                                             prev_img.natural_width() > prev_img.natural_height()
                                         } else {
                                             false
@@ -703,7 +738,7 @@ impl Reader {
                                         reader.prev_page.set_neq(current_page.checked_sub(sub));
                                     }
                                 } else if index == current_page + 1 {
-                                    let is_prev_img_portrait = if let Some(prev_img) = document().get_element_by_id(format!("page-{}", current_page).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
+                                    let is_prev_img_portrait = if let Some(prev_img) = document().get_element_by_id(format!("{}", current_page).as_str()).and_then(|el| el.dyn_into::<web_sys::HtmlImageElement>().ok()) {
                                         prev_img.natural_width() <= prev_img.natural_height()
                                     } else {
                                         true
@@ -735,7 +770,7 @@ impl Reader {
                     })
                 } else {
                     html!("div", {
-                        .attribute("id", format!("page-{}", index).as_str())
+                        .attribute("id", format!("{}", index).as_str())
                         .style("display", "flex")
                         .style_signal("width", reader.reader_settings.fit.signal().map(|x| match x {
                             crate::common::Fit::Height => "none",

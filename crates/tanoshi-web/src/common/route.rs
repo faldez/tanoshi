@@ -86,18 +86,13 @@ impl Route {
                     }
                     ["chapter", id] => {
                         if let Ok(id) = id.parse() {
-                            Route::Chapter(id, 0)
-                        } else {
-                            Route::NotFound
-                        }
-                    }
-                    ["chapter", id, page] => {
-                        if let Ok(id) = id.parse() {
-                            if let Ok(page) = page.parse::<i64>() {
-                                Route::Chapter(id, page - 1)
-                            } else {
-                                Route::NotFound
-                            }
+                            let page = url
+                                .hash()
+                                .strip_prefix('#')
+                                .and_then(|h| h.parse().ok())
+                                .unwrap_or(1);
+                            info!("chapter {} page {}", id, page);
+                            Route::Chapter(id, page - 1)
                         } else {
                             Route::NotFound
                         }
@@ -151,7 +146,7 @@ impl Route {
             ]
             .join("/"),
             Route::Chapter(chapter_id, page) => {
-                format!("/chapter/{}/{}", chapter_id, page + 1)
+                format!("/chapter/{}#{}", chapter_id, page + 1)
             }
             Route::Updates => "/updates".to_string(),
             Route::Histories => "/histories".to_string(),

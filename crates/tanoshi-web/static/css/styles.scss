@@ -615,7 +615,7 @@ $continuous-width: (
     @media (min-width: $min-width) { 
         .continuous-image-loading {
             width: #{$width} !important;
-            height: calc(1.59 * #{$width}) !important;
+            height: calc(1.46 * #{$width}) !important;
         }
     }
 }
