@@ -1,10 +1,12 @@
 use std::{
     collections::{BTreeMap, HashMap},
+    io::Read,
     str::FromStr,
 };
 
 use crate::user;
 use async_graphql::{Context, Json, Object, Result, SimpleObject};
+use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{FilterField, Version};
 use tanoshi_vm::prelude::ExtensionBus;
@@ -108,7 +110,7 @@ impl SourceRoot {
     async fn installed_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
         let available_sources_map = {
             let url = "https://faldez.github.io/tanoshi-extensions".to_string();
-            let available_sources = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
+            let available_sources: Vec<SourceIndex> = ureq::get(&url).call()?.into_json()?;
             let mut available_sources_map = HashMap::new();
             for source in available_sources {
                 available_sources_map.insert(source.id, source);
@@ -139,7 +141,7 @@ impl SourceRoot {
 
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
-        let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
+        let source_indexes: Vec<SourceIndex> = ureq::get(&url).call()?.into_json()?;
         let extensions = ctx.data::<ExtensionBus>()?;
 
         let mut sources: Vec<Source> = vec![];
@@ -173,7 +175,7 @@ impl SourceMutationRoot {
         }
 
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
-        let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
+        let source_indexes: Vec<SourceIndex> = ureq::get(&url).call()?.into_json()?;
         let source: SourceIndex = source_indexes
             .iter()
             .find(|index| index.id == source_id)
@@ -186,8 +188,10 @@ impl SourceMutationRoot {
             env!("TARGET")
         );
 
-        let raw = reqwest::get(url).await?.bytes().await?;
-        extensions.install(source.name, &raw).await?;
+        let mut raw = vec![];
+        let mut reader = ureq::get(&url).call()?.into_reader();
+        reader.read_to_end(&mut raw)?;
+        extensions.install(source.name, &Bytes::from(raw)).await?;
 
         Ok(source.id)
     }
@@ -214,7 +218,7 @@ impl SourceMutationRoot {
 
         let url = "https://faldez.github.io/tanoshi-extensions".to_string();
 
-        let source_indexes = reqwest::get(url).await?.json::<Vec<SourceIndex>>().await?;
+        let source_indexes: Vec<SourceIndex> = ureq::get(&url).call()?.into_json()?;
         let source: SourceIndex = source_indexes
             .iter()
             .find(|index| index.id == source_id)
@@ -230,10 +234,13 @@ impl SourceMutationRoot {
             source.name,
             env!("TARGET")
         );
-        let raw = reqwest::get(url).await?.bytes().await?;
+
+        let mut raw = vec![];
+        let mut reader = ureq::get(&url).call()?.into_reader();
+        reader.read_to_end(&mut raw)?;
 
         extensions.unload(source_id).await?;
-        extensions.install(source.name, &raw).await?;
+        extensions.install(source.name, &Bytes::from(raw)).await?;
 
         Ok(source_id)
     }

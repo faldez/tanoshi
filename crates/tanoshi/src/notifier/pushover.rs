@@ -43,6 +43,18 @@ impl Pushover {
         Pushover { token }
     }
 
+    fn send_payload(&self, payload: &Payload) -> Result<(), Error> {
+        let res: Response = ureq::post(PUSHOVER_ENDPOINT)
+            .send_json(serde_json::to_value(payload)?)?
+            .into_json()?;
+
+        if res.status != 1 {
+            return Err(anyhow!("error push test notification"));
+        }
+
+        Ok(())
+    }
+
     pub async fn send_notification(&self, user_key: &str, message: &str) -> Result<(), Error> {
         let payload = Payload {
             token: self.token.clone(),
@@ -51,17 +63,7 @@ impl Pushover {
             ..Default::default()
         };
 
-        let res = reqwest::Client::new()
-            .post(PUSHOVER_ENDPOINT)
-            .json(&payload)
-            .send()
-            .await?
-            .json::<Response>()
-            .await?;
-
-        if res.status != 1 {
-            return Err(anyhow!("error push test notification"));
-        }
+        self.send_payload(&payload)?;
 
         Ok(())
     }
@@ -80,17 +82,7 @@ impl Pushover {
             ..Default::default()
         };
 
-        let res = reqwest::Client::new()
-            .post(PUSHOVER_ENDPOINT)
-            .json(&payload)
-            .send()
-            .await?
-            .json::<Response>()
-            .await?;
-
-        if res.status != 1 {
-            return Err(anyhow!("error push test notification"));
-        }
+        self.send_payload(&payload)?;
 
         Ok(())
     }
