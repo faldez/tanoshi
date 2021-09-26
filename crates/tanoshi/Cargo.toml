@@ -40,7 +40,6 @@ sqlx = { version = "0.5", features = [
     "migrate",
 ] }
 reqwest = { version = "0.11", features = ["json"] }
-ureq = { version = "2", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "0.8"
 ron = "0.6.4"

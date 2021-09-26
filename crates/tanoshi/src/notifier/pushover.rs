@@ -35,18 +35,25 @@ struct Response {
 }
 
 pub struct Pushover {
+    client: reqwest::Client,
     token: String,
 }
 
 impl Pushover {
     pub fn new(token: String) -> Pushover {
-        Pushover { token }
+        let client = reqwest::Client::new();
+        Pushover { client, token }
     }
 
-    fn send_payload(&self, payload: &Payload) -> Result<(), Error> {
-        let res: Response = ureq::post(PUSHOVER_ENDPOINT)
-            .send_json(serde_json::to_value(payload)?)?
-            .into_json()?;
+    async fn send_payload(&self, payload: &Payload) -> Result<(), Error> {
+        let res: Response = self
+            .client
+            .post(PUSHOVER_ENDPOINT)
+            .body(serde_json::to_string(payload)?)
+            .send()
+            .await?
+            .json()
+            .await?;
 
         if res.status != 1 {
             return Err(anyhow!("error push test notification"));
@@ -63,7 +70,7 @@ impl Pushover {
             ..Default::default()
         };
 
-        self.send_payload(&payload)?;
+        self.send_payload(&payload).await?;
 
         Ok(())
     }
@@ -82,7 +89,7 @@ impl Pushover {
             ..Default::default()
         };
 
-        self.send_payload(&payload)?;
+        self.send_payload(&payload).await?;
 
         Ok(())
     }

@@ -3251,7 +3251,6 @@ dependencies = [
  "teloxide",
  "tokio",
  "tokio-stream",
- "ureq",
 ]
 
 [[package]]

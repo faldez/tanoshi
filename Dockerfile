@@ -15,7 +15,7 @@ COPY crates/ /app/crates/
 COPY Cargo.lock /app/Cargo.lock
 COPY Cargo.toml /app/Cargo.toml
 
-RUN if [ x${BUILD_WEB} = x"true" ]; then cd crates/tanoshi-web; trunk build; fi
+RUN if [ x${BUILD_WEB} = x"true" ]; then cd crates/tanoshi-web; trunk build --release; fi
 
 RUN cargo build -p tanoshi --release
 

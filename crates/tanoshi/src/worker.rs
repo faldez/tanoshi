@@ -196,7 +196,7 @@ impl Worker {
 
             let url = "https://faldez.github.io/tanoshi-extensions".to_string();
 
-            let available_sources: Vec<SourceIndex> = ureq::get(&url).call()?.into_json()?;
+            let available_sources: Vec<SourceIndex> = reqwest::get(&url).await?.json().await?;
             let mut available_sources_map = HashMap::new();
             for source in available_sources {
                 available_sources_map.insert(source.id, source);
@@ -244,14 +244,17 @@ impl Worker {
             pub body: String,
         }
 
-        let release: Release =
-            ureq::get("https://api.github.com/repos/faldez/tanoshi/releases/latest")
-                .set(
-                    "User-Agent",
-                    format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str(),
-                )
-                .call()?
-                .into_json()?;
+        let client = reqwest::Client::new();
+        let release: Release = client
+            .get("https://api.github.com/repos/faldez/tanoshi/releases/latest")
+            .header(
+                "User-Agent",
+                format!("Tanoshi/{}", env!("CARGO_PKG_VERSION")).as_str(),
+            )
+            .send()
+            .await?
+            .json()
+            .await?;
 
         if Version::from_str(&release.tag_name[1..])?
             > Version::from_str(env!("CARGO_PKG_VERSION"))?
