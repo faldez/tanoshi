@@ -1,24 +1,26 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, path::PathBuf};
 
 use axum::{
-    body::{Bytes, Full},
-    handler::get,
+    body::{Body, Bytes, Full},
     http::{header, Response, StatusCode, Uri},
-    response::{Html, IntoResponse},
-    routing::Router,
+    response::IntoResponse,
 };
 
+use http::Request;
 use mime_guess;
 use rust_embed::RustEmbed;
 
-pub async fn index_handler() -> impl IntoResponse {
-    static_handler("/index.html".parse::<Uri>().unwrap()).await
-}
-
 // static_handler is a handler that serves static files from the
-pub async fn static_handler(uri: Uri) -> impl IntoResponse {
-    let mut path = uri.path().trim_start_matches('/').to_string();
-    StaticFile(path)
+pub async fn static_handler(req: Request<Body>) -> impl IntoResponse {
+    let path = req.uri().path().trim_start_matches('/').to_string();
+    let asset = Asset::get(path.as_str());
+    let accept = req.headers().get("val").and_then(|v| v.to_str().ok());
+    match (asset, accept) {
+        (None, Some(header)) if header == "*/*" || header == "text/html" => {
+            StaticFile("index.html".to_string())
+        }
+        _ => StaticFile(path),
+    }
 }
 
 #[derive(RustEmbed)]

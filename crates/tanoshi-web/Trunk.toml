@@ -1,7 +1,5 @@
 [[proxy]]
-rewrite = "/graphql"
 backend = "http://localhost:3030/graphql"
 
 [[proxy]]
-rewrite = "/image"
 backend = "http://localhost:3030/image"

@@ -168,16 +168,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let image_proxy = proxy::proxy(config.secret.clone());
 
     let app = Router::new()
+        .nest("/", assets::static_handler.into_service())
+        .nest("/graphql", get(graphql_playground).post(graphql_handler))
         .route("/image/:url", get(proxy::proxy))
-        .route("/graphql", get(graphql_playground).post(graphql_handler))
         .route("/health", get(health_check))
-        .route("/", get(assets::index_handler))
-        .route("/index.html", get(assets::index_handler))
-        .or(assets::static_handler.into_service())
         .layer(AddExtensionLayer::new(schema))
         .layer(AddExtensionLayer::new(state));
 
-    let server_fut = Server::bind(&"0.0.0.0:3030".parse().unwrap()).serve(app.into_make_service());
+    let server_fut = Server::bind(&"0.0.0.0:3030".parse()?).serve(app.into_make_service());
 
     // let server_fut = if config.enable_playground {
     //     info!("enable graphql playground");

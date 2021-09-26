@@ -19,6 +19,7 @@ async-graphql = { version = "2.10.0", features = ["apollo_tracing", "chrono"] }
 async-graphql-axum = "2.10.0"
 axum = { version = "0.2.5", features = ["headers"] }
 headers = "0.3"
+http = "0.2.5"
 rand = { version = "^0.8" }
 log = { version = "*" }
 env_logger = "0.9.0"
