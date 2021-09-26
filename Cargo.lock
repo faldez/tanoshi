@@ -3238,6 +3238,7 @@ dependencies = [
  "mime_guess",
  "phf",
  "rand",
+ "reqwest",
  "ron",
  "rust-argon2",
  "rust-embed",

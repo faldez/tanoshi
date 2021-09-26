@@ -32,14 +32,14 @@ clap = "3.0.0-beta.1"
 bytes = "1"
 dirs = "3"
 base64 = "0.13"
-sqlx = { version = "0.5.2", features = [
+sqlx = { version = "0.5", features = [
     "runtime-tokio-rustls",
-    "macros",
     "sqlite",
     "chrono",
     "json",
     "migrate",
 ] }
+reqwest = { version = "0.11", features = ["json"] }
 ureq = { version = "2", features = ["json"] }
 futures = "^0.3"
 rust-argon2 = "0.8"
