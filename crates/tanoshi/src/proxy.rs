@@ -83,21 +83,13 @@ pub async fn get_image_from_url(url: &str) -> Result<http::Response<Body>, Statu
         }
     };
 
-    let content_type = source_res
-        .headers()
-        .into_iter()
-        .find_map(|(header_name, header_value)| {
-            if header_name.to_string().to_lowercase().eq("content-type") {
-                header_value.to_str().ok()
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| "application/octet-stream");
+    let mut res = http::Response::builder().status(source_res.status());
 
-    Ok(http::Response::builder()
-        .status(source_res.status())
-        .header("Content-Type", content_type)
+    for (name, value) in source_res.headers() {
+        res = res.header(name, value);
+    }
+
+    Ok(res
         .body(Body::wrap_stream(source_res.bytes_stream()))
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)
 }
