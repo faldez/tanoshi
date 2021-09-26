@@ -34,15 +34,19 @@ use async_graphql::{
     Schema,
 };
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
-use axum::response::{self, IntoResponse};
+use axum::extract::{Extension, FromRequest, RequestParts, TypedHeader};
 use axum::{async_trait, handler::get};
 use axum::{
-    extract::{Extension, FromRequest, RequestParts, TypedHeader},
-    handler::Handler,
+    handler::post,
+    response::{self, IntoResponse},
 };
 use axum::{AddExtensionLayer, Router, Server};
 use headers::{authorization::Bearer, Authorization};
-use std::sync::Arc;
+use std::{
+    net::{IpAddr, SocketAddr},
+    str::FromStr,
+    sync::Arc,
+};
 use teloxide::prelude::RequesterExt;
 
 #[derive(Clap)]
@@ -165,42 +169,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         secret: config.secret.clone(),
     };
 
-    // let image_proxy = proxy::proxy(config.secret.clone());
-
     let app = Router::new()
-        .nest("/", assets::static_handler.into_service())
-        .nest("/graphql", get(graphql_playground).post(graphql_handler))
+        .nest("/", get(assets::static_handler))
+        .nest("/graphql", post(graphql_handler))
         .route("/image/:url", get(proxy::proxy))
         .route("/health", get(health_check))
         .layer(AddExtensionLayer::new(schema))
         .layer(AddExtensionLayer::new(state));
 
-    let server_fut = Server::bind(&"0.0.0.0:3030".parse()?).serve(app.into_make_service());
-
-    // let server_fut = if config.enable_playground {
-    //     info!("enable graphql playground");
-    //     let graphql_playground = warp::path!("graphql").and(warp::get()).map(|| {
-    //         HttpResponse::builder()
-    //             .header("content-type", "text/html")
-    //             .body(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
-    //     });
-    //     bind_routes!(
-    //         config.port,
-    //         health_check,
-    //         image_proxy,
-    //         graphql_playground,
-    //         static_files,
-    //         graphql_post
-    //     )
-    // } else {
-    //     bind_routes!(
-    //         config.port,
-    //         health_check,
-    //         image_proxy,
-    //         static_files,
-    //         graphql_post
-    //     )
-    // };
+    let addr = SocketAddr::from((IpAddr::from_str("::0")?, config.port));
+    let server_fut = Server::bind(&addr).serve(app.into_make_service());
 
     tokio::select! {
         _ = server_fut => {

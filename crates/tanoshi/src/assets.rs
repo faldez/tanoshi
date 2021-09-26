@@ -1,8 +1,8 @@
-use std::{convert::Infallible, path::PathBuf};
+use std::convert::Infallible;
 
 use axum::{
     body::{Body, Bytes, Full},
-    http::{header, Response, StatusCode, Uri},
+    http::{header, Response, StatusCode},
     response::IntoResponse,
 };
 
@@ -13,10 +13,11 @@ use rust_embed::RustEmbed;
 // static_handler is a handler that serves static files from the
 pub async fn static_handler(req: Request<Body>) -> impl IntoResponse {
     let path = req.uri().path().trim_start_matches('/').to_string();
+
     let asset = Asset::get(path.as_str());
-    let accept = req.headers().get("val").and_then(|v| v.to_str().ok());
+    let accept = req.headers().get("accept").and_then(|v| v.to_str().ok());
     match (asset, accept) {
-        (None, Some(header)) if header == "*/*" || header == "text/html" => {
+        (None, Some(header)) if header.contains("*/*") || header.contains("text/html") => {
             StaticFile("index.html".to_string())
         }
         _ => StaticFile(path),
