@@ -1,12 +1,10 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    io::Read,
     str::FromStr,
 };
 
 use crate::user;
 use async_graphql::{Context, Json, Object, Result, SimpleObject};
-use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{FilterField, Version};
 use tanoshi_vm::prelude::ExtensionBus;

@@ -8,6 +8,7 @@ pub struct Modal {
     show: Mutable<bool>,
 }
 
+#[allow(dead_code)]
 impl Modal {
     pub fn new() -> Rc<Self> {
         Rc::new(Self {

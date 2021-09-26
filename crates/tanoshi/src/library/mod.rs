@@ -1,5 +1,5 @@
 use crate::catalogue::Manga;
-use crate::db::{MangaDatabase, UserDatabase};
+use crate::db::MangaDatabase;
 use crate::user;
 use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{Context, Object, Result};

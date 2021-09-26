@@ -10,7 +10,6 @@ mod library;
 mod local;
 mod notifier;
 mod proxy;
-mod routes;
 mod schema;
 mod status;
 mod user;
@@ -20,6 +19,7 @@ mod worker;
 use crate::{
     config::Config,
     notifier::pushover::Pushover,
+    proxy::Proxy,
     schema::{MutationRoot, QueryRoot, TanoshiSchema},
     user::Secret,
 };
@@ -56,11 +56,6 @@ struct Opts {
     config: Option<String>,
 }
 
-#[derive(Clone)]
-pub struct State {
-    secret: String,
-}
-
 struct Token(String);
 
 #[async_trait]
@@ -91,6 +86,7 @@ async fn graphql_handler(
     schema.execute(req).await.into()
 }
 
+#[allow(dead_code)]
 async fn graphql_playground() -> impl IntoResponse {
     response::Html(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
 }
@@ -165,17 +161,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .data(worker_tx)
     .finish();
 
-    let state = State {
-        secret: config.secret.clone(),
-    };
+    let proxy = Proxy::new(config.secret.clone());
 
-    let app = Router::new()
+    let mut app = Router::new()
         .nest("/", get(assets::static_handler))
-        .nest("/graphql", post(graphql_handler))
-        .route("/image/:url", get(proxy::proxy))
+        .route("/image/:url", get(Proxy::proxy))
         .route("/health", get(health_check))
-        .layer(AddExtensionLayer::new(schema))
-        .layer(AddExtensionLayer::new(state));
+        .layer(AddExtensionLayer::new(proxy))
+        .boxed();
+    if config.enable_playground {
+        app = app
+            .nest("/graphql", get(graphql_playground).post(graphql_handler))
+            .layer(AddExtensionLayer::new(schema))
+            .boxed();
+    } else {
+        app = app
+            .nest("/graphql", post(graphql_handler))
+            .layer(AddExtensionLayer::new(schema))
+            .boxed();
+    }
 
     let addr = SocketAddr::from((IpAddr::from_str("::0")?, config.port));
     let server_fut = Server::bind(&addr).serve(app.into_make_service());

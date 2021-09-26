@@ -1,8 +1,4 @@
-use sqlx::{
-    migrate::MigrateDatabase,
-    sqlite::{SqlitePool, SqlitePoolOptions},
-    Sqlite,
-};
+use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePool, Sqlite};
 
 mod manga;
 pub use manga::Db as MangaDatabase;
