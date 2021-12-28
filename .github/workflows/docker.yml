@@ -1,0 +1,37 @@
+name: Build Docker
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    environment: default
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Create ARM64 Context
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.ARM64_NODE_KEY }}" > ~/.ssh/id_rsa
+          ssh-keyscan -t rsa ${{ secrets.ARM64_NODE_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          docker context create rpi64 --docker "host=${{ secrets.ARM64_NODE_URL }}"
+          docker buildx create --append --name ${{ steps.buildx.outputs.name }} --platform linux/arm64 rpi64
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: faldez/tanoshi:master
+          build-args: |
+            BUILD_WEB=false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
