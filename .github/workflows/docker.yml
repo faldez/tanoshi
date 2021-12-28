@@ -1,4 +1,8 @@
-name: Build Docker
+name: Build DOcker
+
+on:
+  push:
+    branches: ["docker-context"]
 
 jobs:
   build-docker:
