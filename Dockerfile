@@ -6,7 +6,7 @@ COPY crates/tanoshi-web .
 RUN cargo chef prepare --recipe-path recipe.json
 
 # Frontend builder
-FROM --platform=$BUILDPLATFORM faldez/tanoshi-builder:latest AS web-builder
+FROM --platform=linux/amd64 faldez/tanoshi-builder:latest AS web-builder
 
 COPY --from=web-planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
