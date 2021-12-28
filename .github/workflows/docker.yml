@@ -1,4 +1,4 @@
-name: Build DOcker
+name: Build Docker
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           echo "${{ secrets.ARM64_NODE_KEY }}" > ~/.ssh/id_rsa
-          ssh-keyscan -t rsa ${{ secrets.ARM64_NODE_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan ${{ secrets.ARM64_NODE_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
           docker context create rpi64 --docker "host=${{ secrets.ARM64_NODE_URL }}"
           docker buildx create --append --name ${{ steps.buildx.outputs.name }} --platform linux/arm64 rpi64
