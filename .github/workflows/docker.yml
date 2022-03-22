@@ -25,7 +25,7 @@ jobs:
           chmod 700 ~/.ssh
           echo "${{ secrets.ARM64_NODE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 8022 ${{ secrets.ARM64_NODE_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan ${{ secrets.ARM64_NODE_HOST }} >> ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
           docker context create arm64 --docker "host=${{ secrets.ARM64_NODE_HOST }}"
           docker buildx create --append --name ${{ steps.buildx.outputs.name }} --platform linux/arm64 arm64
