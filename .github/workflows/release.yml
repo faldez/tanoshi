@@ -34,11 +34,21 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+      - name: Create ARM64 Context
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.ARM64_NODE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan ${{ secrets.ARM64_NODE_HOST }} >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          docker context create node-arm64 --docker "host=ssh://${{ secrets.ARM64_NODE_USERNAME }}@${{ secrets.ARM64_NODE_HOST }}"
+          docker buildx create --append --name ${{ steps.buildx.outputs.name }} --platform linux/arm64 node-arm64
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
