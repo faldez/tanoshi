@@ -73,14 +73,14 @@ impl UpdatesWorker {
         let manga_in_library = self.mangadb.get_all_user_library().await?;
 
         for item in manga_in_library {
+            debug!("Checking updates: {}", item.manga.title);
+
             let last_uploaded_chapter = self
                 .mangadb
                 .get_last_uploaded_chapters_by_manga_id(item.manga.id)
                 .await
                 .map(|ch| ch.uploaded)
                 .unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-
-            debug!("Checking updates: {}", item.manga.title);
 
             let chapters: Vec<Chapter> = match self
                 .extensions
@@ -118,11 +118,11 @@ impl UpdatesWorker {
                 }
             };
 
-            info!(
-                "Found: {} has {} new chapters",
-                item.manga.title,
-                chapters.len()
-            );
+            if chapters.len() > 0 {
+                info!("{} has {} new chapters", item.manga.title, chapters.len());
+            } else {
+                debug!("{} has {} new chapters", item.manga.title, chapters.len());
+            }
 
             for chapter in chapters {
                 #[cfg(feature = "desktop")]
