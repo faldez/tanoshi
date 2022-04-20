@@ -6,9 +6,7 @@ Selfhosted web manga reader.
 
 ## Features
 - Browse, search, and read manga from local or other source
-- Bookmark manga
 - Reading history across devices
-- See chapter updates
 - Read in single page, double page, or long strip, from right to left or left to right
 - Web reader is PWA and optimized for standalone mode on mobile
 - Multi-user with admin and non admin role
@@ -20,17 +18,14 @@ Selfhosted web manga reader.
 - MyAnimeList and AniList tracker support
 
 ## Download
-
 Download from [release page](https://github.com/faldez/tanoshi/releases) or [docker](https://hub.docker.com/repository/docker/faldez/tanoshi).
 
 ### Desktop
 If you don't plan to host Tanoshi and use from single device you can download desktop version. Download `.msi` for windows, `.deb` or `.AppImage` for linux, `.dmg` for mac.
 
 ## Documentation
+Go to [website](https://faldez.github.io/tanoshi) for documentation.
 
- Go to [website](https://faldez.github.io/tanoshi) for documentation.
-
- 
 ### Screenshot
 Head over to [screenshots](https://faldez.github.io/tanoshi/screenshots/) section on website to see screenshot.
 
