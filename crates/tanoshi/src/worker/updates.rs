@@ -274,12 +274,6 @@ impl UpdatesWorker {
                     }
 
                     info!("periodic updates done in {:?}", Instant::now() - start);
-
-                    #[cfg(target_os = "linux")]
-                    unsafe {
-                        malloc_trim(0);
-                        debug!("ran malloc trim")
-                    }
                 }
                 _ = server_update_interval.tick() => {
                     info!("check server update");
