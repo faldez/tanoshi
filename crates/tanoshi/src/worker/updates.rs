@@ -10,7 +10,6 @@ use tanoshi_vm::extension::SourceBus;
 use crate::{
     config::GLOBAL_CONFIG,
     db::{model::Chapter, MangaDatabase},
-    graphql::catalogue::Source,
     notifier::Notifier,
     worker::downloads::Command as DownloadCommand,
 };
@@ -22,9 +21,14 @@ use tokio::{
 
 use super::downloads::DownloadSender;
 
-#[cfg(target_os = "linux")]
-extern "C" {
-    fn malloc_trim(pad: usize) -> std::os::raw::c_int;
+#[derive(Debug, Clone, Deserialize)]
+pub struct SourceInfo {
+    pub id: i64,
+    pub name: String,
+    pub url: String,
+    pub version: String,
+    pub icon: String,
+    pub nsfw: bool,
 }
 
 struct UpdatesWorker {
@@ -170,16 +174,17 @@ impl UpdatesWorker {
             .get()
             .map(|cfg| format!("{}/index.json", cfg.extension_repository))
             .ok_or_else(|| anyhow!("no config set"))?;
+
         let available_sources_map = self
             .client
             .get(&url)
             .send()
             .await?
-            .json::<Vec<Source>>()
+            .json::<Vec<SourceInfo>>()
             .await?
             .into_par_iter()
             .map(|source| (source.id, source))
-            .collect::<HashMap<i64, Source>>();
+            .collect::<HashMap<i64, SourceInfo>>();
 
         let installed_sources = self.extensions.list().await?;
 
