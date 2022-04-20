@@ -1,7 +1,7 @@
 use async_graphql::{Object, Result};
 use chrono::NaiveDateTime;
 
-use crate::{config::GLOBAL_CONFIG, utils};
+use crate::{config::GLOBAL_CONFIG, db::model, utils};
 
 pub struct RecentChapter {
     pub manga_id: i64,
@@ -11,6 +11,20 @@ pub struct RecentChapter {
     pub chapter_title: String,
     pub read_at: NaiveDateTime,
     pub last_page_read: i64,
+}
+
+impl From<model::RecentChapter> for RecentChapter {
+    fn from(other: model::RecentChapter) -> Self {
+        Self {
+            manga_id: other.manga_id,
+            chapter_id: other.chapter_id,
+            manga_title: other.manga_title,
+            cover_url: other.cover_url,
+            chapter_title: other.chapter_title,
+            read_at: other.read_at,
+            last_page_read: other.last_page_read,
+        }
+    }
 }
 
 #[Object]
@@ -52,6 +66,19 @@ pub struct RecentUpdate {
     pub cover_url: String,
     pub chapter_title: String,
     pub uploaded: NaiveDateTime,
+}
+
+impl From<model::RecentUpdate> for RecentUpdate {
+    fn from(other: model::RecentUpdate) -> Self {
+        Self {
+            manga_id: other.manga_id,
+            chapter_id: other.chapter_id,
+            manga_title: other.manga_title,
+            cover_url: other.cover_url,
+            chapter_title: other.chapter_title,
+            uploaded: other.uploaded,
+        }
+    }
 }
 
 #[Object]

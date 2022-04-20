@@ -8,9 +8,11 @@ use tauri::{
 
 use tanoshi::{
   config::{self, GLOBAL_CONFIG},
-  db, local, notifier,
+  db,
+  graphql::{local, schema},
+  notifier,
   proxy::Proxy,
-  schema, server, worker,
+  server, worker,
 };
 use tanoshi_tracker::{AniList, MyAnimeList};
 

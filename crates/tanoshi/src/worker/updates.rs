@@ -8,9 +8,9 @@ use tanoshi_lib::prelude::Version;
 use tanoshi_vm::extension::SourceBus;
 
 use crate::{
-    catalogue::Source,
     config::GLOBAL_CONFIG,
     db::{model::Chapter, MangaDatabase},
+    graphql::catalogue::Source,
     notifier::Notifier,
     worker::downloads::Command as DownloadCommand,
 };

@@ -1,14 +1,12 @@
 use std::path::PathBuf;
 
+use super::{catalogue::Chapter, guard::AdminGuard};
 use crate::{
-    catalogue::Chapter,
     config::GLOBAL_CONFIG,
     db::{model, MangaDatabase},
-    guard::AdminGuard,
     utils::{decode_cursor, encode_cursor},
     worker::downloads::{Command as DownloadCommand, DownloadSender},
 };
-
 use async_graphql::{
     connection::{query, Connection, Edge, EmptyFields},
     Context, Error, Object, Result, SimpleObject,

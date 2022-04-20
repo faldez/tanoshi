@@ -1,14 +1,16 @@
-use crate::{
+use super::{
     catalogue::{CatalogueRoot, SourceMutationRoot, SourceRoot},
-    db::{MangaDatabase, UserDatabase},
     downloads::{DownloadMutationRoot, DownloadRoot},
     library::{CategoryMutationRoot, CategoryRoot, LibraryMutationRoot, LibraryRoot},
     loader::DatabaseLoader,
     notification::NotificationRoot,
-    notifier::Notifier,
     status::StatusRoot,
     tracking::{TrackingMutationRoot, TrackingRoot},
     user::{UserMutationRoot, UserRoot},
+};
+use crate::{
+    db::{MangaDatabase, UserDatabase},
+    notifier::Notifier,
     worker::downloads::DownloadSender,
 };
 use tanoshi_tracker::{AniList, MyAnimeList};

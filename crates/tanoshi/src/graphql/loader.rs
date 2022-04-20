@@ -1,7 +1,5 @@
-use crate::{
-    catalogue::{chapter::ReadProgress, Manga},
-    db::MangaDatabase,
-};
+use super::catalogue::{chapter::ReadProgress, Manga};
+use crate::db::MangaDatabase;
 use async_graphql::{dataloader::Loader, Result};
 use chrono::NaiveDateTime;
 use itertools::Itertools;

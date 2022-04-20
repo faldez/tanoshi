@@ -1,4 +1,4 @@
-use crate::{config::GLOBAL_CONFIG, proxy::Proxy, schema::TanoshiSchema, user::Claims};
+use crate::{auth, graphql::schema::TanoshiSchema, proxy::Proxy};
 
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
@@ -10,7 +10,6 @@ use axum::{
     Router, Server,
 };
 use headers::{authorization::Bearer, Authorization};
-use jsonwebtoken::{DecodingKey, Validation};
 use std::{
     net::{IpAddr, SocketAddr},
     str::FromStr,
@@ -44,16 +43,8 @@ async fn graphql_handler(
 ) -> GraphQLResponse {
     let mut req = req.into_inner();
 
-    let secret = GLOBAL_CONFIG
-        .get()
-        .map(|cfg| cfg.secret.to_owned())
-        .unwrap_or_else(|| "".to_string());
-    if let Ok(claims) = jsonwebtoken::decode::<Claims>(
-        &token.0,
-        &DecodingKey::from_secret(secret.as_bytes()),
-        &Validation::default(),
-    ) {
-        req = req.data(claims.claims);
+    if let Ok(claims) = auth::decode_jwt(&token.0) {
+        req = req.data(claims);
     }
 
     schema.execute(req).await.into()

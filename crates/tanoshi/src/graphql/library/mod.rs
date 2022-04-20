@@ -1,7 +1,7 @@
+use super::catalogue::Manga;
 use crate::{
-    catalogue::Manga,
+    auth::Claims,
     db::{model, MangaDatabase, UserDatabase},
-    user::Claims,
     utils::{decode_cursor, encode_cursor},
 };
 use async_graphql::{
@@ -136,11 +136,12 @@ impl LibraryRoot {
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
-                connection.append(
-                    edges
-                        .into_iter()
-                        .map(|e| Edge::new(encode_cursor(e.uploaded.timestamp(), e.chapter_id), e)),
-                );
+                connection.append(edges.into_iter().map(|e| {
+                    Edge::new(
+                        encode_cursor(e.uploaded.timestamp(), e.chapter_id),
+                        e.into(),
+                    )
+                }));
 
                 Ok::<_, Error>(connection)
             },
@@ -219,11 +220,9 @@ impl LibraryRoot {
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
-                connection.append(
-                    edges
-                        .into_iter()
-                        .map(|e| Edge::new(encode_cursor(e.read_at.timestamp(), e.manga_id), e)),
-                );
+                connection.append(edges.into_iter().map(|e| {
+                    Edge::new(encode_cursor(e.read_at.timestamp(), e.manga_id), e.into())
+                }));
 
                 Ok::<_, Error>(connection)
             },

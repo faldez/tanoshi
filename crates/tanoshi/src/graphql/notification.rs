@@ -1,4 +1,5 @@
-use crate::{notifier::Notifier, user::Claims};
+use crate::auth::Claims;
+use crate::notifier::Notifier;
 use async_graphql::{Context, Object, Result};
 
 #[derive(Default)]

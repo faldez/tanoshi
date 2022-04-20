@@ -1,6 +1,27 @@
 use chrono::NaiveDateTime;
 
 #[derive(Debug, Clone)]
+pub struct RecentChapter {
+    pub manga_id: i64,
+    pub chapter_id: i64,
+    pub manga_title: String,
+    pub cover_url: String,
+    pub chapter_title: String,
+    pub read_at: NaiveDateTime,
+    pub last_page_read: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct RecentUpdate {
+    pub manga_id: i64,
+    pub chapter_id: i64,
+    pub manga_title: String,
+    pub cover_url: String,
+    pub chapter_title: String,
+    pub uploaded: NaiveDateTime,
+}
+
+#[derive(Debug, Clone)]
 pub struct Manga {
     pub id: i64,
     pub source_id: i64,

@@ -1,14 +1,11 @@
-use super::{Chapter, Source};
-use crate::{
-    config::GLOBAL_CONFIG,
-    db::MangaDatabase,
-    loader::{
+use super::{
+    super::loader::{
         DatabaseLoader, UserFavoriteId, UserFavoritePath, UserLastReadId, UserTrackerMangaId,
         UserUnreadChaptersId,
     },
-    user::Claims,
-    utils,
+    Chapter, Source,
 };
+use crate::{auth::Claims, config::GLOBAL_CONFIG, db::MangaDatabase, utils};
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use rayon::prelude::*;

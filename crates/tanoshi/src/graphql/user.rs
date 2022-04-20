@@ -1,18 +1,11 @@
-use crate::{config::GLOBAL_CONFIG, db::UserDatabase, guard::AdminGuard};
+use super::guard::AdminGuard;
+use crate::{
+    auth::{self, Claims},
+    db::UserDatabase,
+};
 use async_graphql::{Context, InputObject, Object, Result};
-use jsonwebtoken::{EncodingKey, Header};
 use rand::RngCore;
-use serde::{Deserialize, Serialize};
 use tanoshi_tracker::{anilist, myanimelist};
-
-/// Our claims struct, it needs to derive `Serialize` and/or `Deserialize`
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub sub: i64,
-    pub username: String,
-    pub is_admin: bool,
-    pub exp: usize,
-}
 
 #[derive(Debug)]
 pub struct User {
@@ -120,18 +113,13 @@ impl UserRoot {
             return Err("Wrong username or password".into());
         }
 
-        let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
         let current_time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
-        let token = jsonwebtoken::encode(
-            &Header::default(),
-            &Claims {
-                sub: user.id,
-                username: user.username,
-                is_admin: user.is_admin,
-                exp: (current_time + std::time::Duration::from_secs(2678400)).as_secs() as usize, // 31 days
-            },
-            &EncodingKey::from_secret(secret.as_bytes()),
-        )?;
+        let token = auth::encode_jwt(&Claims {
+            sub: user.id,
+            username: user.username,
+            is_admin: user.is_admin,
+            exp: (current_time + std::time::Duration::from_secs(2678400)).as_secs() as usize, // 31 days
+        })?;
 
         Ok(token)
     }

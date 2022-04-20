@@ -6,9 +6,11 @@ use clap::Parser;
 use futures::future::OptionFuture;
 use tanoshi::{
     config::{self, Config, GLOBAL_CONFIG},
-    db, local, notifier,
+    db,
+    graphql::{local, schema},
+    notifier,
     proxy::Proxy,
-    schema, server, worker,
+    server, worker,
 };
 use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
 use tanoshi_tracker::{AniList, MyAnimeList};

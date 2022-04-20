@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
-use super::{Manga, Source};
-use crate::{
-    config::GLOBAL_CONFIG,
-    loader::{DatabaseLoader, MangaId, NextChapterId, PrevChapterId, UserHistoryId},
-    local,
-    user::Claims,
-    utils,
+use super::{
+    super::{
+        loader::{DatabaseLoader, MangaId, NextChapterId, PrevChapterId, UserHistoryId},
+        local,
+    },
+    Manga, Source,
 };
+use crate::{auth::Claims, config::GLOBAL_CONFIG, utils};
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use tanoshi_vm::extension::SourceBus;

@@ -1,6 +1,6 @@
 use async_graphql::{Context, Guard, Result};
 
-use crate::user::Claims;
+use crate::auth::Claims;
 
 #[derive(Debug, Default)]
 pub struct AdminGuard;

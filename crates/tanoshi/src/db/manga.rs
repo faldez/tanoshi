@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use super::model::*;
-use crate::library::{RecentChapter, RecentUpdate};
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use sqlx::{

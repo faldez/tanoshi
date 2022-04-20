@@ -1,6 +1,6 @@
 use crate::{
+    auth::Claims,
     db::{model, MangaDatabase},
-    user::Claims,
 };
 use async_graphql::{Context, Object, Result};
 
