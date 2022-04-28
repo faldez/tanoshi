@@ -1,7 +1,6 @@
 [package]
 name = "tanoshi-vm"
 version = "0.7.2"
-authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi VM"
 repository = "https://github.com/faldez/tanoshi"

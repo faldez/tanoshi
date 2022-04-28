@@ -1,7 +1,6 @@
 [package]
 name = "tanoshi-lib"
 version = "0.27.0"
-authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi library"
 repository = "https://github.com/faldez/tanoshi"

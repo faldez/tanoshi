@@ -1,7 +1,6 @@
 [package]
 name = "tanoshi-util"
 version = "0.3.0"
-authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi Utilities"
 repository = "https://github.com/faldez/tanoshi"

@@ -1,7 +1,6 @@
 [package]
 name = "tanoshi-web"
 version = "0.0.0"
-authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi Web"
 repository = "https://github.com/faldez/tanoshi"

@@ -1,7 +1,6 @@
 [package]
 name = "tanoshi-cli"
 version = "0.6.2"
-authors = ["Muhammad Fadhlika <fadhlika@gmail.com>"]
 edition = "2018"
 description = "Tanoshi CLI Utilities"
 repository = "https://github.com/faldez/tanoshi"

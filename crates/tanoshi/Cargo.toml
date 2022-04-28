@@ -1,7 +1,6 @@
 [package]
 name = "tanoshi"
 version = "0.28.1"
-authors = ["fadhlika"]
 edition = "2018"
 description = "Tanoshi"
 repository = "https://github.com/faldez/tanoshi"
