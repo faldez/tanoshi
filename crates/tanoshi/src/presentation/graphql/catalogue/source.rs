@@ -1,7 +1,7 @@
 use std::{collections::HashMap, str::FromStr};
 
 use super::super::guard::AdminGuard;
-use crate::{auth::Claims, config::GLOBAL_CONFIG};
+use crate::infrastructure::{auth::Claims, config::GLOBAL_CONFIG};
 use async_graphql::{Context, Object, Result};
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;

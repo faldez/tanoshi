@@ -8,7 +8,7 @@ use axum::{
 use fancy_regex::Regex;
 use serde::Deserialize;
 
-use crate::utils;
+use crate::infrastructure::utils;
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
@@ -17,12 +17,12 @@ pub struct Params {
 }
 
 #[derive(Clone)]
-pub struct Proxy {
+pub struct Image {
     client: reqwest::Client,
     secret: String,
 }
 
-impl Proxy {
+impl Image {
     pub fn new(secret: String) -> Self {
         Self {
             client: reqwest::Client::new(),
@@ -30,8 +30,7 @@ impl Proxy {
         }
     }
 
-    #[cfg(feature = "server")]
-    pub async fn proxy(
+    pub async fn image(
         headers: HeaderMap,
         Path(url): Path<String>,
         Query(params): Query<Params>,

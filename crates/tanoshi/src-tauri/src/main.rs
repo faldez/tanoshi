@@ -3,7 +3,7 @@
   windows_subsystem = "windows"
 )]
 
-use tanoshi::config::{Config, GLOBAL_CONFIG};
+use tanoshi::infrastructure::config::{Config, GLOBAL_CONFIG};
 
 use crate::server::Server;
 

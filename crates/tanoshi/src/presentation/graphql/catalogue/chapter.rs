@@ -7,7 +7,7 @@ use super::{
     },
     Manga, Source,
 };
-use crate::{auth::Claims, config::GLOBAL_CONFIG, utils};
+use crate::infrastructure::{auth::Claims, config::GLOBAL_CONFIG, utils};
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use tanoshi_vm::extension::SourceBus;

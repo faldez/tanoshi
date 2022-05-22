@@ -1,8 +1,8 @@
 use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 
-use crate::auth::Claims;
 use crate::db::{model, MangaDatabase, UserDatabase};
+use crate::infrastructure::auth::Claims;
 use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Tracker};
 
 #[derive(SimpleObject)]

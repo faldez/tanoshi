@@ -5,12 +5,13 @@ extern crate argon2;
 use clap::Parser;
 use futures::future::OptionFuture;
 use tanoshi::{
-    config::{self, Config, GLOBAL_CONFIG},
+    application::worker,
     db,
-    graphql::{local, schema},
-    notifier,
-    proxy::Proxy,
-    server, worker,
+    infrastructure::{
+        config::{self, Config, GLOBAL_CONFIG},
+        notifier,
+    },
+    presentation::{graphql::local, ServerBuilder},
 };
 use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
 use tanoshi_tracker::{AniList, MyAnimeList};
@@ -123,20 +124,27 @@ async fn main() -> Result<(), anyhow::Error> {
             AniList::new(&base_url, al_cfg.client_id.clone(), al_cfg.client_secret).ok()
         });
 
-    let schema = schema::build(
-        userdb.clone(),
-        mangadb,
-        extension_manager,
-        download_tx,
-        notifier,
-        mal_client,
-        al_client,
-    );
+    let mut server_builder = ServerBuilder::new()
+        .with_userdb(userdb.clone())
+        .with_mangadb(mangadb)
+        .with_ext_manager(extension_manager)
+        .with_download_tx(download_tx)
+        .with_notifier(notifier)
+        .with_secret(config.secret.clone());
 
-    let proxy = Proxy::new(config.secret.clone());
+    if let Some(mal_client) = mal_client {
+        server_builder = server_builder.with_mal_client(mal_client);
+    }
 
-    let app = server::init_app(config.enable_playground, schema, proxy);
-    let server_fut = server::serve("0.0.0.0", config.port, app);
+    if let Some(al_client) = al_client {
+        server_builder = server_builder.with_anilist_client(al_client);
+    }
+
+    if config.enable_playground {
+        server_builder = server_builder.enable_playground();
+    }
+
+    let server_fut = server_builder.build()?.serve(([0, 0, 0, 0], config.port));
 
     tokio::select! {
         _ = server_fut => {

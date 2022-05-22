@@ -5,7 +5,10 @@ use super::{
     },
     Chapter, Source,
 };
-use crate::{auth::Claims, config::GLOBAL_CONFIG, db::MangaDatabase, utils};
+use crate::{
+    db::MangaDatabase,
+    infrastructure::{auth::Claims, config::GLOBAL_CONFIG, utils},
+};
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use rayon::prelude::*;

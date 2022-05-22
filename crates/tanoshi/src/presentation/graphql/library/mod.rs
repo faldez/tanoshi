@@ -1,8 +1,10 @@
 use super::catalogue::Manga;
 use crate::{
-    auth::Claims,
     db::{model, MangaDatabase, UserDatabase},
-    utils::{decode_cursor, encode_cursor},
+    infrastructure::{
+        auth::Claims,
+        utils::{decode_cursor, encode_cursor},
+    },
 };
 use async_graphql::{
     connection::{query, Connection, Edge, EmptyFields},

@@ -1,7 +1,7 @@
 use super::guard::AdminGuard;
 use crate::{
-    auth::{self, Claims},
     db::UserDatabase,
+    infrastructure::auth::{self, Claims},
 };
 use async_graphql::{Context, InputObject, Object, Result};
 use rand::RngCore;

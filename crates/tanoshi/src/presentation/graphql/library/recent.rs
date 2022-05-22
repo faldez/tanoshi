@@ -1,7 +1,10 @@
 use async_graphql::{Object, Result};
 use chrono::NaiveDateTime;
 
-use crate::{config::GLOBAL_CONFIG, db::model, utils};
+use crate::{
+    db::model,
+    infrastructure::{config::GLOBAL_CONFIG, utils},
+};
 
 pub struct RecentChapter {
     pub manga_id: i64,

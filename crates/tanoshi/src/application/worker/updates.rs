@@ -8,10 +8,9 @@ use tanoshi_lib::prelude::Version;
 use tanoshi_vm::extension::SourceBus;
 
 use crate::{
-    config::GLOBAL_CONFIG,
     db::{model::Chapter, MangaDatabase},
-    notifier::Notifier,
-    worker::downloads::Command as DownloadCommand,
+    infrastructure::{notifier::Notifier, config::GLOBAL_CONFIG},
+    application::worker::downloads::Command as DownloadCommand,
 };
 use anyhow::anyhow;
 use tokio::{

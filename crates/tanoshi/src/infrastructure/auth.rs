@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
-use crate::config::GLOBAL_CONFIG;
+use crate::infrastructure::config::GLOBAL_CONFIG;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {

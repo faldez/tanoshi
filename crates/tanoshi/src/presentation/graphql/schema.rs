@@ -9,9 +9,9 @@ use super::{
     user::{UserMutationRoot, UserRoot},
 };
 use crate::{
+    application::worker::downloads::DownloadSender,
     db::{MangaDatabase, UserDatabase},
-    notifier::Notifier,
-    worker::downloads::DownloadSender,
+    infrastructure::notifier::Notifier,
 };
 use tanoshi_tracker::{AniList, MyAnimeList};
 use tanoshi_vm::extension::SourceBus;

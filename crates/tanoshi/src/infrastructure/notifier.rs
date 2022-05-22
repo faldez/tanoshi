@@ -1,5 +1,5 @@
-use crate::{config::GLOBAL_CONFIG, db::UserDatabase};
-use tanoshi_notifier::{telegram::Telegram, pushover::Pushover};
+use crate::{db::UserDatabase, infrastructure::config::GLOBAL_CONFIG};
+use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
 
 pub struct Builder {
     userdb: UserDatabase,
