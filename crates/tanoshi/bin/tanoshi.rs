@@ -7,9 +7,11 @@ use futures::future::OptionFuture;
 use tanoshi::{
     application::worker,
     db,
+    domain::services::user::UserService,
     infrastructure::{
         config::{self, Config, GLOBAL_CONFIG},
         notifier,
+        repositories::user::UserRepositoryImpl,
     },
     presentation::{graphql::local, ServerBuilder},
 };
@@ -46,7 +48,9 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let pool = db::establish_connection(&config.database_path).await?;
     let mangadb = db::MangaDatabase::new(pool.clone());
-    let userdb = db::UserDatabase::new(pool.clone());
+
+    let user_repo = UserRepositoryImpl::new(pool.clone().into());
+    let user_svc = UserService::new(user_repo.clone());
 
     let extension_manager = SourceBus::new(&config.plugin_path);
 
@@ -77,7 +81,7 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     }
 
-    let mut notifier_builder = notifier::Builder::new(userdb.clone());
+    let mut notifier_builder = notifier::Builder::new(user_repo.clone());
 
     let mut telegram_bot_fut: OptionFuture<_> = None.into();
     if let Some(telegram_config) = config.telegram.clone() {
@@ -125,7 +129,7 @@ async fn main() -> Result<(), anyhow::Error> {
         });
 
     let mut server_builder = ServerBuilder::new()
-        .with_userdb(userdb.clone())
+        .with_user_svc(user_svc.clone())
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)

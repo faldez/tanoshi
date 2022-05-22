@@ -8,9 +8,11 @@ use tanoshi_lib::prelude::Version;
 use tanoshi_vm::extension::SourceBus;
 
 use crate::{
-    db::{model::Chapter, MangaDatabase},
-    infrastructure::{notifier::Notifier, config::GLOBAL_CONFIG},
     application::worker::downloads::Command as DownloadCommand,
+    db::{model::Chapter, MangaDatabase},
+    infrastructure::{
+        config::GLOBAL_CONFIG, notifier::Notifier, repositories::user::UserRepositoryImpl,
+    },
 };
 use anyhow::anyhow;
 use tokio::{
@@ -37,7 +39,7 @@ struct UpdatesWorker {
     extensions: SourceBus,
     auto_download_chapters: bool,
     download_tx: DownloadSender,
-    notifier: Notifier,
+    notifier: Notifier<UserRepositoryImpl>,
 }
 
 impl UpdatesWorker {
@@ -46,7 +48,7 @@ impl UpdatesWorker {
         mangadb: MangaDatabase,
         extensions: SourceBus,
         download_tx: DownloadSender,
-        notifier: Notifier,
+        notifier: Notifier<UserRepositoryImpl>,
     ) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
@@ -297,7 +299,7 @@ pub fn start(
     mangadb: MangaDatabase,
     extensions: SourceBus,
     download_tx: DownloadSender,
-    notifier: Notifier,
+    notifier: Notifier<UserRepositoryImpl>,
 ) -> JoinHandle<()> {
     let worker = UpdatesWorker::new(period, mangadb, extensions, download_tx, notifier);
 

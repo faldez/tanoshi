@@ -5016,6 +5016,7 @@ dependencies = [
  "tanoshi-tracker",
  "tanoshi-vm",
  "tauri",
+ "thiserror",
  "tokio",
  "tokio-stream",
  "tower-http",

@@ -9,9 +9,11 @@ use tauri::{
 use tanoshi::{
   application::worker,
   db,
+  domain::services::user::UserService,
   infrastructure::{
     config::{self, GLOBAL_CONFIG},
     notifier,
+    repositories::user::UserRepositoryImpl,
   },
   presentation::{graphql::local, ServerBuilder},
 };
@@ -51,7 +53,9 @@ impl<R: Runtime> Plugin<R> for Server {
       };
 
       let mangadb = db::MangaDatabase::new(pool.clone());
-      let userdb = db::UserDatabase::new(pool.clone());
+
+      let user_repo = UserRepositoryImpl::new(pool.clone().into());
+      let user_svc = UserService::new(user_repo.clone());
 
       let extension_manager = SourceBus::new(&config.plugin_path);
 
@@ -82,7 +86,7 @@ impl<R: Runtime> Plugin<R> for Server {
         }
       }
 
-      let notifier = notifier::Builder::new(userdb.clone()).finish();
+      let notifier = notifier::Builder::new(user_repo.clone()).finish();
 
       let (download_tx, download_worker_handle) = worker::downloads::start(
         &config.download_path,
@@ -116,7 +120,7 @@ impl<R: Runtime> Plugin<R> for Server {
         });
 
       let mut server_builder = ServerBuilder::new()
-        .with_userdb(userdb.clone())
+        .with_user_svc(user_svc.clone())
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)

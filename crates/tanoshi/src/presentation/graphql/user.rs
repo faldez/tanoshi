@@ -1,10 +1,12 @@
 use super::guard::AdminGuard;
 use crate::{
-    db::UserDatabase,
-    infrastructure::auth::{self, Claims},
+    domain::services::{tracker::TrackerService, user::UserService},
+    infrastructure::{
+        auth::{self, Claims},
+        repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
+    },
 };
 use async_graphql::{Context, InputObject, Object, Result};
-use rand::RngCore;
 use tanoshi_tracker::{anilist, myanimelist};
 
 #[derive(Debug)]
@@ -17,8 +19,8 @@ pub struct User {
     pushover_user_key: Option<String>,
 }
 
-impl From<crate::db::model::User> for User {
-    fn from(val: crate::db::model::User) -> Self {
+impl From<crate::domain::entities::user::User> for User {
+    fn from(val: crate::domain::entities::user::User) -> Self {
         Self {
             id: val.id,
             username: val.username,
@@ -30,7 +32,7 @@ impl From<crate::db::model::User> for User {
     }
 }
 
-impl From<User> for crate::db::model::User {
+impl From<User> for crate::domain::entities::user::User {
     fn from(val: User) -> Self {
         Self {
             id: val.id,
@@ -68,9 +70,10 @@ impl User {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
+
         Ok(ctx
-            .data::<UserDatabase>()?
-            .get_user_tracker_token(myanimelist::NAME, user.sub)
+            .data::<TrackerService<TrackerRepositoryImpl>>()?
+            .check_tracker_login(myanimelist::NAME, user.sub)
             .await
             .is_ok())
     }
@@ -79,9 +82,10 @@ impl User {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
+
         Ok(ctx
-            .data::<UserDatabase>()?
-            .get_user_tracker_token(anilist::NAME, user.sub)
+            .data::<TrackerService<TrackerRepositoryImpl>>()?
+            .check_tracker_login(anilist::NAME, user.sub)
             .await
             .is_ok())
     }
@@ -104,14 +108,11 @@ impl UserRoot {
         #[graphql(desc = "username")] username: String,
         #[graphql(desc = "password")] password: String,
     ) -> Result<String> {
-        let user = ctx
-            .data::<UserDatabase>()?
-            .get_user_by_username(username)
-            .await?;
+        let user_svc = ctx.data::<UserService<UserRepositoryImpl>>()?;
 
-        if !argon2::verify_encoded(&user.password, password.as_bytes())? {
-            return Err("Wrong username or password".into());
-        }
+        user_svc.verify_password(&username, &password).await?;
+
+        let user = user_svc.fetch_user_by_username(&username).await?;
 
         let current_time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
         let token = auth::encode_jwt(&Claims {
@@ -126,22 +127,26 @@ impl UserRoot {
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn users(&self, ctx: &Context<'_>) -> Result<Vec<User>> {
-        let users = ctx.data::<UserDatabase>()?.get_users().await?;
+        let users = ctx
+            .data::<UserService<UserRepositoryImpl>>()?
+            .fetch_all_users()
+            .await?;
 
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
 
     async fn me(&self, ctx: &Context<'_>) -> Result<User> {
-        let user = ctx
+        let claim = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let user = ctx
-            .data::<UserDatabase>()?
-            .get_user_by_id(user.sub)
-            .await
-            .map_err(|_| "user not exist, please relogin")?;
 
-        Ok(user.into())
+        let user = ctx
+            .data::<UserService<UserRepositoryImpl>>()?
+            .fetch_user_by_id(claim.sub)
+            .await?
+            .into();
+
+        Ok(user)
     }
 }
 
@@ -157,39 +162,16 @@ impl UserMutationRoot {
         #[graphql(desc = "password")] password: String,
         #[graphql(desc = "role", default = false)] is_admin: bool,
     ) -> Result<i64> {
-        let userdb = ctx.data::<UserDatabase>()?;
+        let user_svc = ctx.data::<UserService<UserRepositoryImpl>>()?;
 
-        let user_count = userdb.get_users_count().await?;
+        let user_count = user_svc.fetch_all_users().await?.len();
         if let Ok(claim) = ctx.data::<Claims>() {
             if user_count > 0 && !claim.is_admin {
                 return Err("Forbidden".into());
             }
         }
 
-        if password.len() < 8 {
-            return Err("Password less than 8 character".into());
-        }
-
-        let mut salt: [u8; 32] = [0; 32];
-        rand::thread_rng().fill_bytes(&mut salt);
-
-        let config = argon2::Config::default();
-        let hash = argon2::hash_encoded(password.as_bytes(), &salt, &config).unwrap();
-
-        // If first user, make it admin else make it reader by default
-        let is_admin = if user_count == 0 { true } else { is_admin };
-
-        let user = crate::db::model::User {
-            id: 0,
-            username,
-            password: hash,
-            is_admin,
-            ..Default::default()
-        };
-
-        let user_id = userdb.insert_user(user).await?;
-
-        Ok(user_id)
+        Ok(user_svc.create_user(&username, &password, is_admin).await?)
     }
 
     async fn change_password(
@@ -202,27 +184,11 @@ impl UserMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let userdb = ctx.data::<UserDatabase>()?;
+        ctx.data::<UserService<UserRepositoryImpl>>()?
+            .change_password(claims.sub, &old_password, &new_password)
+            .await?;
 
-        let user = userdb.get_user_by_id(claims.sub).await?;
-
-        if !argon2::verify_encoded(&user.password, old_password.as_bytes())? {
-            return Err("Wrong old password".into());
-        }
-
-        if new_password.len() < 8 {
-            return Err("Password less than 8 character".into());
-        }
-
-        let mut salt: [u8; 32] = [0; 32];
-        rand::thread_rng().fill_bytes(&mut salt);
-
-        let config = argon2::Config::default();
-        let hash = argon2::hash_encoded(new_password.as_bytes(), &salt, &config).unwrap();
-
-        let affected = userdb.update_password(user.id, hash).await?;
-
-        Ok(affected)
+        Ok(1)
     }
 
     async fn update_profile(&self, ctx: &Context<'_>, input: ProfileInput) -> Result<u64> {
@@ -230,18 +196,11 @@ impl UserMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let userdb = ctx.data::<UserDatabase>()?;
-        let mut user = userdb.get_user_by_id(claims.sub).await?;
-        debug!("update_profile");
+        ctx.data::<UserService<UserRepositoryImpl>>()?
+            .update_profile(claims.sub, input.telegram_chat_id, input.pushover_user_key)
+            .await?;
 
-        user.telegram_chat_id = input.telegram_chat_id;
-        user.pushover_user_key = input.pushover_user_key;
-
-        let row = userdb.update_user_setting(&user).await?;
-
-        debug!("update_profile: {} rows affected", row);
-
-        Ok(row)
+        Ok(1)
     }
 
     async fn tracker_logout(&self, ctx: &Context<'_>, tracker: String) -> Result<u64> {
@@ -249,9 +208,6 @@ impl UserMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        Ok(ctx
-            .data::<UserDatabase>()?
-            .delete_user_tracker_login(&tracker, claims.sub)
-            .await?)
+        todo!()
     }
 }

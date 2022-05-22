@@ -10,8 +10,9 @@ use super::{
 };
 use crate::{
     application::worker::downloads::DownloadSender,
-    db::{MangaDatabase, UserDatabase},
-    infrastructure::notifier::Notifier,
+    db::MangaDatabase,
+    domain::services::user::UserService,
+    infrastructure::{notifier::Notifier, repositories::user::UserRepositoryImpl},
 };
 use tanoshi_tracker::{AniList, MyAnimeList};
 use tanoshi_vm::extension::SourceBus;
@@ -44,11 +45,11 @@ pub struct MutationRoot(
 );
 
 pub fn build(
-    userdb: UserDatabase,
+    user_svc: UserService<UserRepositoryImpl>,
     mangadb: MangaDatabase,
     ext_manager: SourceBus,
     download_tx: DownloadSender,
-    notifier: Notifier,
+    notifier: Notifier<UserRepositoryImpl>,
     mal_client: Option<MyAnimeList>,
     al_client: Option<AniList>,
 ) -> TanoshiSchema {
@@ -64,7 +65,7 @@ pub fn build(
         },
         tokio::spawn,
     ))
-    .data(userdb)
+    .data(user_svc)
     .data(mangadb)
     .data(ext_manager)
     .data(notifier)

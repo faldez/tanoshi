@@ -1,6 +1,6 @@
 use super::catalogue::Manga;
 use crate::{
-    db::{model, MangaDatabase, UserDatabase},
+    db::{model, MangaDatabase},
     infrastructure::{
         auth::Claims,
         utils::{decode_cursor, encode_cursor},
@@ -12,7 +12,7 @@ use async_graphql::{
 };
 use async_graphql::{Context, Object, Result};
 use chrono::{Local, NaiveDateTime};
-use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Tracker};
+// use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Tracker};
 
 mod categories;
 pub use categories::{Category, CategoryMutationRoot, CategoryRoot};
@@ -297,71 +297,72 @@ impl LibraryMutationRoot {
             return Ok(rows);
         }
 
-        let trackers = mangadb
-            .get_tracker_manga_id(user.sub, chapter.manga_id)
-            .await?;
-        for tracker in trackers {
-            let tracker_token = ctx
-                .data::<UserDatabase>()?
-                .get_user_tracker_token(&tracker.tracker, user.sub)
-                .await?;
+        // let trackers = mangadb
+        //     .get_tracker_manga_id(user.sub, chapter.manga_id)
+        //     .await?;
 
-            let client: &dyn Tracker = match tracker.tracker.as_str() {
-                myanimelist::NAME => ctx.data::<MyAnimeList>()?,
-                anilist::NAME => ctx.data::<AniList>()?,
-                _ => return Err("tracker not available".into()),
-            };
+        // for tracker in trackers {
+        //     let tracker_token = ctx
+        //         .data::<UserDatabase>()?
+        //         .get_user_tracker_token(&tracker.tracker, user.sub)
+        //         .await?;
 
-            if let Some(tracker_manga_id) = tracker.tracker_manga_id.to_owned() {
-                let tracker_manga_id = tracker_manga_id.parse()?;
-                let tracker_data = match client
-                    .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
-                    .await
-                {
-                    Ok(res) => res,
-                    Err(e) => {
-                        if matches!(e, tanoshi_tracker::Error::Unauthorized) {
-                            let token = client
-                                .refresh_token(tracker_token.refresh_token)
-                                .await
-                                .map(|token| model::Token {
-                                    token_type: token.token_type,
-                                    access_token: token.access_token,
-                                    refresh_token: token.refresh_token,
-                                    expires_in: token.expires_in,
-                                })?;
+        //     let client: &dyn Tracker = match tracker.tracker.as_str() {
+        //         myanimelist::NAME => ctx.data::<MyAnimeList>()?,
+        //         anilist::NAME => ctx.data::<AniList>()?,
+        //         _ => return Err("tracker not available".into()),
+        //     };
 
-                            ctx.data::<UserDatabase>()?
-                                .insert_tracker_credential(user.sub, &tracker.tracker, token)
-                                .await?;
-                        }
+        //     if let Some(tracker_manga_id) = tracker.tracker_manga_id.to_owned() {
+        //         let tracker_manga_id = tracker_manga_id.parse()?;
+        //         let tracker_data = match client
+        //             .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
+        //             .await
+        //         {
+        //             Ok(res) => res,
+        //             Err(e) => {
+        //                 if matches!(e, tanoshi_tracker::Error::Unauthorized) {
+        //                     let token = client
+        //                         .refresh_token(tracker_token.refresh_token)
+        //                         .await
+        //                         .map(|token| model::Token {
+        //                             token_type: token.token_type,
+        //                             access_token: token.access_token,
+        //                             refresh_token: token.refresh_token,
+        //                             expires_in: token.expires_in,
+        //                         })?;
 
-                        return Err(e.into());
-                    }
-                };
+        //                     ctx.data::<UserDatabase>()?
+        //                         .insert_tracker_credential(user.sub, &tracker.tracker, token)
+        //                         .await?;
+        //                 }
 
-                if let Some(num_chapters_read) = tracker_data
-                    .tracker_status
-                    .and_then(|status| status.num_chapters_read)
-                {
-                    if chapter.number <= num_chapters_read as f64 {
-                        continue;
-                    }
-                }
+        //                 return Err(e.into());
+        //             }
+        //         };
 
-                client
-                    .update_tracker_status(
-                        tracker_token.access_token,
-                        tracker_manga_id,
-                        None,
-                        None,
-                        Some(chapter.number as i64),
-                        None,
-                        None,
-                    )
-                    .await?;
-            }
-        }
+        //         if let Some(num_chapters_read) = tracker_data
+        //             .tracker_status
+        //             .and_then(|status| status.num_chapters_read)
+        //         {
+        //             if chapter.number <= num_chapters_read as f64 {
+        //                 continue;
+        //             }
+        //         }
+
+        //         client
+        //             .update_tracker_status(
+        //                 tracker_token.access_token,
+        //                 tracker_manga_id,
+        //                 None,
+        //                 None,
+        //                 Some(chapter.number as i64),
+        //                 None,
+        //                 None,
+        //             )
+        //             .await?;
+        //     }
+        // }
 
         Ok(rows)
     }

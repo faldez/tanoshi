@@ -3,9 +3,6 @@ use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
 mod manga;
 pub use manga::Db as MangaDatabase;
 
-mod user;
-pub use user::Db as UserDatabase;
-
 pub mod model;
 
 pub async fn establish_connection(database_path: &str) -> Result<SqlitePool, anyhow::Error> {

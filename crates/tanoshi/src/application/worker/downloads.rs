@@ -3,7 +3,7 @@ use crate::{
         model::{Chapter, DownloadQueue},
         MangaDatabase,
     },
-    infrastructure::notifier::Notifier,
+    infrastructure::{notifier::Notifier, repositories::user::UserRepositoryImpl},
 };
 use anyhow::{anyhow, Result};
 use reqwest::Url;
@@ -35,7 +35,7 @@ pub struct DownloadWorker {
     client: reqwest::Client,
     db: MangaDatabase,
     ext: SourceBus,
-    _notifier: Notifier,
+    _notifier: Notifier<UserRepositoryImpl>,
     tx: DownloadSender,
     rx: DownloadReceiver,
 }
@@ -45,7 +45,7 @@ impl DownloadWorker {
         dir: P,
         db: MangaDatabase,
         ext: SourceBus,
-        notifier: Notifier,
+        notifier: Notifier<UserRepositoryImpl>,
     ) -> (Self, DownloadSender) {
         let (tx, rx) = unbounded_channel::<Command>();
         (
@@ -286,7 +286,7 @@ pub fn start<P: AsRef<Path>>(
     dir: P,
     mangadb: MangaDatabase,
     ext: SourceBus,
-    notifier: Notifier,
+    notifier: Notifier<UserRepositoryImpl>,
 ) -> (DownloadSender, JoinHandle<()>) {
     let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, notifier);
 

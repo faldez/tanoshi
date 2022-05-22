@@ -50,6 +50,7 @@ env_logger = "0.9.0"
 jsonwebtoken = "8"
 chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1"
+thiserror = "1"
 rust-embed = { version = "6.0", features = [
     "interpolate-folder-path",
 ], optional = true }

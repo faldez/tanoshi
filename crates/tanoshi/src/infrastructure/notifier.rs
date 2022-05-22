@@ -1,16 +1,22 @@
-use crate::{db::UserDatabase, infrastructure::config::GLOBAL_CONFIG};
+use crate::{domain::repositories::user::UserRepository, infrastructure::config::GLOBAL_CONFIG};
 use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
 
-pub struct Builder {
-    userdb: UserDatabase,
+pub struct Builder<R>
+where
+    R: UserRepository,
+{
+    user_repo: R,
     pushover: Option<Pushover>,
     telegram: Option<Telegram>,
 }
 
-impl Builder {
-    pub fn new(userdb: UserDatabase) -> Self {
+impl<R> Builder<R>
+where
+    R: UserRepository,
+{
+    pub fn new(user_repo: R) -> Self {
         Self {
-            userdb,
+            user_repo,
             pushover: None,
             telegram: None,
         }
@@ -30,9 +36,9 @@ impl Builder {
         }
     }
 
-    pub fn finish(self) -> Notifier {
+    pub fn finish(self) -> Notifier<R> {
         Notifier {
-            userdb: self.userdb,
+            user_repo: self.user_repo,
             telegram: self.telegram,
             pushover: self.pushover,
         }
@@ -40,20 +46,26 @@ impl Builder {
 }
 
 #[derive(Clone)]
-pub struct Notifier {
-    userdb: UserDatabase,
+pub struct Notifier<R>
+where
+    R: UserRepository,
+{
+    user_repo: R,
     pushover: Option<Pushover>,
     telegram: Option<Telegram>,
 }
 
-impl Notifier {
+impl<R> Notifier<R>
+where
+    R: UserRepository,
+{
     pub async fn send_all_to_user(
         &self,
         user_id: i64,
         title: Option<String>,
         body: &str,
     ) -> Result<(), anyhow::Error> {
-        let user = self.userdb.get_user_by_id(user_id).await?;
+        let user = self.user_repo.get_user_by_id(user_id).await?;
         if let Some(user_key) = user.pushover_user_key {
             let _ = self
                 .send_message_to_pushover(&user_key, title.clone(), body)
@@ -76,7 +88,7 @@ impl Notifier {
         title: Option<String>,
         body: &str,
     ) -> Result<(), anyhow::Error> {
-        let admins = self.userdb.get_admins().await?;
+        let admins = self.user_repo.get_admins().await?;
         for user in admins {
             let _ = self.send_all_to_user(user.id, title.clone(), body).await;
         }
@@ -91,7 +103,7 @@ impl Notifier {
         chapter_title: &str,
         chapter_id: i64,
     ) -> Result<(), anyhow::Error> {
-        let user = self.userdb.get_user_by_id(user_id).await?;
+        let user = self.user_repo.get_user_by_id(user_id).await?;
         if let Some((user_key, pushover)) = user.pushover_user_key.zip(self.pushover.as_ref()) {
             if let Some(base_url) = GLOBAL_CONFIG.get().and_then(|cfg| cfg.base_url.clone()) {
                 pushover

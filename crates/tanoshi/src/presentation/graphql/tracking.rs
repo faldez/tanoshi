@@ -1,9 +1,10 @@
 use async_graphql::{Context, InputObject, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 
-use crate::db::{model, MangaDatabase, UserDatabase};
+use crate::domain::services::tracker::TrackerService;
 use crate::infrastructure::auth::Claims;
-use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Tracker};
+use crate::infrastructure::repositories::tracker::TrackerRepositoryImpl;
+use tanoshi_tracker::{anilist, myanimelist};
 
 #[derive(SimpleObject)]
 pub struct Session {
@@ -80,7 +81,11 @@ impl TrackingRoot {
         let _ = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let session = ctx.data::<MyAnimeList>()?.get_authorize_url().unwrap();
+
+        let session = ctx
+            .data::<TrackerService<TrackerRepositoryImpl>>()?
+            .login_start(myanimelist::NAME)?;
+
         Ok(Session {
             authorize_url: session.authorize_url,
             csrf_state: session.csrf_state.secret().to_owned(),
@@ -98,27 +103,21 @@ impl TrackingRoot {
         csrf_state: String,
         pkce_code_verifier: String,
     ) -> Result<String> {
-        let user = ctx
+        let claim = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let client = ctx.data::<MyAnimeList>()?;
-        let token = client
-            .exchange_code(
+
+        ctx.data::<TrackerService<TrackerRepositoryImpl>>()?
+            .login_end(
+                claim.sub,
+                myanimelist::NAME,
                 code,
                 Some(state),
                 Some(csrf_state),
                 Some(pkce_code_verifier),
             )
-            .await
-            .map(|token| model::Token {
-                token_type: token.token_type,
-                access_token: token.access_token,
-                refresh_token: token.refresh_token,
-                expires_in: token.expires_in,
-            })?;
-        ctx.data::<UserDatabase>()?
-            .insert_tracker_credential(user.sub, myanimelist::NAME, token)
             .await?;
+
         Ok("Success".to_string())
     }
 
@@ -126,7 +125,11 @@ impl TrackingRoot {
         let _ = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let session = ctx.data::<AniList>()?.get_authorize_url().unwrap();
+
+        let session = ctx
+            .data::<TrackerService<TrackerRepositoryImpl>>()?
+            .login_start(anilist::NAME)?;
+
         Ok(Session {
             authorize_url: session.authorize_url,
             csrf_state: session.csrf_state.secret().to_owned(),
@@ -137,22 +140,14 @@ impl TrackingRoot {
     }
 
     async fn anilist_login_end(&self, ctx: &Context<'_>, code: String) -> Result<String> {
-        let user = ctx
+        let claim = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let client = ctx.data::<AniList>()?;
-        let token = client
-            .exchange_code(code, None, None, None)
-            .await
-            .map(|token| model::Token {
-                token_type: token.token_type,
-                access_token: token.access_token,
-                refresh_token: token.refresh_token,
-                expires_in: token.expires_in,
-            })?;
-        ctx.data::<UserDatabase>()?
-            .insert_tracker_credential(user.sub, anilist::NAME, token)
+
+        ctx.data::<TrackerService<TrackerRepositoryImpl>>()?
+            .login_end(claim.sub, anilist::NAME, code, None, None, None)
             .await?;
+
         Ok("Success".to_string())
     }
 
@@ -162,42 +157,19 @@ impl TrackingRoot {
         tracker: String,
         title: String,
     ) -> Result<Vec<TrackerManga>> {
-        let user = ctx
+        let claim = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let tracker_token = ctx
-            .data::<UserDatabase>()?
-            .get_user_tracker_token(&tracker, user.sub)
-            .await?;
+        let manga = ctx
+            .data::<TrackerService<TrackerRepositoryImpl>>()?
+            .search_manga(claim.sub, &tracker, &title)
+            .await?
+            .into_iter()
+            .map(|m| m.into())
+            .collect();
 
-        let client: &dyn Tracker = match tracker.as_str() {
-            myanimelist::NAME => ctx.data::<MyAnimeList>()?,
-            anilist::NAME => ctx.data::<AniList>()?,
-            _ => return Err("tracker not available".into()),
-        };
-
-        match client.search_manga(tracker_token.access_token, title).await {
-            Ok(manga_list) => Ok(manga_list.into_iter().map(|m| m.into()).collect()),
-            Err(e) => {
-                if matches!(e, tanoshi_tracker::Error::Unauthorized) {
-                    let token = client
-                        .refresh_token(tracker_token.refresh_token)
-                        .await
-                        .map(|token| model::Token {
-                            token_type: token.token_type,
-                            access_token: token.access_token,
-                            refresh_token: token.refresh_token,
-                            expires_in: token.expires_in,
-                        })?;
-
-                    ctx.data::<UserDatabase>()?
-                        .insert_tracker_credential(user.sub, &tracker, token)
-                        .await?;
-                }
-                Err(e.into())
-            }
-        }
+        Ok(manga)
     }
 
     async fn manga_tracker_status(
@@ -205,63 +177,19 @@ impl TrackingRoot {
         ctx: &Context<'_>,
         manga_id: i64,
     ) -> Result<Vec<TrackerStatus>> {
-        let user = ctx
+        let claim = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let trackers = ctx
-            .data::<MangaDatabase>()?
-            .get_tracker_manga_id(user.sub, manga_id)
-            .await?;
 
-        let mut data: Vec<TrackerStatus> = vec![];
-        for tracker in trackers {
-            let tracker_token = ctx
-                .data::<UserDatabase>()?
-                .get_user_tracker_token(&tracker.tracker, user.sub)
-                .await?;
+        let status = ctx
+            .data::<TrackerService<TrackerRepositoryImpl>>()?
+            .fetch_manga_tracking_status(claim.sub, manga_id)
+            .await?
+            .into_iter()
+            .map(|m| m.into())
+            .collect();
 
-            let client: &dyn Tracker = match tracker.tracker.as_str() {
-                myanimelist::NAME => ctx.data::<MyAnimeList>()?,
-                anilist::NAME => ctx.data::<AniList>()?,
-                _ => return Err("tracker not available".into()),
-            };
-
-            let mut status: Option<TrackerStatus> = None;
-            if let Some(tracker_manga_id) = tracker.tracker_manga_id.to_owned() {
-                status = match client
-                    .get_manga_details(tracker_token.access_token, tracker_manga_id.parse()?)
-                    .await
-                {
-                    Ok(res) => res.tracker_status.map(|status| status.into()),
-                    Err(e) => {
-                        if matches!(e, tanoshi_tracker::Error::Unauthorized) {
-                            let token = client
-                                .refresh_token(tracker_token.refresh_token)
-                                .await
-                                .map(|token| model::Token {
-                                    token_type: token.token_type,
-                                    access_token: token.access_token,
-                                    refresh_token: token.refresh_token,
-                                    expires_in: token.expires_in,
-                                })?;
-
-                            ctx.data::<UserDatabase>()?
-                                .insert_tracker_credential(user.sub, &tracker.tracker, token)
-                                .await?;
-                        }
-
-                        return Err(e.into());
-                    }
-                }
-            }
-
-            data.push(status.unwrap_or_else(|| TrackerStatus {
-                tracker: tracker.tracker,
-                ..Default::default()
-            }));
-        }
-
-        Ok(data)
+        Ok(status)
     }
 }
 
@@ -277,18 +205,15 @@ impl TrackingMutationRoot {
         manga_id: i64,
         tracker_manga_id: String,
     ) -> Result<i64> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        if !matches!(tracker.as_str(), myanimelist::NAME | anilist::NAME) {
-            return Err("tracker not available".into());
-        }
+        ctx.data::<TrackerService<TrackerRepositoryImpl>>()?
+            .track_manga(claims.sub, manga_id, &tracker, &tracker_manga_id)
+            .await?;
 
-        Ok(ctx
-            .data::<MangaDatabase>()?
-            .insert_tracker_manga(user.sub, manga_id, &tracker, tracker_manga_id)
-            .await?)
+        Ok(1)
     }
 
     async fn untrack_manga(
@@ -297,14 +222,15 @@ impl TrackingMutationRoot {
         tracker: String,
         manga_id: i64,
     ) -> Result<u64> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        Ok(ctx
-            .data::<MangaDatabase>()?
-            .delete_tracker_manga(user.sub, manga_id, &tracker)
-            .await?)
+        ctx.data::<TrackerService<TrackerRepositoryImpl>>()?
+            .untrack_manga(claims.sub, manga_id, &tracker)
+            .await?;
+
+        Ok(1)
     }
 
     async fn update_tracker_status(
@@ -314,26 +240,14 @@ impl TrackingMutationRoot {
         tracker_manga_id: String,
         status: TrackerStatusInput,
     ) -> Result<bool> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let tracker_token = ctx
-            .data::<UserDatabase>()?
-            .get_user_tracker_token(&tracker, user.sub)
-            .await?;
-
-        let tracker_manga_id: i64 = tracker_manga_id.parse()?;
-
-        let client: &dyn Tracker = match tracker.as_str() {
-            myanimelist::NAME => ctx.data::<MyAnimeList>()?,
-            anilist::NAME => ctx.data::<AniList>()?,
-            _ => return Err("tracker not available".into()),
-        };
-
-        match client
-            .update_tracker_status(
-                tracker_token.access_token,
+        ctx.data::<TrackerService<TrackerRepositoryImpl>>()?
+            .update_manga_tracking_status(
+                claims.sub,
+                &tracker,
                 tracker_manga_id,
                 status.status,
                 status.score,
@@ -341,28 +255,20 @@ impl TrackingMutationRoot {
                 status.start_date,
                 status.finish_date,
             )
-            .await
-        {
-            Ok(_) => Ok(true),
-            Err(e) => {
-                if matches!(e, tanoshi_tracker::Error::Unauthorized) {
-                    let token = client
-                        .refresh_token(tracker_token.refresh_token)
-                        .await
-                        .map(|token| model::Token {
-                            token_type: token.token_type,
-                            access_token: token.access_token,
-                            refresh_token: token.refresh_token,
-                            expires_in: token.expires_in,
-                        })?;
+            .await?;
 
-                    ctx.data::<UserDatabase>()?
-                        .insert_tracker_credential(user.sub, &tracker, token)
-                        .await?;
-                }
+        Ok(true)
+    }
 
-                Err(e.into())
-            }
-        }
+    async fn tracker_logout(&self, ctx: &Context<'_>, tracker: String) -> Result<u64> {
+        let claims = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+
+        ctx.data::<TrackerService<TrackerRepositoryImpl>>()?
+            .logout_tracker(&tracker, claims.sub)
+            .await?;
+
+        Ok(1)
     }
 }

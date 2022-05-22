@@ -1,8 +1,8 @@
 #[cfg(feature = "embed")]
 pub mod assets;
-pub mod token;
 pub mod graphql;
 pub mod rest;
+pub mod token;
 
 use anyhow::anyhow;
 use axum::{
@@ -21,18 +21,19 @@ use self::{
 };
 use crate::{
     application::worker::downloads::DownloadSender,
-    db::{MangaDatabase, UserDatabase},
-    infrastructure::notifier::Notifier,
+    db::MangaDatabase,
+    domain::services::user::UserService,
+    infrastructure::{notifier::Notifier, repositories::user::UserRepositoryImpl},
 };
 use tanoshi_tracker::{AniList, MyAnimeList};
 use tanoshi_vm::extension::SourceBus;
 
 pub struct ServerBuilder {
-    userdb: Option<UserDatabase>,
+    user_svc: Option<UserService<UserRepositoryImpl>>,
     mangadb: Option<MangaDatabase>,
     ext_manager: Option<SourceBus>,
     download_tx: Option<DownloadSender>,
-    notifier: Option<Notifier>,
+    notifier: Option<Notifier<UserRepositoryImpl>>,
     mal_client: Option<MyAnimeList>,
     al_client: Option<AniList>,
     enable_playground: bool,
@@ -42,7 +43,7 @@ pub struct ServerBuilder {
 impl ServerBuilder {
     pub fn new() -> Self {
         Self {
-            userdb: None,
+            user_svc: None,
             mangadb: None,
             ext_manager: None,
             download_tx: None,
@@ -54,9 +55,9 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_userdb(self, userdb: UserDatabase) -> Self {
+    pub fn with_user_svc(self, user_svc: UserService<UserRepositoryImpl>) -> Self {
         Self {
-            userdb: Some(userdb),
+            user_svc: Some(user_svc),
             ..self
         }
     }
@@ -82,7 +83,7 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_notifier(self, notifier: Notifier) -> Self {
+    pub fn with_notifier(self, notifier: Notifier<UserRepositoryImpl>) -> Self {
         Self {
             notifier: Some(notifier),
             ..self
@@ -118,7 +119,7 @@ impl ServerBuilder {
     }
 
     pub fn build(self) -> Result<Server, anyhow::Error> {
-        let userdb = self.userdb.ok_or_else(|| anyhow!("no user database"))?;
+        let user_svc = self.user_svc.ok_or_else(|| anyhow!("no user service"))?;
         let mangadb = self.mangadb.ok_or_else(|| anyhow!("no manga database"))?;
         let extension_manager = self
             .ext_manager
@@ -131,7 +132,7 @@ impl ServerBuilder {
         let al_client = self.al_client;
 
         let schema = schema::build(
-            userdb,
+            user_svc,
             mangadb,
             extension_manager,
             download_tx,

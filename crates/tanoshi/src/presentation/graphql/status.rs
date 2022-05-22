@@ -1,6 +1,8 @@
 use async_graphql::{Context, Object, Result, SimpleObject};
 
-use crate::db::UserDatabase;
+use crate::{
+    domain::services::user::UserService, infrastructure::repositories::user::UserRepositoryImpl,
+};
 
 #[derive(Debug, SimpleObject)]
 struct Status {
@@ -14,7 +16,12 @@ pub struct StatusRoot;
 #[Object]
 impl StatusRoot {
     async fn server_status(&self, ctx: &Context<'_>) -> Result<Status> {
-        let activated = ctx.data::<UserDatabase>()?.get_users_count().await? > 0;
+        let activated = ctx
+            .data::<UserService<UserRepositoryImpl>>()?
+            .fetch_all_users()
+            .await?
+            .len()
+            > 0;
         let version = env!("CARGO_PKG_VERSION").to_string();
 
         Ok(Status { activated, version })
