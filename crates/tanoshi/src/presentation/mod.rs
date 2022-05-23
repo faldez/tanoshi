@@ -16,26 +16,27 @@ use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 
 use self::{
-    graphql::{graphql_handler, graphql_playground, schema},
+    graphql::{graphql_handler, graphql_playground, loader::DatabaseLoader, schema::SchemaBuilder},
     rest::health::health_check,
 };
 use crate::{
     application::worker::downloads::DownloadSender,
     db::MangaDatabase,
-    domain::services::user::UserService,
-    infrastructure::{notifier::Notifier, repositories::user::UserRepositoryImpl},
+    domain::services::{tracker::TrackerService, user::UserService},
+    infrastructure::{
+        notifier::Notifier,
+        repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
+    },
 };
-use tanoshi_tracker::{AniList, MyAnimeList};
 use tanoshi_vm::extension::SourceBus;
 
 pub struct ServerBuilder {
     user_svc: Option<UserService<UserRepositoryImpl>>,
+    tracker_svc: Option<TrackerService<TrackerRepositoryImpl>>,
     mangadb: Option<MangaDatabase>,
     ext_manager: Option<SourceBus>,
     download_tx: Option<DownloadSender>,
     notifier: Option<Notifier<UserRepositoryImpl>>,
-    mal_client: Option<MyAnimeList>,
-    al_client: Option<AniList>,
     enable_playground: bool,
     secret: Option<String>,
 }
@@ -44,12 +45,11 @@ impl ServerBuilder {
     pub fn new() -> Self {
         Self {
             user_svc: None,
+            tracker_svc: None,
             mangadb: None,
             ext_manager: None,
             download_tx: None,
             notifier: None,
-            mal_client: None,
-            al_client: None,
             enable_playground: false,
             secret: None,
         }
@@ -58,6 +58,13 @@ impl ServerBuilder {
     pub fn with_user_svc(self, user_svc: UserService<UserRepositoryImpl>) -> Self {
         Self {
             user_svc: Some(user_svc),
+            ..self
+        }
+    }
+
+    pub fn with_tracker_svc(self, tracker_svc: TrackerService<TrackerRepositoryImpl>) -> Self {
+        Self {
+            tracker_svc: Some(tracker_svc),
             ..self
         }
     }
@@ -90,20 +97,6 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_mal_client(self, mal_client: MyAnimeList) -> Self {
-        Self {
-            mal_client: Some(mal_client),
-            ..self
-        }
-    }
-
-    pub fn with_anilist_client(self, al_client: AniList) -> Self {
-        Self {
-            al_client: Some(al_client),
-            ..self
-        }
-    }
-
     pub fn enable_playground(self) -> Self {
         Self {
             enable_playground: true,
@@ -120,6 +113,9 @@ impl ServerBuilder {
 
     pub fn build(self) -> Result<Server, anyhow::Error> {
         let user_svc = self.user_svc.ok_or_else(|| anyhow!("no user service"))?;
+        let tracker_svc = self
+            .tracker_svc
+            .ok_or_else(|| anyhow!("no tracker service"))?;
         let mangadb = self.mangadb.ok_or_else(|| anyhow!("no manga database"))?;
         let extension_manager = self
             .ext_manager
@@ -128,18 +124,16 @@ impl ServerBuilder {
             .download_tx
             .ok_or_else(|| anyhow!("no download sender"))?;
         let notifier = self.notifier.ok_or_else(|| anyhow!("no notifier"))?;
-        let mal_client = self.mal_client;
-        let al_client = self.al_client;
 
-        let schema = schema::build(
-            user_svc,
-            mangadb,
-            extension_manager,
-            download_tx,
-            notifier,
-            mal_client,
-            al_client,
-        );
+        let schema = SchemaBuilder::new()
+            .data(user_svc)
+            .data(tracker_svc)
+            .data(mangadb.clone())
+            .loader(DatabaseLoader { mangadb })
+            .data(extension_manager)
+            .data(download_tx)
+            .data(notifier)
+            .build();
 
         let enable_playground = self.enable_playground;
         let secret = self.secret.ok_or_else(|| anyhow!("no secret"))?;

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use sqlx::{Row, SqlitePool};
-use tanoshi_tracker::{Session, Tracker, TrackerManga};
+use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Session, Tracker, TrackerManga};
 
 use crate::{
     domain::{
@@ -19,11 +19,16 @@ pub struct TrackerRepositoryImpl {
 }
 
 impl TrackerRepositoryImpl {
-    pub fn new(pool: Pool) -> Self {
-        Self {
-            pool,
-            clients: HashMap::new(),
+    pub fn new(pool: Pool, mal: Option<MyAnimeList>, anilist: Option<AniList>) -> Self {
+        let mut clients = HashMap::new();
+        if let Some(mal) = mal {
+            clients.insert(myanimelist::NAME, Box::new(mal) as Box<dyn Tracker>);
         }
+        if let Some(anilist) = anilist {
+            clients.insert(anilist::NAME, Box::new(anilist) as Box<dyn Tracker>);
+        }
+
+        Self { pool, clients }
     }
 }
 

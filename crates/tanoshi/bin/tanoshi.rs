@@ -7,11 +7,11 @@ use futures::future::OptionFuture;
 use tanoshi::{
     application::worker,
     db,
-    domain::services::user::UserService,
+    domain::services::{tracker::TrackerService, user::UserService},
     infrastructure::{
         config::{self, Config, GLOBAL_CONFIG},
         notifier,
-        repositories::user::UserRepositoryImpl,
+        repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
     },
     presentation::{graphql::local, ServerBuilder},
 };
@@ -128,21 +128,18 @@ async fn main() -> Result<(), anyhow::Error> {
             AniList::new(&base_url, al_cfg.client_id.clone(), al_cfg.client_secret).ok()
         });
 
+    let tracker_repo =
+        TrackerRepositoryImpl::new(pool.clone().into(), mal_client.clone(), al_client);
+    let tracker_svc = TrackerService::new(tracker_repo);
+
     let mut server_builder = ServerBuilder::new()
         .with_user_svc(user_svc.clone())
+        .with_tracker_svc(tracker_svc)
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)
         .with_notifier(notifier)
         .with_secret(config.secret.clone());
-
-    if let Some(mal_client) = mal_client {
-        server_builder = server_builder.with_mal_client(mal_client);
-    }
-
-    if let Some(al_client) = al_client {
-        server_builder = server_builder.with_anilist_client(al_client);
-    }
 
     if config.enable_playground {
         server_builder = server_builder.enable_playground();
