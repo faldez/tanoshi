@@ -138,8 +138,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)
-        .with_notifier(notifier)
-        .with_secret(config.secret.clone());
+        .with_notifier(notifier);
 
     if config.enable_playground {
         server_builder = server_builder.enable_playground();

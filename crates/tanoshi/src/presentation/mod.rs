@@ -11,21 +11,22 @@ use axum::{
     Router,
 };
 use graphql::schema::TanoshiSchema;
-use rest::image::Image;
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 
 use self::{
     graphql::{graphql_handler, graphql_playground, loader::DatabaseLoader, schema::SchemaBuilder},
-    rest::health::health_check,
+    rest::{health::health_check, image::fetch_image},
 };
 use crate::{
     application::worker::downloads::DownloadSender,
     db::MangaDatabase,
-    domain::services::{tracker::TrackerService, user::UserService},
+    domain::services::{image::ImageService, tracker::TrackerService, user::UserService},
     infrastructure::{
         notifier::Notifier,
-        repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
+        repositories::{
+            image::ImageRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
+        },
     },
 };
 use tanoshi_vm::extension::SourceBus;
@@ -38,7 +39,6 @@ pub struct ServerBuilder {
     download_tx: Option<DownloadSender>,
     notifier: Option<Notifier<UserRepositoryImpl>>,
     enable_playground: bool,
-    secret: Option<String>,
 }
 
 impl ServerBuilder {
@@ -51,7 +51,6 @@ impl ServerBuilder {
             download_tx: None,
             notifier: None,
             enable_playground: false,
-            secret: None,
         }
     }
 
@@ -104,13 +103,6 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_secret(self, secret: String) -> Self {
-        Self {
-            secret: Some(secret),
-            ..self
-        }
-    }
-
     pub fn build(self) -> Result<Server, anyhow::Error> {
         let user_svc = self.user_svc.ok_or_else(|| anyhow!("no user service"))?;
         let tracker_svc = self
@@ -136,11 +128,11 @@ impl ServerBuilder {
             .build();
 
         let enable_playground = self.enable_playground;
-        let secret = self.secret.ok_or_else(|| anyhow!("no secret"))?;
 
-        let image = Image::new(secret);
+        let image_repo = ImageRepositoryImpl::new();
+        let image_svc = ImageService::new(image_repo);
 
-        Ok(Server::new(enable_playground, schema, image))
+        Ok(Server::new(enable_playground, schema, image_svc))
     }
 }
 
@@ -149,13 +141,17 @@ pub struct Server {
 }
 
 impl Server {
-    pub fn new(enable_playground: bool, schema: TanoshiSchema, image: Image) -> Self {
+    pub fn new(
+        enable_playground: bool,
+        schema: TanoshiSchema,
+        image_svc: ImageService<ImageRepositoryImpl>,
+    ) -> Self {
         let mut router = Router::new();
 
         router = router
             .route("/health", get(health_check))
-            .route("/image/:url", get(Image::image))
-            .layer(Extension(image));
+            .route("/image/:url", get(fetch_image))
+            .layer(Extension(image_svc));
 
         if enable_playground {
             router = router
