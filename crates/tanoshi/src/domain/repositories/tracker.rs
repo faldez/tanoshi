@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use tanoshi_tracker::{Session, TrackerManga, TrackerStatus};
+use tanoshi_tracker::{Session, TrackerManga};
 use thiserror::Error;
 
 use crate::domain::entities::tracker::{Token, TrackedManga};
@@ -9,6 +9,8 @@ use crate::domain::entities::tracker::{Token, TrackedManga};
 pub enum TrackerRepositoryError {
     #[error("tracker not available")]
     NoTracker,
+    #[error("tracker unauthorized")]
+    Unauthorized,
     #[error("database return error: {0}")]
     DbError(#[from] sqlx::Error),
     #[error("other error: {0}")]
@@ -26,6 +28,12 @@ pub trait TrackerRepository {
         state: Option<String>,
         csrf_state: Option<String>,
         pkce_code_verifier: Option<String>,
+    ) -> Result<Token, TrackerRepositoryError>;
+
+    async fn refresh_token(
+        &self,
+        tracker: &str,
+        refresh_token: &str,
     ) -> Result<Token, TrackerRepositoryError>;
 
     async fn insert_tracker_credential(
@@ -67,15 +75,11 @@ pub trait TrackerRepository {
         tracker_manga_id: i64,
     ) -> Result<TrackerManga, TrackerRepositoryError>;
 
-    async fn fetch_manga_tracking_status(
-        &self,
-        manga_id: i64,
-    ) -> Result<Vec<TrackerStatus>, TrackerRepositoryError>;
-
     #[allow(clippy::too_many_arguments)]
     async fn update_manga_tracking_status(
         &self,
-        token: String,
+        token: &str,
+        tracker: &str,
         tracker_manga_id: i64,
         status: Option<String>,
         score: Option<i64>,

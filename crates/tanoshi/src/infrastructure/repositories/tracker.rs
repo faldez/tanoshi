@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use sqlx::{Row, SqlitePool};
-use tanoshi_tracker::{Session, Tracker, TrackerManga, TrackerStatus};
+use tanoshi_tracker::{Session, Tracker, TrackerManga};
 
 use crate::{
     domain::{
@@ -62,6 +62,29 @@ impl TrackerRepository for TrackerRepositoryImpl {
             refresh_token: token.refresh_token,
             expires_in: token.expires_in,
         })
+    }
+
+    async fn refresh_token(
+        &self,
+        tracker: &str,
+        refresh_token: &str,
+    ) -> Result<Token, TrackerRepositoryError> {
+        match self
+            .clients
+            .get(tracker)
+            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .refresh_token(refresh_token.to_string())
+            .await
+        {
+            Ok(token) => Ok(Token {
+                token_type: token.token_type,
+                access_token: token.access_token,
+                refresh_token: token.refresh_token,
+                expires_in: token.expires_in,
+            }),
+            Err(tanoshi_tracker::Error::Unauthorized) => Err(TrackerRepositoryError::Unauthorized),
+            Err(e) => Err(TrackerRepositoryError::Other(anyhow::anyhow!("{e}"))),
+        }
     }
 
     async fn insert_tracker_credential(
@@ -139,15 +162,17 @@ impl TrackerRepository for TrackerRepositoryImpl {
         tracker: &str,
         title: &str,
     ) -> Result<Vec<TrackerManga>, TrackerRepositoryError> {
-        let manga = self
+        match self
             .clients
             .get(tracker)
             .ok_or_else(|| TrackerRepositoryError::NoTracker)?
             .search_manga(token.access_token.clone(), title.to_string())
             .await
-            .map_err(|e| TrackerRepositoryError::Other(anyhow::anyhow!("{e}")))?;
-
-        Ok(manga)
+        {
+            Ok(manga) => Ok(manga),
+            Err(tanoshi_tracker::Error::Unauthorized) => Err(TrackerRepositoryError::Unauthorized),
+            Err(e) => Err(TrackerRepositoryError::Other(anyhow::anyhow!("{e}"))),
+        }
     }
 
     async fn get_tracked_manga_id(
@@ -186,19 +211,23 @@ impl TrackerRepository for TrackerRepositoryImpl {
         tracker: &str,
         tracker_manga_id: i64,
     ) -> Result<TrackerManga, TrackerRepositoryError> {
-        todo!()
-    }
-
-    async fn fetch_manga_tracking_status(
-        &self,
-        manga_id: i64,
-    ) -> Result<Vec<TrackerStatus>, TrackerRepositoryError> {
-        todo!()
+        match self
+            .clients
+            .get(tracker)
+            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .get_manga_details(token.to_string(), tracker_manga_id)
+            .await
+        {
+            Ok(manga) => Ok(manga),
+            Err(tanoshi_tracker::Error::Unauthorized) => Err(TrackerRepositoryError::Unauthorized),
+            Err(e) => Err(TrackerRepositoryError::Other(anyhow::anyhow!("{e}"))),
+        }
     }
 
     async fn update_manga_tracking_status(
         &self,
-        token: String,
+        token: &str,
+        tracker: &str,
         tracker_manga_id: i64,
         status: Option<String>,
         score: Option<i64>,
@@ -206,7 +235,25 @@ impl TrackerRepository for TrackerRepositoryImpl {
         started_at: Option<NaiveDateTime>,
         completed_at: Option<NaiveDateTime>,
     ) -> Result<(), TrackerRepositoryError> {
-        todo!()
+        match self
+            .clients
+            .get(tracker)
+            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .update_tracker_status(
+                token.to_string(),
+                tracker_manga_id,
+                status,
+                score,
+                progress,
+                started_at,
+                completed_at,
+            )
+            .await
+        {
+            Ok(manga) => Ok(manga),
+            Err(tanoshi_tracker::Error::Unauthorized) => Err(TrackerRepositoryError::Unauthorized),
+            Err(e) => Err(TrackerRepositoryError::Other(anyhow::anyhow!("{e}"))),
+        }
     }
 
     async fn update_tracker_manga_id(
@@ -216,7 +263,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         tracker: &str,
         tracker_manga_id: &str,
     ) -> Result<(), TrackerRepositoryError> {
-        let row_id = sqlx::query(
+        sqlx::query(
             r#"
             INSERT INTO tracker_manga(
                 user_id,

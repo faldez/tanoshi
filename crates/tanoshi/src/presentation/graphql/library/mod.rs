@@ -1,8 +1,10 @@
 use super::catalogue::Manga;
 use crate::{
     db::{model, MangaDatabase},
+    domain::services::tracker::TrackerService,
     infrastructure::{
         auth::Claims,
+        repositories::tracker::TrackerRepositoryImpl,
         utils::{decode_cursor, encode_cursor},
     },
 };
@@ -282,13 +284,13 @@ impl LibraryMutationRoot {
         #[graphql(desc = "page")] page: i64,
         #[graphql(desc = "is_complete")] is_complete: bool,
     ) -> Result<u64> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
         let mangadb = ctx.data::<MangaDatabase>()?;
         let rows = mangadb
-            .update_page_read_at(user.sub, chapter_id, page, is_complete)
+            .update_page_read_at(claims.sub, chapter_id, page, is_complete)
             .await?;
 
         let chapter = mangadb.get_chapter_by_id(chapter_id).await?;
@@ -297,72 +299,28 @@ impl LibraryMutationRoot {
             return Ok(rows);
         }
 
-        // let trackers = mangadb
-        //     .get_tracker_manga_id(user.sub, chapter.manga_id)
-        //     .await?;
+        let tracked_manga = mangadb
+            .get_tracker_manga_id(claims.sub, chapter.manga_id)
+            .await?;
 
-        // for tracker in trackers {
-        //     let tracker_token = ctx
-        //         .data::<UserDatabase>()?
-        //         .get_user_tracker_token(&tracker.tracker, user.sub)
-        //         .await?;
-
-        //     let client: &dyn Tracker = match tracker.tracker.as_str() {
-        //         myanimelist::NAME => ctx.data::<MyAnimeList>()?,
-        //         anilist::NAME => ctx.data::<AniList>()?,
-        //         _ => return Err("tracker not available".into()),
-        //     };
-
-        //     if let Some(tracker_manga_id) = tracker.tracker_manga_id.to_owned() {
-        //         let tracker_manga_id = tracker_manga_id.parse()?;
-        //         let tracker_data = match client
-        //             .get_manga_details(tracker_token.access_token.clone(), tracker_manga_id)
-        //             .await
-        //         {
-        //             Ok(res) => res,
-        //             Err(e) => {
-        //                 if matches!(e, tanoshi_tracker::Error::Unauthorized) {
-        //                     let token = client
-        //                         .refresh_token(tracker_token.refresh_token)
-        //                         .await
-        //                         .map(|token| model::Token {
-        //                             token_type: token.token_type,
-        //                             access_token: token.access_token,
-        //                             refresh_token: token.refresh_token,
-        //                             expires_in: token.expires_in,
-        //                         })?;
-
-        //                     ctx.data::<UserDatabase>()?
-        //                         .insert_tracker_credential(user.sub, &tracker.tracker, token)
-        //                         .await?;
-        //                 }
-
-        //                 return Err(e.into());
-        //             }
-        //         };
-
-        //         if let Some(num_chapters_read) = tracker_data
-        //             .tracker_status
-        //             .and_then(|status| status.num_chapters_read)
-        //         {
-        //             if chapter.number <= num_chapters_read as f64 {
-        //                 continue;
-        //             }
-        //         }
-
-        //         client
-        //             .update_tracker_status(
-        //                 tracker_token.access_token,
-        //                 tracker_manga_id,
-        //                 None,
-        //                 None,
-        //                 Some(chapter.number as i64),
-        //                 None,
-        //                 None,
-        //             )
-        //             .await?;
-        //     }
-        // }
+        let tracker_svc = ctx.data::<TrackerService<TrackerRepositoryImpl>>()?;
+        for manga in tracked_manga {
+            if let Some(tracker_manga_id) = manga.tracker_manga_id {
+                // TODO: Only update if chapter > then read
+                tracker_svc
+                    .update_manga_tracking_status(
+                        claims.sub,
+                        &manga.tracker,
+                        tracker_manga_id,
+                        None,
+                        None,
+                        Some(chapter.number as i64),
+                        None,
+                        None,
+                    )
+                    .await?;
+            }
+        }
 
         Ok(rows)
     }

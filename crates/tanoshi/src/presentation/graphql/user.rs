@@ -208,6 +208,10 @@ impl UserMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        todo!()
+        ctx.data::<TrackerService<TrackerRepositoryImpl>>()?
+            .logout_tracker(claims.sub, &tracker)
+            .await?;
+
+        Ok(1)
     }
 }

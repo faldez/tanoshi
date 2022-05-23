@@ -14,6 +14,7 @@ impl From<TrackerRepositoryError> for TrackerError {
     fn from(e: TrackerRepositoryError) -> Self {
         match e {
             TrackerRepositoryError::NoTracker => Self::Other(format!("tracker not available")),
+            TrackerRepositoryError::Unauthorized => Self::Other(format!("unauthorized error")),
             TrackerRepositoryError::DbError(e) => Self::Other(format!("db error: {e}")),
             TrackerRepositoryError::Other(e) => Self::Other(format!("db error: {e}")),
         }
@@ -45,7 +46,7 @@ where
         Ok(())
     }
 
-    pub async fn logout_tracker(&self, tracker: &str, user_id: i64) -> Result<(), TrackerError> {
+    pub async fn logout_tracker(&self, user_id: i64, tracker: &str) -> Result<(), TrackerError> {
         self.repo
             .delete_user_tracker_login(tracker, user_id)
             .await?;
@@ -86,16 +87,33 @@ where
         tracker: &str,
         title: &str,
     ) -> Result<Vec<TrackerManga>, TrackerError> {
-        let token = self.repo.get_user_tracker_token(tracker, user_id).await?;
+        let mut tracker_token = self.repo.get_user_tracker_token(tracker, user_id).await?;
 
-        let res = self.repo.search_manga(&token, tracker, title).await;
+        for _ in 0..2 {
+            match self.repo.search_manga(&tracker_token, tracker, title).await {
+                Ok(manga) => {
+                    return Ok(manga);
+                }
+                Err(TrackerRepositoryError::Unauthorized) => {
+                    let token = self
+                        .repo
+                        .refresh_token(tracker, &tracker_token.refresh_token)
+                        .await?;
 
-        match res {
-            Ok(manga) => Ok(manga),
-            Err(e) => {
-                todo!()
+                    self.repo
+                        .insert_tracker_credential(user_id, tracker, token)
+                        .await?;
+
+                    tracker_token = self.repo.get_user_tracker_token(tracker, user_id).await?;
+                }
+                Err(e) => {
+                    error!("error search manga, retry");
+                    return Err(e.into());
+                }
             }
         }
+
+        Err(TrackerError::Other(format!("failed to search manga")))
     }
 
     pub async fn fetch_manga_tracking_status(
@@ -107,27 +125,47 @@ where
 
         let mut data: Vec<TrackerStatus> = vec![];
         for manga in tracked_manga {
-            let tracker_token = self
+            let mut tracker_token = self
                 .repo
                 .get_user_tracker_token(&manga.tracker, user_id)
                 .await?;
 
             let mut status: Option<TrackerStatus> = None;
-            if let Some(tracker_manga_id) = manga.tracker_manga_id.to_owned() {
-                status = match self
-                    .repo
-                    .fetch_manga_details(
-                        &tracker_token.access_token,
-                        &manga.tracker,
-                        tracker_manga_id
-                            .parse()
-                            .map_err(|e| TrackerError::Other(format!("{e}")))?,
-                    )
-                    .await
-                {
-                    Ok(res) => res.tracker_status,
-                    Err(e) => {
-                        todo!()
+            if let Some(tracker_manga_id) = manga
+                .tracker_manga_id
+                .to_owned()
+                .and_then(|id| id.parse::<i64>().ok())
+            {
+                for _ in 0..2 {
+                    match self
+                        .repo
+                        .fetch_manga_details(
+                            &tracker_token.access_token,
+                            &manga.tracker,
+                            tracker_manga_id,
+                        )
+                        .await
+                    {
+                        Ok(res) => status = res.tracker_status,
+                        Err(TrackerRepositoryError::Unauthorized) => {
+                            let token = self
+                                .repo
+                                .refresh_token(&manga.tracker, &tracker_token.refresh_token)
+                                .await?;
+
+                            self.repo
+                                .insert_tracker_credential(user_id, &manga.tracker, token)
+                                .await?;
+
+                            tracker_token = self
+                                .repo
+                                .get_user_tracker_token(&manga.tracker, user_id)
+                                .await?;
+                        }
+                        Err(e) => {
+                            error!("error search manga: {e}, retry");
+                            return Err(e.into());
+                        }
                     }
                 }
             }
@@ -152,29 +190,52 @@ where
         started_at: Option<NaiveDateTime>,
         completed_at: Option<NaiveDateTime>,
     ) -> Result<(), TrackerError> {
-        let token = self.repo.get_user_tracker_token(tracker, user_id).await?;
+        let mut tracker_token = self.repo.get_user_tracker_token(tracker, user_id).await?;
 
         let tracker_manga_id: i64 = tracker_manga_id
             .parse()
             .map_err(|e| TrackerError::Other(format!("{e}")))?;
 
-        if let Err(e) = self
-            .repo
-            .update_manga_tracking_status(
-                token.access_token,
-                tracker_manga_id,
-                status,
-                score,
-                progress,
-                started_at,
-                completed_at,
-            )
-            .await
-        {
-            todo!()
+        for _ in 0..2 {
+            match self
+                .repo
+                .update_manga_tracking_status(
+                    &tracker_token.access_token,
+                    tracker,
+                    tracker_manga_id,
+                    status.clone(),
+                    score,
+                    progress,
+                    started_at,
+                    completed_at,
+                )
+                .await
+            {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(TrackerRepositoryError::Unauthorized) => {
+                    let token = self
+                        .repo
+                        .refresh_token(tracker, &tracker_token.refresh_token)
+                        .await?;
+
+                    self.repo
+                        .insert_tracker_credential(user_id, tracker, token)
+                        .await?;
+
+                    tracker_token = self.repo.get_user_tracker_token(tracker, user_id).await?;
+                }
+                Err(e) => {
+                    error!("error search manga, retry");
+                    return Err(e.into());
+                }
+            }
         }
 
-        Ok(())
+        Err(TrackerError::Other(format!(
+            "failed to update manga tracking"
+        )))
     }
 
     pub async fn track_manga(

@@ -266,7 +266,7 @@ impl TrackingMutationRoot {
             .map_err(|_| "token not exists, please login")?;
 
         ctx.data::<TrackerService<TrackerRepositoryImpl>>()?
-            .logout_tracker(&tracker, claims.sub)
+            .logout_tracker(claims.sub, &tracker)
             .await?;
 
         Ok(1)
