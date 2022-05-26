@@ -7,9 +7,11 @@ pub use manga::Manga;
 
 pub mod chapter;
 pub use chapter::Chapter;
-use tanoshi_vm::extension::SourceBus;
 
-use crate::db::MangaDatabase;
+use crate::{
+    db::MangaDatabase, domain::services::manga::MangaService,
+    infrastructure::repositories::manga::MangaRepositoryImpl,
+};
 
 use async_graphql::{scalar, Context, Object, Result};
 use rayon::prelude::*;
@@ -34,8 +36,8 @@ impl CatalogueRoot {
         #[graphql(desc = "page")] page: i64,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<SourceBus>()?
-            .get_popular_manga(source_id, page)
+            .data::<MangaService<MangaRepositoryImpl>>()?
+            .fetch_source_popular_manga(source_id, page)
             .await?
             .into_par_iter()
             .map(Manga::from)
@@ -50,8 +52,8 @@ impl CatalogueRoot {
         #[graphql(desc = "page")] page: i64,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<SourceBus>()?
-            .get_latest_manga(source_id, page)
+            .data::<MangaService<MangaRepositoryImpl>>()?
+            .fetch_source_latest_manga(source_id, page)
             .await?
             .into_par_iter()
             .map(Manga::from)
@@ -69,8 +71,8 @@ impl CatalogueRoot {
         #[graphql(desc = "filters")] filters: Option<InputList>,
     ) -> Result<Vec<Manga>> {
         let fetched_manga = ctx
-            .data::<SourceBus>()?
-            .search_manga(source_id, page, query, filters.map(|filters| filters.0))
+            .data::<MangaService<MangaRepositoryImpl>>()?
+            .fetch_source_manga(source_id, page, query, filters.map(|filters| filters.0))
             .await?
             .into_par_iter()
             .map(Manga::from)
@@ -85,20 +87,10 @@ impl CatalogueRoot {
         #[graphql(desc = "source id")] source_id: i64,
         #[graphql(desc = "path to manga in source")] path: String,
     ) -> Result<Manga> {
-        let db = ctx.data::<MangaDatabase>()?;
-
-        let manga = if let Ok(manga) = db.get_manga_by_source_path(source_id, &path).await {
-            manga
-        } else {
-            let mut m: crate::db::model::Manga = ctx
-                .data::<SourceBus>()?
-                .get_manga_detail(source_id, path)
-                .await?
-                .into();
-
-            db.insert_manga(&mut m).await?;
-            m
-        };
+        let manga = ctx
+            .data::<MangaService<MangaRepositoryImpl>>()?
+            .fetch_manga_by_source_path(source_id, &path)
+            .await?;
 
         Ok(manga.into())
     }
@@ -109,23 +101,12 @@ impl CatalogueRoot {
         #[graphql(desc = "manga id")] id: i64,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Manga> {
-        let db = ctx.data::<MangaDatabase>()?;
-        let manga = db.get_manga_by_id(id).await?;
-        if refresh {
-            let mut m: crate::db::model::Manga = ctx
-                .data::<SourceBus>()?
-                .get_manga_detail(manga.source_id, manga.path.clone())
-                .await?
-                .into();
+        let manga = ctx
+            .data::<MangaService<MangaRepositoryImpl>>()?
+            .fetch_manga_by_id(id, refresh)
+            .await?;
 
-            m.id = manga.id;
-
-            db.insert_manga(&mut m).await?;
-
-            Ok(m.into())
-        } else {
-            Ok(manga.into())
-        }
+        Ok(manga.into())
     }
 
     async fn chapter(

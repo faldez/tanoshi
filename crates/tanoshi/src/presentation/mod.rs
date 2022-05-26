@@ -21,11 +21,14 @@ use self::{
 use crate::{
     application::worker::downloads::DownloadSender,
     db::MangaDatabase,
-    domain::services::{image::ImageService, tracker::TrackerService, user::UserService},
+    domain::services::{
+        image::ImageService, manga::MangaService, tracker::TrackerService, user::UserService,
+    },
     infrastructure::{
         notifier::Notifier,
         repositories::{
-            image::ImageRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
+            image::ImageRepositoryImpl, manga::MangaRepositoryImpl, tracker::TrackerRepositoryImpl,
+            user::UserRepositoryImpl,
         },
     },
 };
@@ -34,6 +37,8 @@ use tanoshi_vm::extension::SourceBus;
 pub struct ServerBuilder {
     user_svc: Option<UserService<UserRepositoryImpl>>,
     tracker_svc: Option<TrackerService<TrackerRepositoryImpl>>,
+    manga_svc: Option<MangaService<MangaRepositoryImpl>>,
+    image_svc: Option<ImageService<ImageRepositoryImpl>>,
     mangadb: Option<MangaDatabase>,
     ext_manager: Option<SourceBus>,
     download_tx: Option<DownloadSender>,
@@ -46,6 +51,8 @@ impl ServerBuilder {
         Self {
             user_svc: None,
             tracker_svc: None,
+            manga_svc: None,
+            image_svc: None,
             mangadb: None,
             ext_manager: None,
             download_tx: None,
@@ -64,6 +71,20 @@ impl ServerBuilder {
     pub fn with_tracker_svc(self, tracker_svc: TrackerService<TrackerRepositoryImpl>) -> Self {
         Self {
             tracker_svc: Some(tracker_svc),
+            ..self
+        }
+    }
+
+    pub fn with_manga_svc(self, manga_svc: MangaService<MangaRepositoryImpl>) -> Self {
+        Self {
+            manga_svc: Some(manga_svc),
+            ..self
+        }
+    }
+
+    pub fn with_image_svc(self, image_svc: ImageService<ImageRepositoryImpl>) -> Self {
+        Self {
+            image_svc: Some(image_svc),
             ..self
         }
     }
@@ -108,6 +129,8 @@ impl ServerBuilder {
         let tracker_svc = self
             .tracker_svc
             .ok_or_else(|| anyhow!("no tracker service"))?;
+        let manga_svc = self.manga_svc.ok_or_else(|| anyhow!("no manga service"))?;
+        let image_svc = self.image_svc.ok_or_else(|| anyhow!("no image service"))?;
         let mangadb = self.mangadb.ok_or_else(|| anyhow!("no manga database"))?;
         let extension_manager = self
             .ext_manager
@@ -120,6 +143,8 @@ impl ServerBuilder {
         let schema = SchemaBuilder::new()
             .data(user_svc)
             .data(tracker_svc)
+            .data(manga_svc)
+            .data(image_svc.clone())
             .data(mangadb.clone())
             .loader(DatabaseLoader { mangadb })
             .data(extension_manager)
@@ -128,9 +153,6 @@ impl ServerBuilder {
             .build();
 
         let enable_playground = self.enable_playground;
-
-        let image_repo = ImageRepositoryImpl::new();
-        let image_svc = ImageService::new(image_repo);
 
         Ok(Server::new(enable_playground, schema, image_svc))
     }

@@ -7,7 +7,10 @@ use super::{
 };
 use crate::{
     db::MangaDatabase,
-    infrastructure::{auth::Claims, config::GLOBAL_CONFIG, utils},
+    domain::services::image::ImageService,
+    infrastructure::{
+        auth::Claims, config::GLOBAL_CONFIG, repositories::image::ImageRepositoryImpl,
+    },
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
@@ -71,6 +74,23 @@ impl From<tanoshi_lib::models::MangaInfo> for Manga {
 
 impl From<crate::db::model::Manga> for Manga {
     fn from(val: crate::db::model::Manga) -> Self {
+        Self {
+            id: val.id,
+            source_id: val.source_id,
+            title: val.title,
+            author: val.author,
+            genre: val.genre,
+            status: val.status,
+            description: val.description,
+            path: val.path,
+            cover_url: val.cover_url,
+            date_added: val.date_added,
+        }
+    }
+}
+
+impl From<crate::domain::entities::manga::Manga> for Manga {
+    fn from(val: crate::domain::entities::manga::Manga) -> Self {
         Self {
             id: val.id,
             source_id: val.source_id,
@@ -155,9 +175,12 @@ impl Manga {
         self.path.as_str().to_string()
     }
 
-    async fn cover_url(&self) -> Result<String> {
+    async fn cover_url(&self, ctx: &Context<'_>) -> Result<String> {
         let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
-        Ok(utils::encrypt_url(secret, &self.cover_url)?)
+
+        Ok(ctx
+            .data::<ImageService<ImageRepositoryImpl>>()?
+            .encrypt_image_url(secret, &self.cover_url)?)
     }
 
     async fn is_favorite(&self, ctx: &Context<'_>) -> Result<bool> {

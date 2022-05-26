@@ -7,11 +7,16 @@ use futures::future::OptionFuture;
 use tanoshi::{
     application::worker,
     db,
-    domain::services::{tracker::TrackerService, user::UserService},
+    domain::services::{
+        image::ImageService, manga::MangaService, tracker::TrackerService, user::UserService,
+    },
     infrastructure::{
         config::{self, Config, GLOBAL_CONFIG},
         notifier,
-        repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
+        repositories::{
+            image::ImageRepositoryImpl, manga::MangaRepositoryImpl, tracker::TrackerRepositoryImpl,
+            user::UserRepositoryImpl,
+        },
     },
     presentation::{graphql::local, ServerBuilder},
 };
@@ -55,6 +60,9 @@ async fn main() -> Result<(), anyhow::Error> {
     let extension_manager = SourceBus::new(&config.plugin_path);
 
     extension_manager.load_all().await?;
+
+    let manga_repo = MangaRepositoryImpl::new(pool.clone().into());
+    let manga_svc = MangaService::new(manga_repo, extension_manager.clone());
 
     match &config.local_path {
         config::LocalFolders::Single(local_path) => {
@@ -132,9 +140,14 @@ async fn main() -> Result<(), anyhow::Error> {
         TrackerRepositoryImpl::new(pool.clone().into(), mal_client.clone(), al_client);
     let tracker_svc = TrackerService::new(tracker_repo);
 
+    let image_repo = ImageRepositoryImpl::new();
+    let image_svc = ImageService::new(image_repo);
+
     let mut server_builder = ServerBuilder::new()
-        .with_user_svc(user_svc.clone())
+        .with_user_svc(user_svc)
         .with_tracker_svc(tracker_svc)
+        .with_manga_svc(manga_svc)
+        .with_image_svc(image_svc)
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)

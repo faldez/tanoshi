@@ -1,8 +1,8 @@
-use std::convert::TryFrom;
-
 use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvInit};
+use anyhow::anyhow;
 use bytes::Bytes;
 use fancy_regex::Regex;
+use std::convert::TryFrom;
 
 // create an alias for convenience
 type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
@@ -15,7 +15,7 @@ pub enum ImageUri {
 }
 
 impl TryFrom<String> for ImageUri {
-    type Error = Box<dyn std::error::Error>;
+    type Error = anyhow::Error;
 
     fn try_from(uri: String) -> Result<Self, Self::Error> {
         let uri = if uri.starts_with("http") {
@@ -33,11 +33,11 @@ impl TryFrom<String> for ImageUri {
 
                     Self::Archive(archive, filename)
                 } else {
-                    return Err("invalid file uri".into());
+                    return Err(anyhow!("invalid file uri"));
                 }
             }
         } else {
-            return Err("bad uri".into());
+            return Err(anyhow!("bad uri"));
         };
 
         Ok(uri)
@@ -45,10 +45,7 @@ impl TryFrom<String> for ImageUri {
 }
 
 impl ImageUri {
-    pub fn from_encrypted(
-        secret: &str,
-        encrypted: &str,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn from_encrypted(secret: &str, encrypted: &str) -> Result<Self, anyhow::Error> {
         let mut decoded = base64::decode_config(encrypted, base64::URL_SAFE_NO_PAD)?;
         trace!("decoded: {:?}", decoded);
 
@@ -75,17 +72,17 @@ impl ImageUri {
 
                     Self::Archive(archive, filename)
                 } else {
-                    return Err("invalid file url".into());
+                    return Err(anyhow!("invalid file url"));
                 }
             }
         } else {
-            return Err("bad url".into());
+            return Err(anyhow!("bad url"));
         };
 
         Ok(uri)
     }
 
-    pub fn into_encrypted(self, secret: &str) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn into_encrypted(self, secret: &str) -> Result<String, anyhow::Error> {
         let uri = self.to_string();
         let pos = uri.len();
 
@@ -95,7 +92,7 @@ impl ImageUri {
         let iv = [0_u8; 16];
         let chipertext = Aes128CbcEnc::new(secret.as_bytes().into(), &iv.into())
             .encrypt_padded_mut::<Pkcs7>(&mut buffer, pos)
-            .map_err(|e| anyhow::anyhow!("error encrypt url {e}"))?;
+            .map_err(|e| anyhow!("error encrypt url {e}"))?;
 
         let encoded = base64::encode_config(chipertext, base64::URL_SAFE_NO_PAD);
 
