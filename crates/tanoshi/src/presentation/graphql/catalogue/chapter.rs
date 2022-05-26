@@ -7,7 +7,12 @@ use super::{
     },
     Manga, Source,
 };
-use crate::infrastructure::{auth::Claims, config::GLOBAL_CONFIG, utils};
+use crate::{
+    domain::services::source::SourceService,
+    infrastructure::{
+        auth::Claims, config::GLOBAL_CONFIG, repositories::source::SourceRepositoryImpl, utils,
+    },
+};
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use tanoshi_vm::extension::SourceBus;
@@ -165,8 +170,13 @@ impl Chapter {
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
-        let source = ctx.data::<SourceBus>()?.get_source_info(self.source_id)?;
-        Ok(source.into())
+        let source = ctx
+            .data::<SourceService<SourceRepositoryImpl>>()?
+            .get_source_by_id(self.source_id)
+            .await?
+            .into();
+
+        Ok(source)
     }
 
     async fn manga(&self, ctx: &Context<'_>) -> Result<Manga> {

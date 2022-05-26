@@ -8,14 +8,15 @@ use tanoshi::{
     application::worker,
     db,
     domain::services::{
-        image::ImageService, manga::MangaService, tracker::TrackerService, user::UserService,
+        image::ImageService, manga::MangaService, source::SourceService, tracker::TrackerService,
+        user::UserService,
     },
     infrastructure::{
         config::{self, Config, GLOBAL_CONFIG},
         notifier,
         repositories::{
-            image::ImageRepositoryImpl, manga::MangaRepositoryImpl, tracker::TrackerRepositoryImpl,
-            user::UserRepositoryImpl,
+            image::ImageRepositoryImpl, manga::MangaRepositoryImpl, source::SourceRepositoryImpl,
+            tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
     },
     presentation::{graphql::local, ServerBuilder},
@@ -60,6 +61,9 @@ async fn main() -> Result<(), anyhow::Error> {
     let extension_manager = SourceBus::new(&config.plugin_path);
 
     extension_manager.load_all().await?;
+
+    let source_repo = SourceRepositoryImpl::new(extension_manager.clone());
+    let source_svc = SourceService::new(source_repo);
 
     let manga_repo = MangaRepositoryImpl::new(pool.clone().into());
     let manga_svc = MangaService::new(manga_repo, extension_manager.clone());
@@ -146,6 +150,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let mut server_builder = ServerBuilder::new()
         .with_user_svc(user_svc)
         .with_tracker_svc(tracker_svc)
+        .with_source_svc(source_svc)
         .with_manga_svc(manga_svc)
         .with_image_svc(image_svc)
         .with_mangadb(mangadb)

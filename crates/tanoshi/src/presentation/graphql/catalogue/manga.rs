@@ -7,9 +7,11 @@ use super::{
 };
 use crate::{
     db::MangaDatabase,
-    domain::services::image::ImageService,
+    domain::services::{image::ImageService, source::SourceService},
     infrastructure::{
-        auth::Claims, config::GLOBAL_CONFIG, repositories::image::ImageRepositoryImpl,
+        auth::Claims,
+        config::GLOBAL_CONFIG,
+        repositories::{image::ImageRepositoryImpl, source::SourceRepositoryImpl},
     },
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
@@ -224,8 +226,13 @@ impl Manga {
     }
 
     async fn source(&self, ctx: &Context<'_>) -> Result<Source> {
-        let source = ctx.data::<SourceBus>()?.get_source_info(self.source_id)?;
-        Ok(source.into())
+        let source = ctx
+            .data::<SourceService<SourceRepositoryImpl>>()?
+            .get_source_by_id(self.source_id)
+            .await?
+            .into();
+
+        Ok(source)
     }
 
     async fn chapters(
