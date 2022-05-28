@@ -60,8 +60,17 @@ where
         manga_id: i64,
         refresh: bool,
     ) -> Result<Vec<Chapter>, ChapterError> {
-        if refresh {
-            let chapters: Vec<Chapter> = self
+        let mut chapters = self
+            .repo
+            .get_chapters_by_manga_id(manga_id)
+            .await
+            .unwrap_or_default()
+            .into_par_iter()
+            .map(|c| c.into())
+            .collect::<Vec<Chapter>>();
+
+        if refresh || chapters.is_empty() {
+            let source_chapters: Vec<Chapter> = self
                 .sources
                 .get_chapters(source_id, path.to_string())
                 .await?
@@ -73,19 +82,19 @@ where
                 })
                 .collect();
 
-            if !chapters.is_empty() {
-                self.repo.insert_chapters(&chapters).await?;
+            if !source_chapters.is_empty() {
+                self.repo.insert_chapters(&source_chapters).await?;
             }
-        }
 
-        let chapters = self
-            .repo
-            .get_chapters_by_manga_id(manga_id)
-            .await
-            .unwrap_or_default()
-            .into_par_iter()
-            .map(|c| c.into())
-            .collect::<Vec<Chapter>>();
+            chapters = self
+                .repo
+                .get_chapters_by_manga_id(manga_id)
+                .await
+                .unwrap_or_default()
+                .into_par_iter()
+                .map(|c| c.into())
+                .collect::<Vec<Chapter>>();
+        }
 
         Ok(chapters)
     }
