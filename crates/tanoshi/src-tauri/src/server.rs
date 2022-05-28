@@ -10,16 +10,18 @@ use tanoshi::{
   application::worker,
   db,
   domain::services::{
-    chapter::ChapterService, history::HistoryService, image::ImageService, library::LibraryService,
-    manga::MangaService, source::SourceService, tracker::TrackerService, user::UserService,
+    chapter::ChapterService, download::DownloadService, history::HistoryService,
+    image::ImageService, library::LibraryService, manga::MangaService, source::SourceService,
+    tracker::TrackerService, user::UserService,
   },
   infrastructure::{
     config::{self, GLOBAL_CONFIG},
     notifier,
     repositories::{
-      chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl, image::ImageRepositoryImpl,
-      library::LibraryRepositoryImpl, manga::MangaRepositoryImpl, source::SourceRepositoryImpl,
-      tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
+      chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
+      history::HistoryRepositoryImpl, image::ImageRepositoryImpl, library::LibraryRepositoryImpl,
+      manga::MangaRepositoryImpl, source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl,
+      user::UserRepositoryImpl,
     },
   },
   presentation::{graphql::local, ServerBuilder},
@@ -147,6 +149,9 @@ impl<R: Runtime> Plugin<R> for Server {
       let image_repo = ImageRepositoryImpl::new();
       let image_svc = ImageService::new(image_repo);
 
+      let download_repo = DownloadRepositoryImpl::new(pool.clone());
+      let download_svc = DownloadService::new(download_repo, download_tx.clone());
+
       let mut server_builder = ServerBuilder::new()
         .with_user_svc(user_svc)
         .with_tracker_svc(tracker_svc)
@@ -156,6 +161,7 @@ impl<R: Runtime> Plugin<R> for Server {
         .with_image_svc(image_svc)
         .with_library_svc(libary_svc)
         .with_history_svc(history_svc)
+        .with_download_svc(download_svc)
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)

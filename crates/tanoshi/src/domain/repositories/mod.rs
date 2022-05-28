@@ -1,4 +1,5 @@
 pub mod chapter;
+pub mod download;
 pub mod history;
 pub mod image;
 pub mod library;

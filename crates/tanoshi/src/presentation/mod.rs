@@ -22,15 +22,16 @@ use crate::{
     application::worker::downloads::DownloadSender,
     db::MangaDatabase,
     domain::services::{
-        chapter::ChapterService, history::HistoryService, image::ImageService,
-        library::LibraryService, manga::MangaService, source::SourceService,
+        chapter::ChapterService, download::DownloadService, history::HistoryService,
+        image::ImageService, library::LibraryService, manga::MangaService, source::SourceService,
         tracker::TrackerService, user::UserService,
     },
     infrastructure::{
         notifier::Notifier,
         repositories::{
-            chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
-            image::ImageRepositoryImpl, library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
+            chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
+            history::HistoryRepositoryImpl, image::ImageRepositoryImpl,
+            library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
             source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
     },
@@ -46,6 +47,7 @@ pub struct ServerBuilder {
     image_svc: Option<ImageService<ImageRepositoryImpl>>,
     library_svc: Option<LibraryService<LibraryRepositoryImpl>>,
     history_svc: Option<HistoryService<HistoryRepositoryImpl>>,
+    download_svc: Option<DownloadService<DownloadRepositoryImpl>>,
     mangadb: Option<MangaDatabase>,
     ext_manager: Option<SourceBus>,
     download_tx: Option<DownloadSender>,
@@ -64,6 +66,7 @@ impl ServerBuilder {
             image_svc: None,
             library_svc: None,
             history_svc: None,
+            download_svc: None,
             mangadb: None,
             ext_manager: None,
             download_tx: None,
@@ -128,6 +131,13 @@ impl ServerBuilder {
         }
     }
 
+    pub fn with_download_svc(self, download_svc: DownloadService<DownloadRepositoryImpl>) -> Self {
+        Self {
+            download_svc: Some(download_svc),
+            ..self
+        }
+    }
+
     pub fn with_mangadb(self, mangadb: MangaDatabase) -> Self {
         Self {
             mangadb: Some(mangadb),
@@ -182,6 +192,9 @@ impl ServerBuilder {
         let history_svc = self
             .history_svc
             .ok_or_else(|| anyhow!("no history service"))?;
+        let download_svc = self
+            .download_svc
+            .ok_or_else(|| anyhow!("no download service"))?;
         let mangadb = self.mangadb.ok_or_else(|| anyhow!("no manga database"))?;
         let extension_manager = self
             .ext_manager
@@ -200,6 +213,7 @@ impl ServerBuilder {
             .data(image_svc.clone())
             .data(library_svc)
             .data(history_svc)
+            .data(download_svc)
             .data(mangadb.clone())
             .loader(DatabaseLoader { mangadb })
             .data(extension_manager)
