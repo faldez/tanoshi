@@ -9,8 +9,8 @@ pub mod chapter;
 pub use chapter::Chapter;
 
 use crate::{
-    db::MangaDatabase, domain::services::manga::MangaService,
-    infrastructure::repositories::manga::MangaRepositoryImpl,
+    domain::services::{chapter::ChapterService, manga::MangaService},
+    infrastructure::repositories::{chapter::ChapterRepositoryImpl, manga::MangaRepositoryImpl},
 };
 
 use async_graphql::{scalar, Context, Object, Result};
@@ -114,7 +114,12 @@ impl CatalogueRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
     ) -> Result<Chapter> {
-        let db = ctx.data::<MangaDatabase>()?;
-        Ok(db.get_chapter_by_id(id).await?.into())
+        let chapter = ctx
+            .data::<ChapterService<ChapterRepositoryImpl>>()?
+            .fetch_chapter_by_id(id)
+            .await?
+            .into();
+
+        Ok(chapter)
     }
 }

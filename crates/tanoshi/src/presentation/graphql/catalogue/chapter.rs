@@ -1,21 +1,21 @@
-use std::path::PathBuf;
-
 use super::{
-    super::{
-        loader::{DatabaseLoader, MangaId, NextChapterId, PrevChapterId, UserHistoryId},
-        local,
-    },
+    super::loader::{DatabaseLoader, MangaId, NextChapterId, PrevChapterId, UserHistoryId},
     Manga, Source,
 };
 use crate::{
-    domain::services::source::SourceService,
+    domain::services::{chapter::ChapterService, image::ImageService, source::SourceService},
     infrastructure::{
-        auth::Claims, config::GLOBAL_CONFIG, repositories::source::SourceRepositoryImpl, utils,
+        auth::Claims,
+        config::GLOBAL_CONFIG,
+        repositories::{
+            chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl,
+            source::SourceRepositoryImpl,
+        },
     },
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
-use tanoshi_vm::extension::SourceBus;
+use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 #[derive(Debug, Clone, SimpleObject)]
 pub struct ReadProgress {
@@ -64,6 +64,41 @@ impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             read_progress: None,
             downloaded_path: None,
+        }
+    }
+}
+
+impl From<crate::domain::entities::chapter::Chapter> for Chapter {
+    fn from(val: crate::domain::entities::chapter::Chapter) -> Self {
+        Self {
+            id: val.id,
+            source_id: val.source_id,
+            manga_id: val.manga_id,
+            title: val.title,
+            path: val.path,
+            number: val.number,
+            scanlator: val.scanlator,
+            uploaded: val.uploaded,
+            date_added: val.date_added,
+            read_progress: None,
+            downloaded_path: val.downloaded_path,
+        }
+    }
+}
+
+impl From<Chapter> for crate::domain::entities::chapter::Chapter {
+    fn from(val: Chapter) -> Self {
+        Self {
+            id: val.id,
+            source_id: val.source_id,
+            manga_id: val.manga_id,
+            title: val.title,
+            path: val.path,
+            number: val.number,
+            scanlator: val.scanlator,
+            uploaded: val.uploaded,
+            date_added: val.date_added,
+            downloaded_path: val.downloaded_path,
         }
     }
 }
@@ -193,26 +228,19 @@ impl Chapter {
         #[graphql(desc = "fetch from source", default = false)] _fetch: bool,
         #[graphql(desc = "encrypt url", default = true)] encrypt: bool,
     ) -> Result<Vec<String>> {
-        let pages = if let Some(downloaded_path) =
-            self.downloaded_path.clone().map(|p| PathBuf::new().join(p))
-        {
-            tokio::task::spawn_blocking(move || local::get_pages_from_archive(&downloaded_path))
-                .await??
-        } else {
-            ctx.data::<SourceBus>()?
-                .get_pages(self.source_id, self.path.clone())
-                .await?
-        };
+        let mut pages = ctx
+            .data::<ChapterService<ChapterRepositoryImpl>>()?
+            .fetch_chapter_pages(self.source_id, &self.path, &self.downloaded_path)
+            .await?;
 
-        if !encrypt {
-            return Ok(pages);
+        let image_svc = ctx.data::<ImageService<ImageRepositoryImpl>>()?;
+
+        if encrypt {
+            let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
+            pages
+                .par_iter_mut()
+                .for_each(|p| *p = image_svc.encrypt_image_url(secret, p).unwrap());
         }
-
-        let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
-        let pages = pages
-            .iter()
-            .map(|page| utils::encrypt_url(secret, page).unwrap_or_default())
-            .collect();
 
         Ok(pages)
     }

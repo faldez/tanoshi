@@ -7,11 +7,14 @@ use super::{
 };
 use crate::{
     db::MangaDatabase,
-    domain::services::{image::ImageService, source::SourceService},
+    domain::services::{chapter::ChapterService, image::ImageService, source::SourceService},
     infrastructure::{
         auth::Claims,
         config::GLOBAL_CONFIG,
-        repositories::{image::ImageRepositoryImpl, source::SourceRepositoryImpl},
+        repositories::{
+            chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl,
+            source::SourceRepositoryImpl,
+        },
     },
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
@@ -240,36 +243,10 @@ impl Manga {
         ctx: &Context<'_>,
         #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
     ) -> Result<Vec<Chapter>> {
-        let db = ctx.data::<MangaDatabase>()?;
-
-        if !refresh {
-            if let Ok(chapters) = db.get_chapters_by_manga_id(self.id).await {
-                return Ok(chapters.into_par_iter().map(|c| c.into()).collect());
-            }
-        }
-
-        let chapters: Vec<crate::db::model::Chapter> = ctx
-            .data::<SourceBus>()?
-            .get_chapters(self.source_id, self.path.clone())
+        let chapters = ctx
+            .data::<ChapterService<ChapterRepositoryImpl>>()?
+            .fetch_chapters_by_manga_id(self.source_id, &self.path, self.id, refresh)
             .await?
-            .into_par_iter()
-            .map(|c| {
-                let mut c: crate::db::model::Chapter = c.into();
-                c.manga_id = self.id;
-                c
-            })
-            .collect();
-
-        if chapters.is_empty() {
-            return Ok(vec![]);
-        }
-
-        db.insert_chapters(&chapters).await?;
-
-        let chapters = db
-            .get_chapters_by_manga_id(self.id)
-            .await
-            .unwrap_or_default()
             .into_par_iter()
             .map(|c| c.into())
             .collect::<Vec<Chapter>>();
@@ -282,8 +259,13 @@ impl Manga {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter id")] id: i64,
     ) -> Result<Chapter> {
-        let db = ctx.data::<MangaDatabase>()?.clone();
-        Ok(db.get_chapter_by_id(id).await?.into())
+        let chapter = ctx
+            .data::<ChapterService<ChapterRepositoryImpl>>()?
+            .fetch_chapter_by_id(id)
+            .await?
+            .into();
+
+        Ok(chapter)
     }
 
     async fn next_chapter(&self, ctx: &Context<'_>) -> Result<Option<Chapter>> {

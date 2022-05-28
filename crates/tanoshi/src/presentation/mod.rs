@@ -22,14 +22,14 @@ use crate::{
     application::worker::downloads::DownloadSender,
     db::MangaDatabase,
     domain::services::{
-        image::ImageService, manga::MangaService, source::SourceService, tracker::TrackerService,
-        user::UserService,
+        chapter::ChapterService, image::ImageService, manga::MangaService, source::SourceService,
+        tracker::TrackerService, user::UserService,
     },
     infrastructure::{
         notifier::Notifier,
         repositories::{
-            image::ImageRepositoryImpl, manga::MangaRepositoryImpl, source::SourceRepositoryImpl,
-            tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
+            chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl, manga::MangaRepositoryImpl,
+            source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
     },
 };
@@ -40,6 +40,7 @@ pub struct ServerBuilder {
     tracker_svc: Option<TrackerService<TrackerRepositoryImpl>>,
     source_svc: Option<SourceService<SourceRepositoryImpl>>,
     manga_svc: Option<MangaService<MangaRepositoryImpl>>,
+    chapter_svc: Option<ChapterService<ChapterRepositoryImpl>>,
     image_svc: Option<ImageService<ImageRepositoryImpl>>,
     mangadb: Option<MangaDatabase>,
     ext_manager: Option<SourceBus>,
@@ -55,6 +56,7 @@ impl ServerBuilder {
             tracker_svc: None,
             source_svc: None,
             manga_svc: None,
+            chapter_svc: None,
             image_svc: None,
             mangadb: None,
             ext_manager: None,
@@ -95,6 +97,13 @@ impl ServerBuilder {
     pub fn with_image_svc(self, image_svc: ImageService<ImageRepositoryImpl>) -> Self {
         Self {
             image_svc: Some(image_svc),
+            ..self
+        }
+    }
+
+    pub fn with_chapter_svc(self, chapter_svc: ChapterService<ChapterRepositoryImpl>) -> Self {
+        Self {
+            chapter_svc: Some(chapter_svc),
             ..self
         }
     }
@@ -143,6 +152,9 @@ impl ServerBuilder {
             .source_svc
             .ok_or_else(|| anyhow!("no source service"))?;
         let manga_svc = self.manga_svc.ok_or_else(|| anyhow!("no manga service"))?;
+        let chapter_svc = self
+            .chapter_svc
+            .ok_or_else(|| anyhow!("no chapter service"))?;
         let image_svc = self.image_svc.ok_or_else(|| anyhow!("no image service"))?;
         let mangadb = self.mangadb.ok_or_else(|| anyhow!("no manga database"))?;
         let extension_manager = self
@@ -158,6 +170,7 @@ impl ServerBuilder {
             .data(tracker_svc)
             .data(source_svc)
             .data(manga_svc)
+            .data(chapter_svc)
             .data(image_svc.clone())
             .data(mangadb.clone())
             .loader(DatabaseLoader { mangadb })
