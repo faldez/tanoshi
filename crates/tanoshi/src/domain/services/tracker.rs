@@ -2,7 +2,10 @@ use chrono::NaiveDateTime;
 use tanoshi_tracker::{Session, TrackerManga, TrackerStatus};
 use thiserror::Error;
 
-use crate::domain::repositories::tracker::{TrackerRepository, TrackerRepositoryError};
+use crate::domain::{
+    entities::tracker::TrackedManga,
+    repositories::tracker::{TrackerRepository, TrackerRepositoryError},
+};
 
 #[derive(Debug, Error)]
 pub enum TrackerError {
@@ -79,6 +82,16 @@ where
             .await?;
 
         Ok(())
+    }
+
+    pub async fn get_tracked_manga_id(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+    ) -> Result<Vec<TrackedManga>, TrackerRepositoryError> {
+        let tracked_manga = self.repo.get_tracked_manga_id(user_id, manga_id).await?;
+
+        Ok(tracked_manga)
     }
 
     pub async fn search_manga(

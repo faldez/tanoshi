@@ -1,12 +1,14 @@
 use super::catalogue::Manga;
 use crate::{
-    db::MangaDatabase,
-    domain::services::{history::HistoryService, library::LibraryService, tracker::TrackerService},
+    domain::services::{
+        chapter::ChapterService, history::HistoryService, library::LibraryService,
+        tracker::TrackerService,
+    },
     infrastructure::{
         auth::Claims,
         repositories::{
-            history::HistoryRepositoryImpl, library::LibraryRepositoryImpl,
-            tracker::TrackerRepositoryImpl,
+            chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
+            library::LibraryRepositoryImpl, tracker::TrackerRepositoryImpl,
         },
         utils::{decode_cursor, encode_cursor},
     },
@@ -265,22 +267,22 @@ impl LibraryMutationRoot {
             .insert_chapter_to_history(claims.sub, chapter_id, page, is_complete)
             .await?;
 
-        let mangadb = ctx.data::<MangaDatabase>()?;
-        let rows = mangadb
-            .update_page_read_at(claims.sub, chapter_id, page, is_complete)
+        let chapter = ctx
+            .data::<ChapterService<ChapterRepositoryImpl>>()?
+            .fetch_chapter_by_id(chapter_id)
             .await?;
 
-        let chapter = mangadb.get_chapter_by_id(chapter_id).await?;
         // TODO: nepnep source have weird number, don't update tracker status for them for now
         if !is_complete || (chapter.source_id == 3 || chapter.source_id == 4) {
-            return Ok(rows);
+            return Ok(1);
         }
 
-        let tracked_manga = mangadb
-            .get_tracker_manga_id(claims.sub, chapter.manga_id)
+        let tracker_svc = ctx.data::<TrackerService<TrackerRepositoryImpl>>()?;
+
+        let tracked_manga = tracker_svc
+            .get_tracked_manga_id(claims.sub, chapter.manga_id)
             .await?;
 
-        let tracker_svc = ctx.data::<TrackerService<TrackerRepositoryImpl>>()?;
         for manga in tracked_manga {
             if let Some(tracker_manga_id) = manga.tracker_manga_id {
                 // TODO: Only update if chapter > then read
@@ -299,7 +301,7 @@ impl LibraryMutationRoot {
             }
         }
 
-        Ok(rows)
+        Ok(1)
     }
 
     async fn mark_chapter_as_read(
