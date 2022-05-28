@@ -30,6 +30,20 @@ impl From<crate::db::model::RecentChapter> for RecentChapter {
     }
 }
 
+impl From<crate::domain::entities::history::HistoryChapter> for RecentChapter {
+    fn from(other: crate::domain::entities::history::HistoryChapter) -> Self {
+        Self {
+            manga_id: other.manga_id,
+            chapter_id: other.chapter_id,
+            manga_title: other.manga_title,
+            cover_url: other.cover_url,
+            chapter_title: other.chapter_title,
+            read_at: other.read_at,
+            last_page_read: other.last_page_read,
+        }
+    }
+}
+
 #[Object]
 impl RecentChapter {
     async fn manga_id(&self) -> i64 {

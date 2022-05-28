@@ -22,14 +22,15 @@ use crate::{
     application::worker::downloads::DownloadSender,
     db::MangaDatabase,
     domain::services::{
-        chapter::ChapterService, image::ImageService, library::LibraryService, manga::MangaService,
-        source::SourceService, tracker::TrackerService, user::UserService,
+        chapter::ChapterService, history::HistoryService, image::ImageService,
+        library::LibraryService, manga::MangaService, source::SourceService,
+        tracker::TrackerService, user::UserService,
     },
     infrastructure::{
         notifier::Notifier,
         repositories::{
-            chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl,
-            library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
+            chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
+            image::ImageRepositoryImpl, library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
             source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
     },
@@ -44,6 +45,7 @@ pub struct ServerBuilder {
     chapter_svc: Option<ChapterService<ChapterRepositoryImpl>>,
     image_svc: Option<ImageService<ImageRepositoryImpl>>,
     library_svc: Option<LibraryService<LibraryRepositoryImpl>>,
+    history_svc: Option<HistoryService<HistoryRepositoryImpl>>,
     mangadb: Option<MangaDatabase>,
     ext_manager: Option<SourceBus>,
     download_tx: Option<DownloadSender>,
@@ -61,6 +63,7 @@ impl ServerBuilder {
             chapter_svc: None,
             image_svc: None,
             library_svc: None,
+            history_svc: None,
             mangadb: None,
             ext_manager: None,
             download_tx: None,
@@ -118,6 +121,13 @@ impl ServerBuilder {
         }
     }
 
+    pub fn with_history_svc(self, history_svc: HistoryService<HistoryRepositoryImpl>) -> Self {
+        Self {
+            history_svc: Some(history_svc),
+            ..self
+        }
+    }
+
     pub fn with_mangadb(self, mangadb: MangaDatabase) -> Self {
         Self {
             mangadb: Some(mangadb),
@@ -169,6 +179,9 @@ impl ServerBuilder {
         let library_svc = self
             .library_svc
             .ok_or_else(|| anyhow!("no library service"))?;
+        let history_svc = self
+            .history_svc
+            .ok_or_else(|| anyhow!("no history service"))?;
         let mangadb = self.mangadb.ok_or_else(|| anyhow!("no manga database"))?;
         let extension_manager = self
             .ext_manager
@@ -186,6 +199,7 @@ impl ServerBuilder {
             .data(chapter_svc)
             .data(image_svc.clone())
             .data(library_svc)
+            .data(history_svc)
             .data(mangadb.clone())
             .loader(DatabaseLoader { mangadb })
             .data(extension_manager)
@@ -193,9 +207,7 @@ impl ServerBuilder {
             .data(notifier)
             .build();
 
-        let enable_playground = self.enable_playground;
-
-        Ok(Server::new(enable_playground, schema, image_svc))
+        Ok(Server::new(self.enable_playground, schema, image_svc))
     }
 }
 

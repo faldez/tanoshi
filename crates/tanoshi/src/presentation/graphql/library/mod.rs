@@ -1,10 +1,13 @@
 use super::catalogue::Manga;
 use crate::{
     db::MangaDatabase,
-    domain::services::{library::LibraryService, tracker::TrackerService},
+    domain::services::{history::HistoryService, library::LibraryService, tracker::TrackerService},
     infrastructure::{
         auth::Claims,
-        repositories::{library::LibraryRepositoryImpl, tracker::TrackerRepositoryImpl},
+        repositories::{
+            history::HistoryRepositoryImpl, library::LibraryRepositoryImpl,
+            tracker::TrackerRepositoryImpl,
+        },
         utils::{decode_cursor, encode_cursor},
     },
 };
@@ -144,11 +147,11 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentChapter, EmptyFields, EmptyFields>> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let db = ctx.data::<MangaDatabase>()?;
+        let history_svc = ctx.data::<HistoryService<HistoryRepositoryImpl>>()?;
 
         query(
             after,
@@ -163,49 +166,38 @@ impl LibraryRoot {
                     .and_then(|cursor: String| decode_cursor(&cursor).ok())
                     .unwrap_or((NaiveDateTime::from_timestamp(0, 0).timestamp(), 0));
 
-                let edges = if let Some(first) = first {
-                    db.get_first_read_chapters(
-                        user.sub,
+                let edges = history_svc
+                    .get_history_chapters(
+                        claims.sub,
                         after_timestamp,
                         before_timestamp,
-                        first as i32,
+                        first,
+                        last,
                     )
-                    .await
-                } else if let Some(last) = last {
-                    db.get_last_read_chapters(
-                        user.sub,
-                        after_timestamp,
-                        before_timestamp,
-                        last as i32,
-                    )
-                    .await
-                } else {
-                    db.get_read_chapters(after_timestamp, before_timestamp)
-                        .await
-                };
-                let edges = edges.unwrap_or_default();
+                    .await?;
 
                 let mut has_previous_page = false;
+                if let Some(e) = edges.first() {
+                    has_previous_page = history_svc
+                        .get_history_chapters(
+                            claims.sub,
+                            Local::now().timestamp(),
+                            e.read_at.timestamp(),
+                            None,
+                            Some(1),
+                        )
+                        .await?
+                        .len()
+                        > 0;
+                }
+
                 let mut has_next_page = false;
-                if !edges.is_empty() {
-                    if let Some(e) = edges.first() {
-                        has_previous_page = db
-                            .get_read_chapter_has_before_page(
-                                user.sub,
-                                e.read_at.timestamp(),
-                                e.manga_id,
-                            )
-                            .await;
-                    }
-                    if let Some(e) = edges.last() {
-                        has_next_page = db
-                            .get_read_chapter_has_next_page(
-                                user.sub,
-                                e.read_at.timestamp(),
-                                e.manga_id,
-                            )
-                            .await;
-                    }
+                if let Some(e) = edges.last() {
+                    has_next_page = history_svc
+                        .get_history_chapters(claims.sub, e.read_at.timestamp(), 0, Some(1), None)
+                        .await?
+                        .len()
+                        > 0;
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
@@ -269,6 +261,10 @@ impl LibraryMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
+        ctx.data::<HistoryService<HistoryRepositoryImpl>>()?
+            .insert_chapter_to_history(claims.sub, chapter_id, page, is_complete)
+            .await?;
+
         let mangadb = ctx.data::<MangaDatabase>()?;
         let rows = mangadb
             .update_page_read_at(claims.sub, chapter_id, page, is_complete)
@@ -311,17 +307,15 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter ids")] chapter_ids: Vec<i64>,
     ) -> Result<u64> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        match ctx
-            .data::<MangaDatabase>()?
-            .update_chapters_read_at(user.sub, &chapter_ids)
-            .await
-        {
-            Ok(rows) => Ok(rows),
-            Err(err) => Err(format!("error mark_chapter_as_read: {}", err).into()),
-        }
+
+        ctx.data::<HistoryService<HistoryRepositoryImpl>>()?
+            .insert_chapters_to_history_as_completed(claims.sub, chapter_ids)
+            .await?;
+
+        Ok(1)
     }
 
     async fn mark_chapter_as_unread(
@@ -329,16 +323,14 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "chapter ids")] chapter_ids: Vec<i64>,
     ) -> Result<u64> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        match ctx
-            .data::<MangaDatabase>()?
-            .delete_chapters_read_at(user.sub, &chapter_ids)
-            .await
-        {
-            Ok(rows) => Ok(rows),
-            Err(err) => Err(format!("error delete chapter read_at: {}", err).into()),
-        }
+
+        ctx.data::<HistoryService<HistoryRepositoryImpl>>()?
+            .delete_chapters_from_history(claims.sub, chapter_ids)
+            .await?;
+
+        Ok(1)
     }
 }
