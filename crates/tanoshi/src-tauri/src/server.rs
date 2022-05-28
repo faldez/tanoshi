@@ -9,11 +9,18 @@ use tauri::{
 use tanoshi::{
   application::worker,
   db,
-  domain::services::{tracker::TrackerService, user::UserService},
+  domain::services::{
+    chapter::ChapterService, image::ImageService, library::LibraryService, manga::MangaService,
+    source::SourceService, tracker::TrackerService, user::UserService,
+  },
   infrastructure::{
     config::{self, GLOBAL_CONFIG},
     notifier,
-    repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
+    repositories::{
+      chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl, library::LibraryRepositoryImpl,
+      manga::MangaRepositoryImpl, source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl,
+      user::UserRepositoryImpl,
+    },
   },
   presentation::{graphql::local, ServerBuilder},
 };
@@ -54,12 +61,24 @@ impl<R: Runtime> Plugin<R> for Server {
 
       let mangadb = db::MangaDatabase::new(pool.clone());
 
-      let user_repo = UserRepositoryImpl::new(pool.clone().into());
+      let user_repo = UserRepositoryImpl::new(pool.clone());
       let user_svc = UserService::new(user_repo.clone());
 
       let extension_manager = SourceBus::new(&config.plugin_path);
 
       let _ = extension_manager.load_all().await;
+
+      let source_repo = SourceRepositoryImpl::new(extension_manager.clone());
+      let source_svc = SourceService::new(source_repo);
+
+      let manga_repo = MangaRepositoryImpl::new(pool.clone());
+      let manga_svc = MangaService::new(manga_repo, extension_manager.clone());
+
+      let chapter_repo = ChapterRepositoryImpl::new(pool.clone());
+      let chapter_svc = ChapterService::new(chapter_repo, extension_manager.clone());
+
+      let library_repo = LibraryRepositoryImpl::new(pool.clone());
+      let libary_svc = LibraryService::new(library_repo);
 
       match &config.local_path {
         config::LocalFolders::Single(local_path) => {
@@ -119,13 +138,20 @@ impl<R: Runtime> Plugin<R> for Server {
           AniList::new(&base_url, al_cfg.client_id.clone(), al_cfg.client_secret).ok()
         });
 
-      let tracker_repo =
-        TrackerRepositoryImpl::new(pool.clone().into(), mal_client.clone(), al_client);
+      let tracker_repo = TrackerRepositoryImpl::new(pool.clone(), mal_client.clone(), al_client);
       let tracker_svc = TrackerService::new(tracker_repo);
 
+      let image_repo = ImageRepositoryImpl::new();
+      let image_svc = ImageService::new(image_repo);
+
       let mut server_builder = ServerBuilder::new()
-        .with_user_svc(user_svc.clone())
+        .with_user_svc(user_svc)
         .with_tracker_svc(tracker_svc)
+        .with_source_svc(source_svc)
+        .with_manga_svc(manga_svc)
+        .with_chapter_svc(chapter_svc)
+        .with_image_svc(image_svc)
+        .with_library_svc(libary_svc)
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)

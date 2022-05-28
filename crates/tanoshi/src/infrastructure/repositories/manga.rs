@@ -13,8 +13,8 @@ pub struct MangaRepositoryImpl {
 }
 
 impl MangaRepositoryImpl {
-    pub fn new(pool: Pool) -> Self {
-        Self { pool }
+    pub fn new<P: Into<Pool>>(pool: P) -> Self {
+        Self { pool: pool.into() }
     }
 }
 

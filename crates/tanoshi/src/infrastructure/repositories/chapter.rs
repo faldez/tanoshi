@@ -15,8 +15,8 @@ pub struct ChapterRepositoryImpl {
 }
 
 impl ChapterRepositoryImpl {
-    pub fn new(pool: Pool) -> Self {
-        Self { pool }
+    pub fn new<P: Into<Pool>>(pool: P) -> Self {
+        Self { pool: pool.into() }
     }
 }
 

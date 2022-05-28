@@ -56,7 +56,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let pool = db::establish_connection(&config.database_path).await?;
     let mangadb = db::MangaDatabase::new(pool.clone());
 
-    let user_repo = UserRepositoryImpl::new(pool.clone().into());
+    let user_repo = UserRepositoryImpl::new(pool.clone());
     let user_svc = UserService::new(user_repo.clone());
 
     let extension_manager = SourceBus::new(&config.plugin_path);
@@ -66,10 +66,10 @@ async fn main() -> Result<(), anyhow::Error> {
     let source_repo = SourceRepositoryImpl::new(extension_manager.clone());
     let source_svc = SourceService::new(source_repo);
 
-    let manga_repo = MangaRepositoryImpl::new(pool.clone().into());
+    let manga_repo = MangaRepositoryImpl::new(pool.clone());
     let manga_svc = MangaService::new(manga_repo, extension_manager.clone());
 
-    let chapter_repo = ChapterRepositoryImpl::new(pool.clone().into());
+    let chapter_repo = ChapterRepositoryImpl::new(pool.clone());
     let chapter_svc = ChapterService::new(chapter_repo, extension_manager.clone());
 
     let library_repo = LibraryRepositoryImpl::new(pool.clone());
@@ -147,8 +147,7 @@ async fn main() -> Result<(), anyhow::Error> {
             AniList::new(&base_url, al_cfg.client_id.clone(), al_cfg.client_secret).ok()
         });
 
-    let tracker_repo =
-        TrackerRepositoryImpl::new(pool.clone().into(), mal_client.clone(), al_client);
+    let tracker_repo = TrackerRepositoryImpl::new(pool.clone(), mal_client.clone(), al_client);
     let tracker_svc = TrackerService::new(tracker_repo);
 
     let image_repo = ImageRepositoryImpl::new();

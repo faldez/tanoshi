@@ -19,7 +19,7 @@ pub struct TrackerRepositoryImpl {
 }
 
 impl TrackerRepositoryImpl {
-    pub fn new(pool: Pool, mal: Option<MyAnimeList>, anilist: Option<AniList>) -> Self {
+    pub fn new<P: Into<Pool>>(pool: P, mal: Option<MyAnimeList>, anilist: Option<AniList>) -> Self {
         let mut clients = HashMap::new();
         if let Some(mal) = mal {
             clients.insert(myanimelist::NAME, Box::new(mal) as Box<dyn Tracker>);
@@ -28,7 +28,10 @@ impl TrackerRepositoryImpl {
             clients.insert(anilist::NAME, Box::new(anilist) as Box<dyn Tracker>);
         }
 
-        Self { pool, clients }
+        Self {
+            pool: pool.into(),
+            clients,
+        }
     }
 }
 
