@@ -1,10 +1,10 @@
 use super::catalogue::Manga;
 use crate::{
-    db::{model, MangaDatabase},
-    domain::services::tracker::TrackerService,
+    db::MangaDatabase,
+    domain::services::{library::LibraryService, tracker::TrackerService},
     infrastructure::{
         auth::Claims,
-        repositories::tracker::TrackerRepositoryImpl,
+        repositories::{library::LibraryRepositoryImpl, tracker::TrackerRepositoryImpl},
         utils::{decode_cursor, encode_cursor},
     },
 };
@@ -20,9 +20,8 @@ mod categories;
 pub use categories::{Category, CategoryMutationRoot, CategoryRoot};
 
 mod recent;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 pub use recent::{RecentChapter, RecentUpdate};
-
-use tanoshi_vm::extension::SourceBus;
 
 #[derive(Default)]
 pub struct LibraryRoot;
@@ -32,31 +31,22 @@ impl LibraryRoot {
     async fn library(
         &self,
         ctx: &Context<'_>,
-        #[graphql(desc = "refresh data from source", default = false)] refresh: bool,
+        #[graphql(desc = "refresh data from source", default = false)] _refresh: bool,
         #[graphql(desc = "category id")] category_id: Option<i64>,
     ) -> Result<Vec<Manga>> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let db = ctx.data::<MangaDatabase>()?;
-        let manga = db.get_library_by_category_id(user.sub, category_id).await?;
 
-        if refresh {
-            let extensions = ctx.data::<SourceBus>()?;
-            for favorite_manga in manga.iter() {
-                let mut m: model::Manga = {
-                    extensions
-                        .get_manga_detail(favorite_manga.source_id, favorite_manga.path.clone())
-                        .await?
-                        .into()
-                };
+        let manga = ctx
+            .data::<LibraryService<LibraryRepositoryImpl>>()?
+            .get_manga_from_library_by_category_id(claims.sub, category_id)
+            .await?
+            .into_par_iter()
+            .map(|m| m.into())
+            .collect();
 
-                m.id = favorite_manga.id;
-                db.insert_manga(&mut m).await?;
-            }
-        }
-
-        Ok(manga.into_iter().map(|m| m.into()).collect())
+        Ok(manga)
     }
 
     async fn recent_updates(
@@ -67,10 +57,12 @@ impl LibraryRoot {
         first: Option<i32>,
         last: Option<i32>,
     ) -> Result<Connection<String, RecentUpdate, EmptyFields, EmptyFields>> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        let db = ctx.data::<MangaDatabase>()?;
+
+        let library_svc = ctx.data::<LibraryService<LibraryRepositoryImpl>>()?;
+
         query(
             after,
             before,
@@ -84,59 +76,50 @@ impl LibraryRoot {
                     .and_then(|cursor: String| decode_cursor(&cursor).ok())
                     .unwrap_or((0, 0));
 
-                let edges = if let Some(first) = first {
-                    db.get_first_recent_updates(
-                        user.sub,
+                let edges = library_svc
+                    .get_library_recent_updates(
+                        claims.sub,
                         after_timestamp,
                         after_id,
                         before_timestamp,
                         before_id,
-                        first as i32,
+                        first,
+                        last,
                     )
-                    .await
-                } else if let Some(last) = last {
-                    db.get_last_recent_updates(
-                        user.sub,
-                        after_timestamp,
-                        after_id,
-                        before_timestamp,
-                        before_id,
-                        last as i32,
-                    )
-                    .await
-                } else {
-                    db.get_recent_updates(
-                        user.sub,
-                        after_timestamp,
-                        after_id,
-                        before_timestamp,
-                        before_id,
-                    )
-                    .await
-                };
-                let edges = edges.unwrap_or_default();
+                    .await?;
 
                 let mut has_previous_page = false;
+                if let Some(e) = edges.first() {
+                    has_previous_page = library_svc
+                        .get_library_recent_updates(
+                            claims.sub,
+                            Local::now().timestamp(),
+                            1,
+                            e.uploaded.timestamp(),
+                            e.chapter_id,
+                            None,
+                            Some(1),
+                        )
+                        .await?
+                        .len()
+                        > 0;
+                }
+
                 let mut has_next_page = false;
-                if !edges.is_empty() {
-                    if let Some(e) = edges.first() {
-                        has_previous_page = db
-                            .get_chapter_has_before_page(
-                                user.sub,
-                                e.uploaded.timestamp(),
-                                e.chapter_id,
-                            )
-                            .await;
-                    }
-                    if let Some(e) = edges.last() {
-                        has_next_page = db
-                            .get_chapter_has_next_page(
-                                user.sub,
-                                e.uploaded.timestamp(),
-                                e.chapter_id,
-                            )
-                            .await;
-                    }
+                if let Some(e) = edges.last() {
+                    has_next_page = library_svc
+                        .get_library_recent_updates(
+                            claims.sub,
+                            e.uploaded.timestamp(),
+                            e.chapter_id,
+                            0,
+                            0,
+                            Some(1),
+                            None,
+                        )
+                        .await?
+                        .len()
+                        > 0;
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
@@ -164,7 +147,9 @@ impl LibraryRoot {
         let user = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
+
         let db = ctx.data::<MangaDatabase>()?;
+
         query(
             after,
             before,
@@ -246,17 +231,15 @@ impl LibraryMutationRoot {
         #[graphql(desc = "manga id")] manga_id: i64,
         #[graphql(desc = "category ids")] category_ids: Vec<i64>,
     ) -> Result<u64> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        match ctx
-            .data::<MangaDatabase>()?
-            .insert_user_library(user.sub, manga_id, category_ids)
-            .await
-        {
-            Ok(rows) => Ok(rows),
-            Err(err) => Err(format!("error add manga to library: {}", err).into()),
-        }
+
+        ctx.data::<LibraryService<LibraryRepositoryImpl>>()?
+            .insert_manga_to_library(claims.sub, manga_id, category_ids)
+            .await?;
+
+        Ok(1)
     }
 
     async fn delete_from_library(
@@ -264,17 +247,15 @@ impl LibraryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "manga id")] manga_id: i64,
     ) -> Result<u64> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        match ctx
-            .data::<MangaDatabase>()?
-            .delete_user_library(user.sub, manga_id)
-            .await
-        {
-            Ok(rows) => Ok(rows),
-            Err(err) => Err(format!("error delete manga from library: {}", err).into()),
-        }
+
+        ctx.data::<LibraryService<LibraryRepositoryImpl>>()?
+            .delete_manga_from_library(claims.sub, manga_id)
+            .await?;
+
+        Ok(1)
     }
 
     async fn update_page_read_at(

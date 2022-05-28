@@ -1,8 +1,10 @@
 use crate::{
-    db::{model, MangaDatabase},
-    infrastructure::auth::Claims,
+    domain::services::library::LibraryService,
+    infrastructure::{auth::Claims, repositories::library::LibraryRepositoryImpl},
+    presentation::graphql::loader::{DatabaseLoader, UserCategoryId},
 };
-use async_graphql::{Context, Object, Result};
+use async_graphql::{dataloader::DataLoader, Context, Object, Result};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Debug, Clone)]
 pub struct Category {
@@ -18,11 +20,10 @@ impl Default for Category {
         }
     }
 }
-
-impl From<model::Category> for Category {
-    fn from(val: model::Category) -> Self {
+impl From<crate::domain::entities::library::Category> for Category {
+    fn from(val: crate::domain::entities::library::Category) -> Self {
         Self {
-            id: Some(val.id),
+            id: val.id,
             name: val.name,
         }
     }
@@ -39,14 +40,15 @@ impl Category {
     }
 
     async fn count(&self, ctx: &Context<'_>) -> Result<i64> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
         Ok(ctx
-            .data::<MangaDatabase>()?
-            .count_library_by_category_id(user.sub, self.id)
-            .await?)
+            .data::<DataLoader<DatabaseLoader>>()?
+            .load_one(UserCategoryId(claims.sub, self.id))
+            .await?
+            .unwrap_or(0))
     }
 }
 
@@ -56,19 +58,17 @@ pub struct CategoryRoot;
 #[Object]
 impl CategoryRoot {
     async fn get_categories(&self, ctx: &Context<'_>) -> Result<Vec<Category>> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let res = ctx
-            .data::<MangaDatabase>()?
-            .get_user_categories(user.sub)
-            .await?;
-
-        let mut categories = vec![Category::default()];
-        for item in res {
-            categories.push(item.into());
-        }
+        let categories = ctx
+            .data::<LibraryService<LibraryRepositoryImpl>>()?
+            .get_categories_by_user_id(claims.sub)
+            .await?
+            .into_par_iter()
+            .map(|cat| cat.into())
+            .collect();
 
         Ok(categories)
     }
@@ -78,17 +78,11 @@ impl CategoryRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let category = if let Some(id) = id {
-            ctx.data::<MangaDatabase>()?
-                .get_user_category(id)
-                .await?
-                .into()
-        } else {
-            Category {
-                id: None,
-                name: "Default".to_string(),
-            }
-        };
+        let category = ctx
+            .data::<LibraryService<LibraryRepositoryImpl>>()?
+            .get_category_by_id(id)
+            .await?
+            .into();
 
         Ok(category)
     }
@@ -104,17 +98,17 @@ impl CategoryMutationRoot {
         ctx: &Context<'_>,
         #[graphql(desc = "category name")] name: String,
     ) -> Result<Category> {
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        match ctx
-            .data::<MangaDatabase>()?
-            .insert_user_category(user.sub, &name)
-            .await
-        {
-            Ok(rows) => Ok(rows.into()),
-            Err(err) => Err(format!("error create category: {}", err).into()),
-        }
+
+        let category = ctx
+            .data::<LibraryService<LibraryRepositoryImpl>>()?
+            .create_category(claims.sub, &name)
+            .await?
+            .into();
+
+        Ok(category)
     }
 
     async fn update_category(
@@ -127,14 +121,13 @@ impl CategoryMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        match ctx
-            .data::<MangaDatabase>()?
-            .update_user_category(id, &name)
-            .await
-        {
-            Ok(rows) => Ok(rows.into()),
-            Err(err) => Err(format!("error create category: {}", err).into()),
-        }
+        let category = ctx
+            .data::<LibraryService<LibraryRepositoryImpl>>()?
+            .rename_category(id, &name)
+            .await?
+            .into();
+
+        Ok(category)
     }
 
     async fn delete_category(
@@ -145,9 +138,11 @@ impl CategoryMutationRoot {
         let _ = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        match ctx.data::<MangaDatabase>()?.delete_user_category(id).await {
-            Ok(rows) => Ok(rows),
-            Err(err) => Err(format!("error create category: {}", err).into()),
-        }
+
+        ctx.data::<LibraryService<LibraryRepositoryImpl>>()?
+            .delete_category(id)
+            .await?;
+
+        Ok(1)
     }
 }

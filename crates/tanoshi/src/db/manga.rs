@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use super::model::*;
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{
     sqlite::{SqliteArguments, SqlitePool},
     Arguments, Row,
@@ -175,6 +176,25 @@ impl Db {
         .await?;
 
         Ok(row.get::<i64, _>(0))
+    }
+
+    pub async fn count_library_by_category(&self, user_id: i64) -> Result<Vec<(Option<i64>, i64)>> {
+        let mut conn = self.pool.acquire().await?;
+        let rows = sqlx::query(
+            r#"SELECT user_category.id, COUNT(1) FROM manga
+            INNER JOIN user_library ON user_library.user_id = 1 AND manga.id = user_library.manga_id
+            LEFT JOIN library_category ON user_library.id = library_category.library_id
+            LEFT JOIN user_category ON library_category.category_id = user_category.id
+            GROUP BY user_category.id;"#,
+        )
+        .bind(user_id)
+        .fetch_all(&mut conn)
+        .await?
+        .into_par_iter()
+        .map(|row| (row.get(0), row.get(1)))
+        .collect();
+
+        Ok(rows)
     }
 
     pub async fn get_all_user_library(&self) -> Result<Vec<UserMangaLibrary>> {

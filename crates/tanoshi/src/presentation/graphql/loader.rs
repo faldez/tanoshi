@@ -270,3 +270,33 @@ impl Loader<UserTrackerMangaId> for DatabaseLoader {
         Ok(res)
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UserCategoryId(pub i64, pub Option<i64>);
+
+#[async_trait::async_trait]
+impl Loader<UserCategoryId> for DatabaseLoader {
+    type Value = i64;
+
+    type Error = Arc<anyhow::Error>;
+
+    async fn load(
+        &self,
+        keys: &[UserCategoryId],
+    ) -> Result<HashMap<UserCategoryId, Self::Value>, Self::Error> {
+        let user_id = keys
+            .iter()
+            .next()
+            .map(|key| key.0)
+            .ok_or_else(|| anyhow::anyhow!("no user id"))?;
+
+        let res = self
+            .mangadb
+            .count_library_by_category(user_id)
+            .await?
+            .iter()
+            .map(|(category_id, count)| (UserCategoryId(user_id, category_id.clone()), *count))
+            .collect();
+        Ok(res)
+    }
+}

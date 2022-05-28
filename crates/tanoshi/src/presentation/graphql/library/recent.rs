@@ -1,9 +1,9 @@
-use async_graphql::{Object, Result};
+use async_graphql::{Context, Object, Result};
 use chrono::NaiveDateTime;
 
 use crate::{
-    db::model,
-    infrastructure::{config::GLOBAL_CONFIG, utils},
+    domain::services::image::ImageService,
+    infrastructure::{config::GLOBAL_CONFIG, repositories::image::ImageRepositoryImpl},
 };
 
 pub struct RecentChapter {
@@ -16,8 +16,8 @@ pub struct RecentChapter {
     pub last_page_read: i64,
 }
 
-impl From<model::RecentChapter> for RecentChapter {
-    fn from(other: model::RecentChapter) -> Self {
+impl From<crate::db::model::RecentChapter> for RecentChapter {
+    fn from(other: crate::db::model::RecentChapter) -> Self {
         Self {
             manga_id: other.manga_id,
             chapter_id: other.chapter_id,
@@ -44,9 +44,14 @@ impl RecentChapter {
         self.manga_title.clone()
     }
 
-    async fn cover_url(&self) -> Result<String> {
+    async fn cover_url(&self, ctx: &Context<'_>) -> Result<String> {
         let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
-        Ok(utils::encrypt_url(secret, &self.cover_url)?)
+
+        let cover_url = ctx
+            .data::<ImageService<ImageRepositoryImpl>>()?
+            .encrypt_image_url(secret, &self.cover_url)?;
+
+        Ok(cover_url)
     }
 
     async fn chapter_title(&self) -> String {
@@ -71,8 +76,21 @@ pub struct RecentUpdate {
     pub uploaded: NaiveDateTime,
 }
 
-impl From<model::RecentUpdate> for RecentUpdate {
-    fn from(other: model::RecentUpdate) -> Self {
+impl From<crate::db::model::RecentUpdate> for RecentUpdate {
+    fn from(other: crate::db::model::RecentUpdate) -> Self {
+        Self {
+            manga_id: other.manga_id,
+            chapter_id: other.chapter_id,
+            manga_title: other.manga_title,
+            cover_url: other.cover_url,
+            chapter_title: other.chapter_title,
+            uploaded: other.uploaded,
+        }
+    }
+}
+
+impl From<crate::domain::entities::library::LibraryUpdate> for RecentUpdate {
+    fn from(other: crate::domain::entities::library::LibraryUpdate) -> Self {
         Self {
             manga_id: other.manga_id,
             chapter_id: other.chapter_id,
@@ -98,9 +116,14 @@ impl RecentUpdate {
         self.manga_title.clone()
     }
 
-    async fn cover_url(&self) -> Result<String> {
+    async fn cover_url(&self, ctx: &Context<'_>) -> Result<String> {
         let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
-        Ok(utils::encrypt_url(secret, &self.cover_url)?)
+
+        let cover_url = ctx
+            .data::<ImageService<ImageRepositoryImpl>>()?
+            .encrypt_image_url(secret, &self.cover_url)?;
+
+        Ok(cover_url)
     }
 
     async fn chapter_title(&self) -> String {

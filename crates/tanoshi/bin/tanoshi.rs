@@ -8,14 +8,15 @@ use tanoshi::{
     application::worker,
     db,
     domain::services::{
-        chapter::ChapterService, image::ImageService, manga::MangaService, source::SourceService,
-        tracker::TrackerService, user::UserService,
+        chapter::ChapterService, image::ImageService, library::LibraryService, manga::MangaService,
+        source::SourceService, tracker::TrackerService, user::UserService,
     },
     infrastructure::{
         config::{self, Config, GLOBAL_CONFIG},
         notifier,
         repositories::{
-            chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl, manga::MangaRepositoryImpl,
+            chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl,
+            library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
             source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
     },
@@ -70,6 +71,9 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let chapter_repo = ChapterRepositoryImpl::new(pool.clone().into());
     let chapter_svc = ChapterService::new(chapter_repo, extension_manager.clone());
+
+    let library_repo = LibraryRepositoryImpl::new(pool.clone());
+    let libary_svc = LibraryService::new(library_repo);
 
     match &config.local_path {
         config::LocalFolders::Single(local_path) => {
@@ -157,6 +161,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_manga_svc(manga_svc)
         .with_chapter_svc(chapter_svc)
         .with_image_svc(image_svc)
+        .with_library_svc(libary_svc)
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)
