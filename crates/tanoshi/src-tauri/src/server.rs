@@ -16,7 +16,7 @@ use tanoshi::{
   },
   infrastructure::{
     config::{self, GLOBAL_CONFIG},
-    notifier,
+    local, notifier,
     repositories::{
       chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
       history::HistoryRepositoryImpl, image::ImageRepositoryImpl, library::LibraryRepositoryImpl,
@@ -24,7 +24,7 @@ use tanoshi::{
       user::UserRepositoryImpl,
     },
   },
-  presentation::{graphql::local, ServerBuilder},
+  presentation::ServerBuilder,
 };
 use tanoshi_tracker::{AniList, MyAnimeList};
 

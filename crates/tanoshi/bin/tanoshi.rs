@@ -14,7 +14,7 @@ use tanoshi::{
     },
     infrastructure::{
         config::{self, Config, GLOBAL_CONFIG},
-        notifier,
+        local, notifier,
         repositories::{
             chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
             history::HistoryRepositoryImpl, image::ImageRepositoryImpl,
@@ -22,7 +22,7 @@ use tanoshi::{
             source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
     },
-    presentation::{graphql::local, ServerBuilder},
+    presentation::ServerBuilder,
 };
 use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
 use tanoshi_tracker::{AniList, MyAnimeList};

@@ -5,7 +5,7 @@ use crate::{
         entities::chapter::Chapter,
         repositories::chapter::{ChapterRepository, ChapterRepositoryError},
     },
-    presentation::graphql::local,
+    infrastructure::local,
 };
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
