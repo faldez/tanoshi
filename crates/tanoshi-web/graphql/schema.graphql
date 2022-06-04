@@ -198,6 +198,7 @@ type PageInfo {
 input ProfileInput {
   telegramChatId: Int
   pushoverUserKey: String
+  gotifyToken: String
 }
 
 type QueryRoot {
@@ -287,6 +288,10 @@ type QueryRoot {
   testPushover(
     # pushover user key
     userKey: String!
+  ): Boolean!
+  testGotify(
+    # gotify app token
+    token: String!
   ): Boolean!
   testDesktopNotification: Boolean!
   downloadStatus: Boolean!
@@ -430,6 +435,7 @@ type User {
   isAdmin: Boolean!
   telegramChatId: Int
   pushoverUserKey: String
+  gotifyToken: String
   myanimelistStatus: Boolean!
   anilistStatus: Boolean!
 }

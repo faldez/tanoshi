@@ -161,6 +161,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             updated_at: row.get(5),
             telegram_chat_id: row.get(6),
             pushover_user_key: row.get(7),
+            gotify_token: row.get(8),
         })
         .collect();
 

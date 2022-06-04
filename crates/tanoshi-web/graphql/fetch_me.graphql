@@ -5,6 +5,7 @@ query FetchMe {
     isAdmin
     telegramChatId
     pushoverUserKey
+    gotifyToken
     myanimelistStatus
     anilistStatus
   }

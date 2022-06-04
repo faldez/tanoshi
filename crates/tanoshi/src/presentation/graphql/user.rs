@@ -17,6 +17,7 @@ pub struct User {
     pub is_admin: bool,
     telegram_chat_id: Option<i64>,
     pushover_user_key: Option<String>,
+    gotify_token: Option<String>,
 }
 
 impl From<crate::domain::entities::user::User> for User {
@@ -28,6 +29,7 @@ impl From<crate::domain::entities::user::User> for User {
             is_admin: val.is_admin,
             telegram_chat_id: val.telegram_chat_id,
             pushover_user_key: val.pushover_user_key,
+            gotify_token: val.gotify_token,
         }
     }
 }
@@ -66,6 +68,10 @@ impl User {
         self.pushover_user_key.clone()
     }
 
+    async fn gotify_token(&self) -> Option<String> {
+        self.gotify_token.clone()
+    }
+
     async fn myanimelist_status(&self, ctx: &Context<'_>) -> Result<bool> {
         let user = ctx
             .data::<Claims>()
@@ -95,6 +101,7 @@ impl User {
 struct ProfileInput {
     pub telegram_chat_id: Option<i64>,
     pub pushover_user_key: Option<String>,
+    pub gotify_token: Option<String>,
 }
 
 #[derive(Default)]
@@ -197,7 +204,12 @@ impl UserMutationRoot {
             .map_err(|_| "token not exists, please login")?;
 
         ctx.data::<UserService<UserRepositoryImpl>>()?
-            .update_profile(claims.sub, input.telegram_chat_id, input.pushover_user_key)
+            .update_profile(
+                claims.sub,
+                input.telegram_chat_id,
+                input.pushover_user_key,
+                input.gotify_token,
+            )
             .await?;
 
         Ok(1)

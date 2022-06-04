@@ -25,7 +25,7 @@ use tanoshi::{
     },
     presentation::{graphql::loader::DatabaseLoader, ServerBuilder},
 };
-use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
+use tanoshi_notifier::{gotify::Gotify, pushover::Pushover, telegram::Telegram};
 use tanoshi_tracker::{AniList, MyAnimeList};
 use tanoshi_vm::{extension::SourceBus, prelude::Source};
 
@@ -117,6 +117,10 @@ async fn main() -> Result<(), anyhow::Error> {
     if let Some(pushover_cfg) = config.pushover.as_ref() {
         notifier_builder =
             notifier_builder.pushover(Pushover::new(pushover_cfg.application_key.clone()));
+    }
+
+    if let Some(gotify_cfg) = config.gotify.as_ref() {
+        notifier_builder = notifier_builder.gotify(Gotify::new(gotify_cfg.base_url.clone()));
     }
 
     let notifier = notifier_builder.finish();

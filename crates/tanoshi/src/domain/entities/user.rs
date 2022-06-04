@@ -10,6 +10,7 @@ pub struct User {
     pub updated_at: NaiveDateTime,
     pub telegram_chat_id: Option<i64>,
     pub pushover_user_key: Option<String>,
+    pub gotify_token: Option<String>,
 }
 
 impl Default for User {
@@ -23,6 +24,7 @@ impl Default for User {
             updated_at: NaiveDateTime::from_timestamp(0, 0),
             telegram_chat_id: None,
             pushover_user_key: None,
+            gotify_token: None,
         }
     }
 }

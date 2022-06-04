@@ -614,11 +614,13 @@ pub struct UpdateProfile;
 pub async fn update_profile(
     telegram_chat_id: Option<i64>,
     pushover_user_key: Option<String>,
+    gotify_token: Option<String>,
 ) -> Result<(), Box<dyn Error>> {
     let var = update_profile::Variables {
         input: update_profile::ProfileInput {
             telegramChatId: telegram_chat_id,
             pushoverUserKey: pushover_user_key,
+            gotifyToken: gotify_token,
         },
     };
     let _ = post_graphql::<UpdateProfile>(var).await?;
@@ -669,6 +671,22 @@ pub async fn test_pushover(user_key: &str) -> Result<(), Box<dyn Error>> {
         user_key: Some(user_key.to_string()),
     };
     let _ = post_graphql::<TestPushover>(var).await?;
+    Ok(())
+}
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "graphql/schema.graphql",
+    query_path = "graphql/test_gotify.graphql",
+    response_derives = "Debug"
+)]
+pub struct TestGotify;
+
+pub async fn test_gotify(token: &str) -> Result<(), Box<dyn Error>> {
+    let var = test_gotify::Variables {
+        token: Some(token.to_string()),
+    };
+    let _ = post_graphql::<TestGotify>(var).await?;
     Ok(())
 }
 

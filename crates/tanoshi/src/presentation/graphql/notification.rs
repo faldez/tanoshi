@@ -38,6 +38,21 @@ impl NotificationRoot {
         Ok(true)
     }
 
+    async fn test_gotify(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "gotify app token")] token: String,
+    ) -> Result<bool> {
+        let _ = ctx
+            .data::<Claims>()
+            .map_err(|_| "token not exists, please login")?;
+        ctx.data::<Notification<UserRepositoryImpl>>()?
+            .send_message_to_gotify(&token, None, "Test Notification")
+            .await?;
+
+        Ok(true)
+    }
+
     async fn test_desktop_notification(&self, _ctx: &Context<'_>) -> Result<bool> {
         #[cfg(feature = "desktop")]
         {

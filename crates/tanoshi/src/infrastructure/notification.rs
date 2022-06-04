@@ -1,5 +1,5 @@
 use crate::{domain::repositories::user::UserRepository, infrastructure::config::GLOBAL_CONFIG};
-use tanoshi_notifier::{pushover::Pushover, telegram::Telegram, Notifier};
+use tanoshi_notifier::{gotify::Gotify, pushover::Pushover, telegram::Telegram, Notifier};
 
 pub struct Builder<R>
 where
@@ -8,6 +8,7 @@ where
     user_repo: R,
     pushover: Option<Pushover>,
     telegram: Option<Telegram>,
+    gotify: Option<Gotify>,
 }
 
 impl<R> Builder<R>
@@ -19,6 +20,7 @@ where
             user_repo,
             pushover: None,
             telegram: None,
+            gotify: None,
         }
     }
 
@@ -36,11 +38,19 @@ where
         }
     }
 
+    pub fn gotify(self, gotify: Gotify) -> Self {
+        Self {
+            gotify: Some(gotify),
+            ..self
+        }
+    }
+
     pub fn finish(self) -> Notification<R> {
         Notification {
             user_repo: self.user_repo,
             telegram: self.telegram,
             pushover: self.pushover,
+            gotify: self.gotify,
         }
     }
 }
@@ -53,6 +63,7 @@ where
     user_repo: R,
     pushover: Option<Pushover>,
     telegram: Option<Telegram>,
+    gotify: Option<Gotify>,
 }
 
 impl<R> Notification<R>
@@ -147,6 +158,25 @@ where
                     .await?;
             }
         }
+
+        if let Some((token, gotify)) = user.gotify_token.zip(self.gotify.as_ref()) {
+            if let Some(url) = &url {
+                gotify
+                    .send_notification_with_title_and_url(
+                        &token,
+                        manga_title,
+                        chapter_title,
+                        url,
+                        "Read",
+                    )
+                    .await?;
+            } else {
+                gotify
+                    .send_notification_with_title(&token, manga_title, chapter_title)
+                    .await?;
+            }
+        }
+
         Ok(())
     }
 
@@ -179,6 +209,27 @@ where
                 .await?;
         } else {
             pushover.send_notification(user_key, body).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn send_message_to_gotify(
+        &self,
+        token: &str,
+        title: Option<String>,
+        body: &str,
+    ) -> Result<(), anyhow::Error> {
+        let gotify = self
+            .gotify
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("gotify not set"))?;
+        if let Some(title) = title {
+            gotify
+                .send_notification_with_title(token, &title, body)
+                .await?;
+        } else {
+            gotify.send_notification(token, body).await?;
         }
 
         Ok(())

@@ -124,6 +124,7 @@ where
         user_id: i64,
         telegram_chat_id: Option<i64>,
         pushover_user_key: Option<String>,
+        gotify_token: Option<String>,
     ) -> Result<(), UserError> {
         debug!("update_profile");
 
@@ -131,6 +132,7 @@ where
 
         user.telegram_chat_id = telegram_chat_id;
         user.pushover_user_key = pushover_user_key;
+        user.gotify_token = gotify_token;
 
         self.repo.update_user_setting(&user).await?;
 

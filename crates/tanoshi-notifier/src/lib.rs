@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 
+pub mod gotify;
 pub mod pushover;
 pub mod telegram;
 

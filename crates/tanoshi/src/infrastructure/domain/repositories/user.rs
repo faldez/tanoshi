@@ -90,6 +90,7 @@ impl UserRepository for UserRepositoryImpl {
                 updated_at: row.get(5),
                 telegram_chat_id: row.get(6),
                 pushover_user_key: row.get(7),
+                gotify_token: row.get(8),
             })
             .collect();
 
@@ -119,6 +120,7 @@ impl UserRepository for UserRepositoryImpl {
                 updated_at: row.get(5),
                 telegram_chat_id: row.get(6),
                 pushover_user_key: row.get(7),
+                gotify_token: row.get(8),
             });
         }
         Ok(users)
@@ -139,6 +141,7 @@ impl UserRepository for UserRepositoryImpl {
             updated_at: row.get(5),
             telegram_chat_id: row.get(6),
             pushover_user_key: row.get(7),
+            gotify_token: row.get(8),
         })
     }
 
@@ -157,6 +160,7 @@ impl UserRepository for UserRepositoryImpl {
             updated_at: row.get(5),
             telegram_chat_id: row.get(6),
             pushover_user_key: row.get(7),
+            gotify_token: row.get(8),
         })
     }
 
@@ -166,8 +170,10 @@ impl UserRepository for UserRepositoryImpl {
 
         column_to_update.push("telegram_chat_id = ?");
         column_to_update.push("pushover_user_key = ?");
+        column_to_update.push("gotify_token = ?");
         arguments.add(user.telegram_chat_id);
         arguments.add(user.pushover_user_key.clone());
+        arguments.add(user.gotify_token.clone());
         arguments.add(user.id);
 
         if column_to_update.is_empty() {

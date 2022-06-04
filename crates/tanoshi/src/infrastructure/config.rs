@@ -19,6 +19,11 @@ pub struct PushoverConfig {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GotifyConfig {
+    pub base_url: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct MyAnimeListConfig {
     pub client_id: String,
     pub client_secret: String,
@@ -73,6 +78,7 @@ pub struct Config {
     pub enable_playground: bool,
     pub telegram: Option<TelegramConfig>,
     pub pushover: Option<PushoverConfig>,
+    pub gotify: Option<GotifyConfig>,
     pub myanimelist: Option<MyAnimeListConfig>,
     pub anilist: Option<AniListConfig>,
 }
@@ -95,6 +101,7 @@ impl Default for Config {
             enable_playground: false,
             telegram: None,
             pushover: None,
+            gotify: None,
             myanimelist: None,
             anilist: None,
         }

@@ -17,6 +17,7 @@ pub struct Profile {
     confirm_password: Mutable<String>,
     telegram_chat_id: Mutable<Option<String>>,
     pushover_user_key: Mutable<Option<String>>,
+    gotify_token: Mutable<Option<String>>,
     myanimelist_status: Mutable<bool>,
     anilist_status: Mutable<bool>,
     pub loader: AsyncLoader,
@@ -30,6 +31,7 @@ impl Profile {
             confirm_password: Mutable::new("".to_string()),
             telegram_chat_id: Mutable::new(None),
             pushover_user_key: Mutable::new(None),
+            gotify_token: Mutable::new(None),
             myanimelist_status: Mutable::new(false),
             anilist_status: Mutable::new(false),
             loader: AsyncLoader::new(),
@@ -42,6 +44,7 @@ impl Profile {
                 Ok(result) => {
                     profile.telegram_chat_id.set(result.telegram_chat_id.map(|id| id.to_string()));
                     profile.pushover_user_key.set(result.pushover_user_key);
+                    profile.gotify_token.set(result.gotify_token);
                     profile.myanimelist_status.set(result.myanimelist_status);
                     profile.anilist_status.set(result.anilist_status);
                 },
@@ -73,6 +76,19 @@ impl Profile {
         if let Some(user_key) = profile.pushover_user_key.get_cloned() {
             profile.loader.load(async move {
                 match query::test_pushover(&user_key).await {
+                    Ok(_) => {}
+                    Err(err) => {
+                        snackbar::show(format!("{}", err));
+                    }
+                }
+            });
+        }
+    }
+
+    fn test_gotify(profile: Rc<Self>) {
+        if let Some(token) = profile.gotify_token.get_cloned() {
+            profile.loader.load(async move {
+                match query::test_gotify(&token).await {
                     Ok(_) => {}
                     Err(err) => {
                         snackbar::show(format!("{}", err));
@@ -123,12 +139,13 @@ impl Profile {
         profile.loader.load(clone!(profile => async move {
             let telegram_chat_id = profile.telegram_chat_id.get_cloned().and_then(|telegram_chat_id| telegram_chat_id.parse().ok());
             let pushover_user_key = profile.pushover_user_key.get_cloned();
-            match query::update_profile(telegram_chat_id, pushover_user_key).await {
+            let gotify_token = profile.gotify_token.get_cloned();
+            match query::update_profile(telegram_chat_id, pushover_user_key, gotify_token).await {
                 Ok(_) => {
                     // routing::go_to_url(Route::Settings(SettingCategory::None).url().as_str());
                 },
                 Err(e) => {
-                    snackbar::show(format!("change password error: {}", e));
+                    snackbar::show(format!("update profile error: {e}"));
                 }
             };
         }));
@@ -242,6 +259,7 @@ impl Profile {
                     .style("margin-bottom", "0.5rem")
                     .text("Notification")
                 }),
+                // Desktop
                 html!("div", {
                     .style("display", "flex")
                     .style("justify-content", "flex-end")
@@ -260,6 +278,7 @@ impl Profile {
                         }),
                     ])
                 }),
+                // Telegram
                 html!("div", {
                     .style("display", "flex")
                     .children(&mut [
@@ -285,6 +304,7 @@ impl Profile {
                         }),
                     ])
                 }),
+                // Pushover
                 html!("div", {
                     .style("display", "flex")
                     .children(&mut [
@@ -310,6 +330,32 @@ impl Profile {
                         }),
                     ])
                 }),
+                // Gotify
+                html!("div", {
+                    .style("display", "flex")
+                    .children(&mut [
+                        html!("input" => HtmlInputElement, {
+                            .style("width", "100%")
+                            .attribute("type", "text")
+                            .attribute("placeholder", "Gotify token, get from Gotify dashboard")
+                            .property_signal("value", profile.gotify_token.signal_cloned().map(|id| id.unwrap_or_else(|| "".to_string())))
+                            .with_node!(input => {
+                                .event(clone!(profile => move |_: events::Input| {
+                                    profile.gotify_token.set(Some(input.value()));
+                                }))
+                            })
+                        }),
+                        html!("input", {
+                            .attribute("type", "button")
+                            .attribute("value", "Test")
+                            .text("Test Gotify")
+                            .event_with_options(&EventOptions::preventable(), clone!(profile => move |e: events::Click| {
+                                e.prevent_default();
+                                Self::test_gotify(profile.clone());
+                            }))
+                        }),
+                    ])
+                }),
                 html!("div", {
                     .style("display", "flex")
                     .style("justify-content", "flex-end")
@@ -330,19 +376,20 @@ impl Profile {
     }
 
     fn render_tracker_setting(profile: Rc<Self>) -> Dom {
-        html!("div", {
+        html!("form", {
             .class("content")
             .style("display", "flex")
             .style("flex-direction", "column")
             .style("max-width", "1024px")
             .style("margin-left", "auto")
             .style("margin-right", "auto")
-            .style("padding", "0.75rem")
             .style("margin-bottom", "0.5rem")
+            .style("padding", "0.5rem")
             .style("border-radius", "0.5rem")
             .style("border", "var(--list-group-border)")
             .children(&mut [
                 html!("span", {
+                    .style("margin-left", "0.25rem")
                     .style("margin-bottom", "0.5rem")
                     .text("Tracker")
                 }),
@@ -442,16 +489,16 @@ impl Profile {
                     .style("max-width", "1024px")
                     .style("margin-left", "auto")
                     .style("margin-right", "auto")
+                    .event(|_: events::Click| {
+                        local_storage().delete("token").unwrap_throw();
+                        routing::go_to_url("/login");
+                    })
                     .children(&mut [
                         html!("button", {
                             .class("uninstall-btn")
                             .children(&mut [
                                 html!("span", {
                                     .text("Logout")
-                                    .event(|_: events::Click| {
-                                        local_storage().delete("token").unwrap_throw();
-                                        routing::go_to_url("/login");
-                                    })
                                 })
                             ])
                         })
