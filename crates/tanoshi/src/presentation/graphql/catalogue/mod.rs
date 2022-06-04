@@ -10,7 +10,9 @@ pub use chapter::Chapter;
 
 use crate::{
     domain::services::{chapter::ChapterService, manga::MangaService},
-    infrastructure::repositories::{chapter::ChapterRepositoryImpl, manga::MangaRepositoryImpl},
+    infrastructure::domain::repositories::{
+        chapter::ChapterRepositoryImpl, manga::MangaRepositoryImpl,
+    },
 };
 
 use async_graphql::{scalar, Context, Object, Result};

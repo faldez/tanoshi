@@ -3,7 +3,7 @@ use crate::{
         model::{Chapter, DownloadQueue},
         MangaDatabase,
     },
-    infrastructure::{notifier::Notifier, repositories::user::UserRepositoryImpl},
+    infrastructure::{domain::repositories::user::UserRepositoryImpl, notifier::Notifier},
 };
 use anyhow::{anyhow, Result};
 use reqwest::Url;

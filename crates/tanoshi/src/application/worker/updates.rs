@@ -11,7 +11,7 @@ use crate::{
     application::worker::downloads::Command as DownloadCommand,
     db::{model::Chapter, MangaDatabase},
     infrastructure::{
-        config::GLOBAL_CONFIG, notifier::Notifier, repositories::user::UserRepositoryImpl,
+        config::GLOBAL_CONFIG, domain::repositories::user::UserRepositoryImpl, notifier::Notifier,
     },
 };
 use anyhow::anyhow;

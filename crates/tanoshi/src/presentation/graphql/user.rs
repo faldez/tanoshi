@@ -3,7 +3,7 @@ use crate::{
     domain::services::{tracker::TrackerService, user::UserService},
     infrastructure::{
         auth::{self, Claims},
-        repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
+        domain::repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
     },
 };
 use async_graphql::{Context, InputObject, Object, Result};

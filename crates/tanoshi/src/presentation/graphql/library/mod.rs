@@ -6,7 +6,7 @@ use crate::{
     },
     infrastructure::{
         auth::Claims,
-        repositories::{
+        domain::repositories::{
             chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
             library::LibraryRepositoryImpl, tracker::TrackerRepositoryImpl,
         },

@@ -3,7 +3,7 @@ use crate::{
     domain::services::download::DownloadService,
     infrastructure::{
         config::GLOBAL_CONFIG,
-        repositories::download::DownloadRepositoryImpl,
+        domain::repositories::download::DownloadRepositoryImpl,
         utils::{decode_cursor, encode_cursor},
     },
 };

@@ -11,7 +11,7 @@ use crate::{
     infrastructure::{
         auth::Claims,
         config::GLOBAL_CONFIG,
-        repositories::{
+        domain::repositories::{
             chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl,
             source::SourceRepositoryImpl,
         },

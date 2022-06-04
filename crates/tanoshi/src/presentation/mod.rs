@@ -27,13 +27,13 @@ use crate::{
         tracker::TrackerService, user::UserService,
     },
     infrastructure::{
-        notifier::Notifier,
-        repositories::{
+        domain::repositories::{
             chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
             history::HistoryRepositoryImpl, image::ImageRepositoryImpl,
             library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
             source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
+        notifier::Notifier,
     },
 };
 use tanoshi_vm::extension::SourceBus;

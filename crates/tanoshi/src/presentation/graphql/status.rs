@@ -1,7 +1,8 @@
 use async_graphql::{Context, Object, Result, SimpleObject};
 
 use crate::{
-    domain::services::user::UserService, infrastructure::repositories::user::UserRepositoryImpl,
+    domain::services::user::UserService,
+    infrastructure::domain::repositories::user::UserRepositoryImpl,
 };
 
 #[derive(Debug, SimpleObject)]

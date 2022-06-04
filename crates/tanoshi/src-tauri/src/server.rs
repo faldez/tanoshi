@@ -16,13 +16,13 @@ use tanoshi::{
   },
   infrastructure::{
     config::{self, GLOBAL_CONFIG},
-    local, notifier,
-    repositories::{
+    domain::repositories::{
       chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
       history::HistoryRepositoryImpl, image::ImageRepositoryImpl, library::LibraryRepositoryImpl,
       manga::MangaRepositoryImpl, source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl,
       user::UserRepositoryImpl,
     },
+    local, notifier,
   },
   presentation::ServerBuilder,
 };

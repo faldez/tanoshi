@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 
 use crate::{
     domain::services::image::ImageService,
-    infrastructure::{config::GLOBAL_CONFIG, repositories::image::ImageRepositoryImpl},
+    infrastructure::{config::GLOBAL_CONFIG, domain::repositories::image::ImageRepositoryImpl},
 };
 
 pub struct RecentChapter {

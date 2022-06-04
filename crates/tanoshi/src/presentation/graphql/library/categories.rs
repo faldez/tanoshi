@@ -1,6 +1,6 @@
 use crate::{
     domain::services::library::LibraryService,
-    infrastructure::{auth::Claims, repositories::library::LibraryRepositoryImpl},
+    infrastructure::{auth::Claims, domain::repositories::library::LibraryRepositoryImpl},
     presentation::graphql::loader::{DatabaseLoader, UserCategoryId},
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result};

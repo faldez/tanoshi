@@ -2,7 +2,7 @@ use super::super::guard::AdminGuard;
 use crate::{
     domain::services::source::SourceService,
     infrastructure::{
-        auth::Claims, config::GLOBAL_CONFIG, repositories::source::SourceRepositoryImpl,
+        auth::Claims, config::GLOBAL_CONFIG, domain::repositories::source::SourceRepositoryImpl,
     },
 };
 use async_graphql::{Context, Object, Result};

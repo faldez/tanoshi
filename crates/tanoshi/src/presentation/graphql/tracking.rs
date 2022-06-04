@@ -3,7 +3,7 @@ use chrono::NaiveDateTime;
 
 use crate::domain::services::tracker::TrackerService;
 use crate::infrastructure::auth::Claims;
-use crate::infrastructure::repositories::tracker::TrackerRepositoryImpl;
+use crate::infrastructure::domain::repositories::tracker::TrackerRepositoryImpl;
 use tanoshi_tracker::{anilist, myanimelist};
 
 #[derive(SimpleObject)]

@@ -1,5 +1,5 @@
 use crate::infrastructure::{
-    auth::Claims, notifier::Notifier, repositories::user::UserRepositoryImpl,
+    auth::Claims, domain::repositories::user::UserRepositoryImpl, notifier::Notifier,
 };
 use async_graphql::{Context, Object, Result};
 

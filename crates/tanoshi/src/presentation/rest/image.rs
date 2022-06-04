@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     domain::services::image::ImageService,
-    infrastructure::{config::GLOBAL_CONFIG, repositories::image::ImageRepositoryImpl},
+    infrastructure::{config::GLOBAL_CONFIG, domain::repositories::image::ImageRepositoryImpl},
 };
 
 #[derive(Debug, Deserialize)]
