@@ -26,6 +26,7 @@ pub trait ChapterRepository: Send + Sync {
         &self,
         manga_id: i64,
         limit: Option<i64>,
+        order_by: Option<&'static str>,
         asc: bool,
     ) -> Result<Vec<Chapter>, ChapterRepositoryError>;
 }

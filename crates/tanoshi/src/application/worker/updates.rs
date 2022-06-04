@@ -1,6 +1,7 @@
 use std::{collections::HashMap, str::FromStr};
 
 use chrono::NaiveDateTime;
+use futures::StreamExt;
 use rayon::prelude::*;
 use serde::Deserialize;
 
@@ -9,16 +10,16 @@ use tanoshi_vm::extension::SourceBus;
 
 use crate::{
     application::worker::downloads::Command as DownloadCommand,
-    db::{model::Chapter, MangaDatabase},
+    domain::{
+        entities::chapter::Chapter,
+        repositories::{chapter::ChapterRepository, library::LibraryRepository},
+    },
     infrastructure::{
         config::GLOBAL_CONFIG, domain::repositories::user::UserRepositoryImpl, notifier::Notifier,
     },
 };
 use anyhow::anyhow;
-use tokio::{
-    task::JoinHandle,
-    time::{self, Instant},
-};
+use tokio::time::{self, Instant};
 
 use super::downloads::DownloadSender;
 
@@ -32,20 +33,30 @@ pub struct SourceInfo {
     pub nsfw: bool,
 }
 
-struct UpdatesWorker {
+struct UpdatesWorker<C, L>
+where
+    C: ChapterRepository + 'static,
+    L: LibraryRepository + 'static,
+{
     period: u64,
     client: reqwest::Client,
-    mangadb: MangaDatabase,
+    library_repo: L,
+    chapter_repo: C,
     extensions: SourceBus,
     auto_download_chapters: bool,
     download_tx: DownloadSender,
     notifier: Notifier<UserRepositoryImpl>,
 }
 
-impl UpdatesWorker {
+impl<C, L> UpdatesWorker<C, L>
+where
+    C: ChapterRepository + 'static,
+    L: LibraryRepository + 'static,
+{
     fn new(
         period: u64,
-        mangadb: MangaDatabase,
+        library_repo: L,
+        chapter_repo: C,
         extensions: SourceBus,
         download_tx: DownloadSender,
         notifier: Notifier<UserRepositoryImpl>,
@@ -66,7 +77,8 @@ impl UpdatesWorker {
         Self {
             period,
             client: reqwest::Client::new(),
-            mangadb,
+            library_repo,
+            chapter_repo,
             extensions,
             auto_download_chapters,
             download_tx,
@@ -75,28 +87,25 @@ impl UpdatesWorker {
     }
 
     async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
-        let manga_in_library = self.mangadb.get_all_user_library().await?;
+        let mut manga_in_library = self.library_repo.get_manga_from_all_users_library().await;
 
-        for item in manga_in_library {
-            debug!("Checking updates: {}", item.manga.title);
+        while let Some(Ok(manga)) = manga_in_library.next().await {
+            debug!("Checking updates: {}", manga.title);
 
-            let last_uploaded_chapter = self
-                .mangadb
-                .get_last_uploaded_chapters_by_manga_id(item.manga.id)
-                .await
-                .map(|ch| ch.uploaded)
+            let last_uploaded_chapter = manga
+                .last_uploaded_at
                 .unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
 
             let chapters: Vec<Chapter> = match self
                 .extensions
-                .get_chapters(item.manga.source_id, item.manga.path.clone())
+                .get_chapters(manga.source_id, manga.path.clone())
                 .await
             {
                 Ok(chapters) => chapters
                     .into_par_iter()
                     .map(|ch| {
                         let mut c: Chapter = ch.into();
-                        c.manga_id = item.manga.id;
+                        c.manga_id = manga.id;
                         c
                     })
                     .collect(),
@@ -106,51 +115,42 @@ impl UpdatesWorker {
                 }
             };
 
-            if let Err(e) = self.mangadb.insert_chapters(&chapters).await {
-                error!("error insert chapters, reason: {}", e);
-                continue;
-            }
+            self.chapter_repo.insert_chapters(&chapters).await?;
 
-            let chapters = match self
-                .mangadb
-                .get_chapters_by_manga_id_after(item.manga.id, last_uploaded_chapter)
-                .await
-            {
-                Ok(chapters) => chapters,
-                Err(e) => {
-                    error!("error insert chapters, reason: {}", e);
-                    continue;
-                }
-            };
+            let chapters: Vec<Chapter> = self
+                .chapter_repo
+                .get_chapters_by_manga_id(manga.id, None, None, false)
+                .await?
+                .into_par_iter()
+                .filter(|chapter| chapter.uploaded > last_uploaded_chapter)
+                .collect();
 
             if chapters.len() > 0 {
-                info!("{} has {} new chapters", item.manga.title, chapters.len());
+                info!("{} has {} new chapters", manga.title, chapters.len());
             } else {
-                debug!("{} has {} new chapters", item.manga.title, chapters.len());
+                debug!("{} has no new chapters", manga.title);
             }
 
             for chapter in chapters {
                 #[cfg(feature = "desktop")]
-                if let Err(e) = self
-                    .notifier
-                    .send_desktop_notification(Some(item.manga.title.clone()), &chapter.title)
-                {
-                    error!("failed to send desktop notification, reason {}", e);
-                }
+                self.notifier
+                    .send_desktop_notification(Some(manga.title.clone()), &chapter.title)?;
 
-                for user_id in item.user_ids.iter() {
-                    if let Err(e) = self
-                        .notifier
+                let users = self
+                    .library_repo
+                    .get_users_by_manga_id(manga.id)
+                    .await
+                    .unwrap_or_default();
+
+                for user in users {
+                    self.notifier
                         .send_chapter_notification(
-                            *user_id,
-                            &item.manga.title,
+                            user.id,
+                            &manga.title,
                             &chapter.title,
                             chapter.id,
                         )
-                        .await
-                    {
-                        error!("failed to send notification, reason {}", e);
-                    }
+                        .await?;
                 }
 
                 if self.auto_download_chapters {
@@ -256,7 +256,7 @@ impl UpdatesWorker {
         Ok(())
     }
 
-    async fn run(&self) {
+    async fn run(self) {
         let period = if self.period == 0 { 3600 } else { self.period };
         let mut chapter_update_interval = time::interval(time::Duration::from_secs(period));
         let mut server_update_interval = time::interval(time::Duration::from_secs(86400));
@@ -294,16 +294,28 @@ impl UpdatesWorker {
     }
 }
 
-pub fn start(
+pub fn start<C, L>(
     period: u64,
-    mangadb: MangaDatabase,
+    library_repo: L,
+    chapter_repo: C,
     extensions: SourceBus,
     download_tx: DownloadSender,
     notifier: Notifier<UserRepositoryImpl>,
-) -> JoinHandle<()> {
-    let worker = UpdatesWorker::new(period, mangadb, extensions, download_tx, notifier);
+) where
+    C: ChapterRepository + 'static,
+    L: LibraryRepository + 'static,
+{
+    let worker = UpdatesWorker::new(
+        period,
+        library_repo,
+        chapter_repo,
+        extensions,
+        download_tx,
+        notifier,
+    );
 
-    tokio::spawn(async move {
-        worker.run().await;
-    })
+    let handle = tokio::runtime::Handle::current();
+    std::thread::spawn(move || {
+        handle.block_on(worker.run());
+    });
 }

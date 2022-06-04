@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, pin::Pin};
 
 use async_trait::async_trait;
+use futures::{Stream, StreamExt};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
 
@@ -9,6 +10,7 @@ use crate::{
         entities::{
             library::{Category, LibraryUpdate},
             manga::Manga,
+            user::User,
         },
         repositories::library::{LibraryRepository, LibraryRepositoryError},
     },
@@ -137,6 +139,65 @@ impl LibraryRepository for LibraryRepositoryImpl {
         Ok(data)
     }
 
+    async fn get_users_by_manga_id(
+        &self,
+        manga_id: i64,
+    ) -> Result<Vec<User>, LibraryRepositoryError> {
+        let users = sqlx::query(
+            r#"SELECT user.* FROM user_library
+                    JOIN user ON user_library.user_id = user.id
+                    WHERE user_library.manga_id = ?"#,
+        )
+        .bind(manga_id)
+        .fetch_all(&self.pool as &SqlitePool)
+        .await?
+        .into_par_iter()
+        .map(|row| User {
+            id: row.get(0),
+            username: row.get(1),
+            password: "".to_string(),
+            is_admin: row.get(3),
+            created_at: row.get(4),
+            updated_at: row.get(5),
+            telegram_chat_id: row.get(6),
+            pushover_user_key: row.get(7),
+        })
+        .collect();
+
+        Ok(users)
+    }
+
+    async fn get_manga_from_all_users_library(
+        &self,
+    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>> {
+        let stream = sqlx::query(
+            r#"SELECT DISTINCT manga.*, MAX(chapter.uploaded) as last_uploaded FROM manga
+                    JOIN user_library ON manga.id = user_library.manga_id
+                    JOIN chapter ON manga.id = chapter.manga_id
+                    GROUP by manga.id"#,
+        )
+        .fetch(&self.pool as &SqlitePool)
+        .map(|row| {
+            row.map(|row| Manga {
+                id: row.get(0),
+                source_id: row.get(1),
+                title: row.get(2),
+                author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+                genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+                status: row.get(5),
+                description: row.get(6),
+                path: row.get(7),
+                cover_url: row.get(8),
+                date_added: row.get(9),
+                last_uploaded_at: row.get(10),
+            })
+            .map_err(|e| LibraryRepositoryError::DbError(e))
+        })
+        .boxed();
+
+        stream
+    }
+
     async fn get_manga_from_library(
         &self,
         user_id: i64,
@@ -162,6 +223,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             path: row.get(7),
             cover_url: row.get(8),
             date_added: row.get(9),
+            last_uploaded_at: None,
         })
         .collect();
 
@@ -196,6 +258,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
             path: row.get(7),
             cover_url: row.get(8),
             date_added: row.get(9),
+            last_uploaded_at: None,
         })
         .collect();
 

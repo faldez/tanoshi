@@ -138,18 +138,21 @@ impl ChapterRepository for ChapterRepositoryImpl {
         &self,
         manga_id: i64,
         limit: Option<i64>,
+        order_by: Option<&'static str>,
         asc: bool,
     ) -> Result<Vec<Chapter>, ChapterRepositoryError> {
         let limit = limit
             .map(|limit| format!("LIMIT {limit}"))
             .unwrap_or_else(|| "".to_string());
+        let order_by = order_by.unwrap_or("number");
         let order = if asc { "ASC" } else { "DESC" };
+
         let query_str = format!(
             r#"SELECT
                         chapter.*,
                         (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
                         (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev
-                    FROM chapter WHERE manga_id = ? ORDER BY number {order} {limit}"#,
+                    FROM chapter WHERE manga_id = ? ORDER BY {order_by} {order} {limit}"#,
         );
         let chapters = sqlx::query(&query_str)
             .bind(manga_id)

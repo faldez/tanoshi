@@ -137,9 +137,10 @@ async fn main() -> Result<(), anyhow::Error> {
         download_receiver,
     );
 
-    let update_worker_handle = worker::updates::start(
+    worker::updates::start(
         config.update_interval,
-        mangadb.clone(),
+        library_repo.clone(),
+        chapter_repo.clone(),
         extension_manager.clone(),
         download_sender.clone(),
         notifier.clone(),
@@ -195,9 +196,9 @@ async fn main() -> Result<(), anyhow::Error> {
         _ = server_fut => {
             info!("server shutdown");
         }
-        _ = update_worker_handle => {
-            info!("update worker quit");
-        }
+        // _ = update_worker_handle => {
+        //     info!("update worker quit");
+        // }
         _ = download_worker_handle => {
             info!("download worker quit");
         }

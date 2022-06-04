@@ -13,6 +13,7 @@ pub struct Manga {
     pub path: String,
     pub cover_url: String,
     pub date_added: NaiveDateTime,
+    pub last_uploaded_at: Option<NaiveDateTime>,
 }
 
 impl Default for Manga {
@@ -28,6 +29,7 @@ impl Default for Manga {
             path: "".to_string(),
             cover_url: "".to_string(),
             date_added: NaiveDateTime::from_timestamp(0, 0),
+            last_uploaded_at: None,
         }
     }
 }
@@ -45,6 +47,7 @@ impl From<tanoshi_lib::models::MangaInfo> for Manga {
             path: m.path,
             cover_url: m.cover_url,
             date_added: NaiveDateTime::from_timestamp(0, 0),
+            last_uploaded_at: None,
         }
     }
 }

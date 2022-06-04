@@ -38,6 +38,7 @@ impl MangaRepository for MangaRepositoryImpl {
             path: row.get(7),
             cover_url: row.get(8),
             date_added: row.get(9),
+            last_uploaded_at: None,
         })
     }
 
@@ -65,6 +66,7 @@ impl MangaRepository for MangaRepositoryImpl {
                 path: row.get(7),
                 cover_url: row.get(8),
                 date_added: row.get(9),
+                last_uploaded_at: None,
             })
             .collect();
 
@@ -93,6 +95,7 @@ impl MangaRepository for MangaRepositoryImpl {
             path: row.get(7),
             cover_url: row.get(8),
             date_added: row.get(9),
+            last_uploaded_at: None,
         })
     }
 

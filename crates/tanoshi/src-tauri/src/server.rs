@@ -86,7 +86,6 @@ impl<R: Runtime> Plugin<R> for Server {
       let history_svc = HistoryService::new(chapter_repo.clone(), history_repo.clone());
 
       match &config.local_path {
-        
         config::LocalFolders::Single(local_path) => {
           let _ = extension_manager
             .insert(Source::from(Box::new(local::Local::new(
@@ -129,9 +128,10 @@ impl<R: Runtime> Plugin<R> for Server {
         download_receiver,
       );
 
-      let update_worker_handle = worker::updates::start(
+      worker::updates::start(
         config.update_interval,
-        mangadb.clone(),
+        library_repo.clone(),
+        chapter_repo.clone(),
         extension_manager.clone(),
         download_sender.clone(),
         notifier.clone(),
@@ -192,9 +192,9 @@ impl<R: Runtime> Plugin<R> for Server {
           _ = server_fut => {
               println!("server shutdown");
           }
-          _ = update_worker_handle => {
-              println!("update worker quit");
-          }
+          // _ = update_worker_handle => {
+          //     println!("update worker quit");
+          // }
           _ = download_worker_handle => {
               println!("download worker quit");
           }

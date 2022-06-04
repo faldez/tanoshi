@@ -1,12 +1,14 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, pin::Pin};
 
 use async_trait::async_trait;
 
+use futures::Stream;
 use thiserror::Error;
 
 use crate::domain::entities::{
     library::{Category, LibraryUpdate},
     manga::Manga,
+    user::User,
 };
 
 #[derive(Debug, Error)]
@@ -42,6 +44,15 @@ pub trait LibraryRepository: Send + Sync {
         &self,
         user_id: i64,
     ) -> Result<HashMap<Option<i64>, i64>, LibraryRepositoryError>;
+
+    async fn get_users_by_manga_id(
+        &self,
+        manga_id: i64,
+    ) -> Result<Vec<User>, LibraryRepositoryError>;
+
+    async fn get_manga_from_all_users_library(
+        &self,
+    ) -> Pin<Box<dyn Stream<Item = Result<Manga, LibraryRepositoryError>>>>;
 
     async fn get_manga_from_library_by_category_id(
         &self,

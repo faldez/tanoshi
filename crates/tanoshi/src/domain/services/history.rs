@@ -116,7 +116,7 @@ where
             Some(self.chapter_repo.get_chapter_by_id(chapter_id).await?)
         } else {
             self.chapter_repo
-                .get_chapters_by_manga_id(manga_id, Some(1), true)
+                .get_chapters_by_manga_id(manga_id, Some(1), None, true)
                 .await?
                 .first()
                 .cloned()
