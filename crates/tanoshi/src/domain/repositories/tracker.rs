@@ -18,7 +18,7 @@ pub enum TrackerRepositoryError {
 }
 
 #[async_trait]
-pub trait TrackerRepository {
+pub trait TrackerRepository: Send + Sync {
     fn get_authorize_url(&self, tracker: &str) -> Result<Session, TrackerRepositoryError>;
 
     async fn exchange_code(
@@ -66,6 +66,12 @@ pub trait TrackerRepository {
         &self,
         user_id: i64,
         manga_id: i64,
+    ) -> Result<Vec<TrackedManga>, TrackerRepositoryError>;
+
+    async fn get_tracked_manga_id_by_manga_ids(
+        &self,
+        user_id: i64,
+        manga_ids: &[i64],
     ) -> Result<Vec<TrackedManga>, TrackerRepositoryError>;
 
     async fn fetch_manga_details(

@@ -16,20 +16,6 @@ pub struct RecentChapter {
     pub last_page_read: i64,
 }
 
-impl From<crate::db::model::RecentChapter> for RecentChapter {
-    fn from(other: crate::db::model::RecentChapter) -> Self {
-        Self {
-            manga_id: other.manga_id,
-            chapter_id: other.chapter_id,
-            manga_title: other.manga_title,
-            cover_url: other.cover_url,
-            chapter_title: other.chapter_title,
-            read_at: other.read_at,
-            last_page_read: other.last_page_read,
-        }
-    }
-}
-
 impl From<crate::domain::entities::history::HistoryChapter> for RecentChapter {
     fn from(other: crate::domain::entities::history::HistoryChapter) -> Self {
         Self {
@@ -88,19 +74,6 @@ pub struct RecentUpdate {
     pub cover_url: String,
     pub chapter_title: String,
     pub uploaded: NaiveDateTime,
-}
-
-impl From<crate::db::model::RecentUpdate> for RecentUpdate {
-    fn from(other: crate::db::model::RecentUpdate) -> Self {
-        Self {
-            manga_id: other.manga_id,
-            chapter_id: other.chapter_id,
-            manga_title: other.manga_title,
-            cover_url: other.cover_url,
-            chapter_title: other.chapter_title,
-            uploaded: other.uploaded,
-        }
-    }
 }
 
 impl From<crate::domain::entities::library::LibraryUpdate> for RecentUpdate {

@@ -1,10 +1,14 @@
 use std::any::Any;
 
+use crate::infrastructure::domain::repositories::{
+    history::HistoryRepositoryImpl, library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
+    tracker::TrackerRepositoryImpl,
+};
+
 use super::{
     catalogue::{CatalogueRoot, SourceMutationRoot, SourceRoot},
     downloads::{DownloadMutationRoot, DownloadRoot},
     library::{CategoryMutationRoot, CategoryRoot, LibraryMutationRoot, LibraryRoot},
-    loader::DatabaseLoader,
     notification::NotificationRoot,
     status::StatusRoot,
     tracking::{TrackingMutationRoot, TrackingRoot},
@@ -37,6 +41,13 @@ pub struct MutationRoot(
     DownloadMutationRoot,
     TrackingMutationRoot,
 );
+
+pub type DatabaseLoader = crate::presentation::graphql::loader::DatabaseLoader<
+    HistoryRepositoryImpl,
+    LibraryRepositoryImpl,
+    MangaRepositoryImpl,
+    TrackerRepositoryImpl,
+>;
 
 pub struct SchemaBuilder(async_graphql::SchemaBuilder<QueryRoot, MutationRoot, EmptySubscription>);
 

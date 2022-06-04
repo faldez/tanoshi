@@ -22,7 +22,7 @@ use tanoshi::{
         },
         local, notifier,
     },
-    presentation::ServerBuilder,
+    presentation::{graphql::loader::DatabaseLoader, ServerBuilder},
 };
 use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
 use tanoshi_tracker::{AniList, MyAnimeList};
@@ -69,16 +69,16 @@ async fn main() -> Result<(), anyhow::Error> {
     let source_svc = SourceService::new(source_repo);
 
     let manga_repo = MangaRepositoryImpl::new(pool.clone());
-    let manga_svc = MangaService::new(manga_repo, extension_manager.clone());
+    let manga_svc = MangaService::new(manga_repo.clone(), extension_manager.clone());
 
     let chapter_repo = ChapterRepositoryImpl::new(pool.clone());
     let chapter_svc = ChapterService::new(chapter_repo, extension_manager.clone());
 
     let library_repo = LibraryRepositoryImpl::new(pool.clone());
-    let libary_svc = LibraryService::new(library_repo);
+    let libary_svc = LibraryService::new(library_repo.clone());
 
     let history_repo = HistoryRepositoryImpl::new(pool.clone());
-    let history_svc = HistoryService::new(history_repo);
+    let history_svc = HistoryService::new(history_repo.clone());
 
     match &config.local_path {
         config::LocalFolders::Single(local_path) => {
@@ -153,13 +153,15 @@ async fn main() -> Result<(), anyhow::Error> {
         });
 
     let tracker_repo = TrackerRepositoryImpl::new(pool.clone(), mal_client.clone(), al_client);
-    let tracker_svc = TrackerService::new(tracker_repo);
+    let tracker_svc = TrackerService::new(tracker_repo.clone());
 
     let image_repo = ImageRepositoryImpl::new();
     let image_svc = ImageService::new(image_repo);
 
     let download_repo = DownloadRepositoryImpl::new(pool.clone());
     let download_svc = DownloadService::new(download_repo, download_tx.clone());
+
+    let loader = DatabaseLoader::new(history_repo, library_repo, manga_repo, tracker_repo);
 
     let mut server_builder = ServerBuilder::new()
         .with_user_svc(user_svc)
@@ -174,7 +176,8 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_tx)
-        .with_notifier(notifier);
+        .with_notifier(notifier)
+        .with_loader(loader);
 
     if config.enable_playground {
         server_builder = server_builder.enable_playground();

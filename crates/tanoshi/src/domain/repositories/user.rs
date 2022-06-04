@@ -14,7 +14,7 @@ pub enum UserRepositoryError {
 }
 
 #[async_trait]
-pub trait UserRepository {
+pub trait UserRepository: Send + Sync {
     async fn insert_user(&self, user: User) -> Result<i64, UserRepositoryError>;
 
     async fn update_password(&self, id: i64, password: String) -> Result<u64, UserRepositoryError>;

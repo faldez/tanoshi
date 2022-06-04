@@ -20,14 +20,16 @@ pub enum ChapterError {
 }
 
 impl From<ChapterRepositoryError> for ChapterError {
-    fn from(_: ChapterRepositoryError) -> Self {
-        todo!()
+    fn from(e: ChapterRepositoryError) -> Self {
+        match e {
+            ChapterRepositoryError::DbError(e) => Self::Other(anyhow::anyhow!("{e}")),
+        }
     }
 }
 
 impl From<JoinError> for ChapterError {
-    fn from(_: JoinError) -> Self {
-        todo!()
+    fn from(e: JoinError) -> Self {
+        Self::Other(anyhow::anyhow!("{e}"))
     }
 }
 

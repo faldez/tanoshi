@@ -11,7 +11,7 @@ pub enum ChapterRepositoryError {
 }
 
 #[async_trait]
-pub trait ChapterRepository {
+pub trait ChapterRepository: Send + Sync {
     async fn insert_chapters(&self, chapters: &[Chapter]) -> Result<(), ChapterRepositoryError>;
 
     async fn get_chapter_by_id(&self, id: i64) -> Result<Chapter, ChapterRepositoryError>;

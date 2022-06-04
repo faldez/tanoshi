@@ -9,4 +9,5 @@ pub struct HistoryChapter {
     pub chapter_title: String,
     pub read_at: NaiveDateTime,
     pub last_page_read: i64,
+    pub is_complete: bool,
 }

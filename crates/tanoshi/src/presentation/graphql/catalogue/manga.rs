@@ -1,7 +1,6 @@
 use super::{
     super::loader::{
-        DatabaseLoader, UserFavoriteId, UserFavoritePath, UserLastReadId, UserTrackerMangaId,
-        UserUnreadChaptersId,
+        UserFavoriteId, UserFavoritePath, UserLastReadId, UserTrackerMangaId, UserUnreadChaptersId,
     },
     Chapter, Source,
 };
@@ -16,6 +15,7 @@ use crate::{
             source::SourceRepositoryImpl,
         },
     },
+    presentation::graphql::schema::DatabaseLoader,
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;

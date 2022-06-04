@@ -15,7 +15,7 @@ pub enum ImageRepositoryError {
 }
 
 #[async_trait]
-pub trait ImageRepository {
+pub trait ImageRepository: Send + Sync {
     async fn fetch_image_from_url(
         &self,
         url: &str,

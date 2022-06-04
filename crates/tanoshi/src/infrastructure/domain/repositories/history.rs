@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
@@ -10,6 +12,7 @@ use crate::{
     infrastructure::database::Pool,
 };
 
+#[derive(Clone)]
 pub struct HistoryRepositoryImpl {
     pool: Pool,
 }
@@ -38,7 +41,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
             manga.cover_url,
             chapter.title,
             MAX(user_history.read_at) AS read_at,
-            user_history.last_page
+            user_history.last_page,
+            user_history.is_complete
         FROM user_history
         JOIN 
             chapter ON chapter.id = user_history.chapter_id AND
@@ -66,6 +70,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             chapter_title: row.get(4),
             read_at: row.get(5),
             last_page_read: row.get(6),
+            is_complete: row.get(7),
         })
         .collect();
 
@@ -89,7 +94,8 @@ impl HistoryRepository for HistoryRepositoryImpl {
                 manga.cover_url,
                 chapter.title,
                 MAX(user_history.read_at) AS read_at,
-                user_history.last_page
+                user_history.last_page,
+                user_history.is_complete
             FROM user_history
             JOIN 
                 chapter ON chapter.id = user_history.chapter_id AND
@@ -117,6 +123,7 @@ impl HistoryRepository for HistoryRepositoryImpl {
             chapter_title: row.get(4),
             read_at: row.get(5),
             last_page_read: row.get(6),
+            is_complete: row.get(7),
         })
         .collect();
 
@@ -138,10 +145,11 @@ impl HistoryRepository for HistoryRepositoryImpl {
             manga.cover_url,
             chapter.title,
             MAX(user_history.read_at) AS read_at,
-            user_history.last_page
+            user_history.last_page,
+            user_history.is_complete
         FROM user_history
         JOIN 
-            chapter ON chapter.id = user_history.chapter_id
+            chapter ON chapter.id = user_history.chapter_id AND
             user_history.user_id = ?
         JOIN manga ON manga.id = chapter.manga_id
         GROUP BY manga.id
@@ -164,8 +172,108 @@ impl HistoryRepository for HistoryRepositoryImpl {
             chapter_title: row.get(4),
             read_at: row.get(5),
             last_page_read: row.get(6),
+            is_complete: row.get(7),
         })
         .collect();
+
+        Ok(chapters)
+    }
+
+    async fn get_history_chapters_by_manga_ids(
+        &self,
+        user_id: i64,
+        manga_ids: &[i64],
+    ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
+        let query_str = format!(
+            r#"SELECT
+                    manga.id,
+                    chapter.id,
+                    manga.title,
+                    manga.cover_url,
+                    chapter.title,
+                    user_history.read_at,
+                    user_history.last_page,
+                    user_history.is_complete
+                FROM user_history
+                JOIN chapter ON 
+                    chapter.id = user_history.chapter_id AND
+                    chapter.manga_id IN ({})
+                JOIN manga ON 
+                    manga.id = chapter.manga_id
+                WHERE user_history.user_id = ?"#,
+            vec!["?"; manga_ids.len()].join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+
+        for manga_id in manga_ids {
+            query = query.bind(manga_id);
+        }
+
+        let chapters = query
+            .bind(user_id)
+            .fetch_all(&self.pool as &SqlitePool)
+            .await?
+            .into_par_iter()
+            .map(|row| HistoryChapter {
+                manga_id: row.get(0),
+                chapter_id: row.get(1),
+                manga_title: row.get(2),
+                cover_url: row.get(3),
+                chapter_title: row.get(4),
+                read_at: row.get(5),
+                last_page_read: row.get(6),
+                is_complete: row.get(7),
+            })
+            .collect();
+
+        Ok(chapters)
+    }
+
+    async fn get_history_chapters_by_chapter_ids(
+        &self,
+        user_id: i64,
+        chapter_ids: &[i64],
+    ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError> {
+        let query_str = format!(
+            r#"SELECT
+                    manga.id,
+                    chapter.id,
+                    manga.title,
+                    manga.cover_url,
+                    chapter.title,
+                    user_history.read_at,
+                    user_history.last_page,
+                    user_history.is_complete
+                FROM user_history
+                JOIN chapter ON 
+                    chapter.id = user_history.chapter_id
+                JOIN manga ON manga.id = chapter.manga_id
+                WHERE user_history.user_id = ? AND user_history.chapter_id IN ({})"#,
+            vec!["?"; chapter_ids.len()].join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+
+        for chapter_id in chapter_ids {
+            query = query.bind(chapter_id);
+        }
+
+        let chapters = query
+            .fetch_all(&self.pool as &SqlitePool)
+            .await?
+            .into_par_iter()
+            .map(|row| HistoryChapter {
+                manga_id: row.get(0),
+                chapter_id: row.get(1),
+                manga_title: row.get(2),
+                cover_url: row.get(3),
+                chapter_title: row.get(4),
+                read_at: row.get(5),
+                last_page_read: row.get(6),
+                is_complete: row.get(7),
+            })
+            .collect();
 
         Ok(chapters)
     }
@@ -259,5 +367,37 @@ impl HistoryRepository for HistoryRepositoryImpl {
         query.execute(&self.pool as &SqlitePool).await?;
 
         Ok(())
+    }
+
+    async fn get_unread_chapters_by_manga_ids(
+        &self,
+        user_id: i64,
+        manga_ids: &[i64],
+    ) -> Result<HashMap<i64, i64>, HistoryRepositoryError> {
+        let mut values = vec![];
+        values.resize(manga_ids.len(), "?");
+
+        let query_str = format!(
+            r#"SELECT manga_id, COUNT(1) FROM (
+                SELECT manga_id, IFNULL(user_history.is_complete, false) AS is_complete FROM chapter c LEFT JOIN user_history ON user_history.user_id = ? AND user_history.chapter_id = c.id WHERE c.manga_id IN ({})
+            )
+            WHERE is_complete = false
+            GROUP BY manga_id"#,
+            values.join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+        for manga_id in manga_ids {
+            query = query.bind(manga_id)
+        }
+
+        let data = query
+            .fetch_all(&self.pool as &SqlitePool)
+            .await?
+            .iter()
+            .map(|row| (row.get(0), row.get(1)))
+            .collect();
+
+        Ok(data)
     }
 }

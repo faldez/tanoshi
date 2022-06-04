@@ -9,7 +9,7 @@ pub enum MangaRepositoryError {
 }
 
 #[async_trait]
-pub trait MangaRepository {
+pub trait MangaRepository: Send + Sync {
     async fn get_manga_by_id(&self, id: i64) -> Result<Manga, MangaRepositoryError>;
     async fn get_manga_by_ids(&self, ids: &[i64]) -> Result<Vec<Manga>, MangaRepositoryError>;
     async fn get_manga_by_source_path(

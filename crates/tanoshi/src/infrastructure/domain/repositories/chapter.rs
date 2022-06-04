@@ -10,6 +10,7 @@ use crate::{
     infrastructure::database::Pool,
 };
 
+#[derive(Clone)]
 pub struct ChapterRepositoryImpl {
     pool: Pool,
 }
@@ -74,8 +75,11 @@ impl ChapterRepository for ChapterRepositoryImpl {
 
     async fn get_chapter_by_id(&self, id: i64) -> Result<Chapter, ChapterRepositoryError> {
         let row = sqlx::query(
-            r#"
-            SELECT * FROM chapter WHERE id = ?"#,
+            r#"SELECT 
+                        chapter.*,
+                        (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
+                        (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev
+                    FROM chapter WHERE id = ?"#,
         )
         .bind(id)
         .fetch_one(&self.pool as &SqlitePool)
@@ -92,6 +96,8 @@ impl ChapterRepository for ChapterRepositoryImpl {
             uploaded: row.get(7),
             date_added: row.get(8),
             downloaded_path: row.get(9),
+            next: row.get(10),
+            prev: row.get(11),
         })
     }
 
@@ -100,8 +106,11 @@ impl ChapterRepository for ChapterRepositoryImpl {
         manga_id: i64,
     ) -> Result<Vec<Chapter>, ChapterRepositoryError> {
         let chapters = sqlx::query(
-            r#"
-            SELECT * FROM chapter WHERE manga_id = ? ORDER BY number DESC"#,
+            r#"SELECT 
+                        chapter.*,
+                        (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
+                        (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev
+                    FROM chapter WHERE manga_id = ? ORDER BY number DESC"#,
         )
         .bind(manga_id)
         .fetch_all(&self.pool as &SqlitePool)
@@ -118,6 +127,8 @@ impl ChapterRepository for ChapterRepositoryImpl {
             uploaded: row.get(7),
             date_added: row.get(8),
             downloaded_path: row.get(9),
+            next: row.get(10),
+            prev: row.get(11),
         })
         .collect();
 

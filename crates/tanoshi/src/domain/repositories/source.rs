@@ -19,7 +19,7 @@ pub enum SourceRepositoryError {
 }
 
 #[async_trait]
-pub trait SourceRepository {
+pub trait SourceRepository: Send + Sync {
     async fn installed_sources(&self) -> Result<Vec<Source>, SourceRepositoryError>;
 
     async fn available_sources(&self, repo_url: &str)

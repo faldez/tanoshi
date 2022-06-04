@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
@@ -13,9 +13,10 @@ use crate::{
     infrastructure::database::Pool,
 };
 
+#[derive(Clone)]
 pub struct TrackerRepositoryImpl {
     pool: Pool,
-    clients: HashMap<&'static str, Box<dyn Tracker>>,
+    clients: Arc<HashMap<&'static str, Box<dyn Tracker>>>,
 }
 
 impl TrackerRepositoryImpl {
@@ -30,7 +31,7 @@ impl TrackerRepositoryImpl {
 
         Self {
             pool: pool.into(),
-            clients,
+            clients: Arc::new(clients),
         }
     }
 }
@@ -200,6 +201,39 @@ impl TrackerRepository for TrackerRepositoryImpl {
         let rows = query
             .bind(manga_id)
             .bind(user_id)
+            .fetch_all(&self.pool as &SqlitePool)
+            .await?
+            .iter()
+            .map(|row| TrackedManga {
+                manga_id: row.get(0),
+                tracker: row.get(1),
+                tracker_manga_id: row.get(2),
+            })
+            .collect();
+
+        Ok(rows)
+    }
+
+    async fn get_tracked_manga_id_by_manga_ids(
+        &self,
+        user_id: i64,
+        manga_ids: &[i64],
+    ) -> Result<Vec<TrackedManga>, TrackerRepositoryError> {
+        let query_str = format!(
+            r#"SELECT m.id as manga_id, tc.tracker, tm.tracker_manga_id FROM tracker_credential tc 
+                LEFT JOIN manga m ON m.id = ?
+                LEFT JOIN tracker_manga tm ON tc.tracker = tm.tracker AND tm.manga_id = m.id
+                WHERE tc.user_id = ? AND m.id IN ({})"#,
+            vec!["?"; manga_ids.len()].join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(user_id);
+
+        for manga_id in manga_ids {
+            query = query.bind(manga_id);
+        }
+
+        let rows = query
             .fetch_all(&self.pool as &SqlitePool)
             .await?
             .iter()

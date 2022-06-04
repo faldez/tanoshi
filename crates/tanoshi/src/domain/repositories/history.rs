@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 
 use thiserror::Error;
@@ -11,7 +13,7 @@ pub enum HistoryRepositoryError {
 }
 
 #[async_trait]
-pub trait HistoryRepository {
+pub trait HistoryRepository: Send + Sync {
     async fn get_first_history_chapters(
         &self,
         user_id: i64,
@@ -35,6 +37,18 @@ pub trait HistoryRepository {
         before_timestamp: i64,
     ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError>;
 
+    async fn get_history_chapters_by_manga_ids(
+        &self,
+        user_id: i64,
+        manga_ids: &[i64],
+    ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError>;
+
+    async fn get_history_chapters_by_chapter_ids(
+        &self,
+        user_id: i64,
+        chapter_ids: &[i64],
+    ) -> Result<Vec<HistoryChapter>, HistoryRepositoryError>;
+
     async fn insert_history_chapter(
         &self,
         user_id: i64,
@@ -54,4 +68,10 @@ pub trait HistoryRepository {
         user_id: i64,
         chapter_ids: &[i64],
     ) -> Result<(), HistoryRepositoryError>;
+
+    async fn get_unread_chapters_by_manga_ids(
+        &self,
+        user_id: i64,
+        manga_ids: &[i64],
+    ) -> Result<HashMap<i64, i64>, HistoryRepositoryError>;
 }

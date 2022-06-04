@@ -15,7 +15,10 @@ use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
 
 use self::{
-    graphql::{graphql_handler, graphql_playground, loader::DatabaseLoader, schema::SchemaBuilder},
+    graphql::{
+        graphql_handler, graphql_playground,
+        schema::{DatabaseLoader, SchemaBuilder},
+    },
     rest::{health::health_check, image::fetch_image},
 };
 use crate::{
@@ -52,6 +55,7 @@ pub struct ServerBuilder {
     ext_manager: Option<SourceBus>,
     download_tx: Option<DownloadSender>,
     notifier: Option<Notifier<UserRepositoryImpl>>,
+    loader: Option<DatabaseLoader>,
     enable_playground: bool,
 }
 
@@ -71,6 +75,7 @@ impl ServerBuilder {
             ext_manager: None,
             download_tx: None,
             notifier: None,
+            loader: None,
             enable_playground: false,
         }
     }
@@ -166,6 +171,13 @@ impl ServerBuilder {
         }
     }
 
+    pub fn with_loader(self, loader: DatabaseLoader) -> Self {
+        Self {
+            loader: Some(loader),
+            ..self
+        }
+    }
+
     pub fn enable_playground(self) -> Self {
         Self {
             enable_playground: true,
@@ -203,6 +215,7 @@ impl ServerBuilder {
             .download_tx
             .ok_or_else(|| anyhow!("no download sender"))?;
         let notifier = self.notifier.ok_or_else(|| anyhow!("no notifier"))?;
+        let loader = self.loader.ok_or_else(|| anyhow!("no loader"))?;
 
         let schema = SchemaBuilder::new()
             .data(user_svc)
@@ -215,7 +228,7 @@ impl ServerBuilder {
             .data(history_svc)
             .data(download_svc)
             .data(mangadb.clone())
-            .loader(DatabaseLoader { mangadb })
+            .loader(loader)
             .data(extension_manager)
             .data(download_tx)
             .data(notifier)

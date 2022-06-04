@@ -8,6 +8,7 @@ use crate::{
 use async_trait::async_trait;
 use sqlx::{Row, SqlitePool};
 
+#[derive(Clone)]
 pub struct MangaRepositoryImpl {
     pool: Pool,
 }

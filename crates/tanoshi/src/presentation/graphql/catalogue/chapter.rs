@@ -1,5 +1,5 @@
 use super::{
-    super::loader::{DatabaseLoader, MangaId, NextChapterId, PrevChapterId, UserHistoryId},
+    super::loader::{MangaId, UserHistoryId},
     Manga, Source,
 };
 use crate::{
@@ -12,6 +12,7 @@ use crate::{
             source::SourceRepositoryImpl,
         },
     },
+    presentation::graphql::schema::DatabaseLoader,
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
@@ -48,6 +49,8 @@ pub struct Chapter {
     pub date_added: chrono::NaiveDateTime,
     pub read_progress: Option<ReadProgress>,
     pub downloaded_path: Option<String>,
+    pub next: Option<i64>,
+    pub prev: Option<i64>,
 }
 
 impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
@@ -64,6 +67,8 @@ impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             read_progress: None,
             downloaded_path: None,
+            next: None,
+            prev: None,
         }
     }
 }
@@ -82,6 +87,8 @@ impl From<crate::domain::entities::chapter::Chapter> for Chapter {
             date_added: val.date_added,
             read_progress: None,
             downloaded_path: val.downloaded_path,
+            next: val.next,
+            prev: val.prev,
         }
     }
 }
@@ -99,6 +106,8 @@ impl From<Chapter> for crate::domain::entities::chapter::Chapter {
             uploaded: val.uploaded,
             date_added: val.date_added,
             downloaded_path: val.downloaded_path,
+            next: val.next,
+            prev: val.prev,
         }
     }
 }
@@ -117,6 +126,8 @@ impl From<crate::db::model::Chapter> for Chapter {
             date_added: val.date_added,
             read_progress: None,
             downloaded_path: val.downloaded_path,
+            next: None,
+            prev: None,
         }
     }
 }
@@ -177,14 +188,12 @@ impl Chapter {
         self.scanlator.clone()
     }
 
-    async fn prev(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
-        let loader = ctx.data::<DataLoader<DatabaseLoader>>()?;
-        Ok(loader.load_one(PrevChapterId(self.id)).await?)
+    async fn prev(&self) -> Option<i64> {
+        self.prev
     }
 
-    async fn next(&self, ctx: &Context<'_>) -> Result<Option<i64>> {
-        let loader = ctx.data::<DataLoader<DatabaseLoader>>()?;
-        Ok(loader.load_one(NextChapterId(self.id)).await?)
+    async fn next(&self) -> Option<i64> {
+        self.next
     }
 
     async fn read_progress(&self, ctx: &Context<'_>) -> Result<Option<ReadProgress>> {

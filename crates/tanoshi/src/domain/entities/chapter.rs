@@ -12,7 +12,10 @@ pub struct Chapter {
     pub uploaded: NaiveDateTime,
     pub date_added: NaiveDateTime,
     pub downloaded_path: Option<String>,
+    pub next: Option<i64>,
+    pub prev: Option<i64>,
 }
+
 impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
     fn from(ch: tanoshi_lib::models::ChapterInfo) -> Self {
         Self {
@@ -26,6 +29,8 @@ impl From<tanoshi_lib::models::ChapterInfo> for Chapter {
             uploaded: chrono::NaiveDateTime::from_timestamp(ch.uploaded, 0),
             date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
             downloaded_path: None,
+            next: None,
+            prev: None,
         }
     }
 }

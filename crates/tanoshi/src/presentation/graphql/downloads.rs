@@ -157,6 +157,8 @@ impl DownloadRoot {
                             date_added: e.date_added,
                             read_progress: None,
                             downloaded_path: e.downloaded_path,
+                            next: None,
+                            prev: None,
                         },
                     )
                 }));

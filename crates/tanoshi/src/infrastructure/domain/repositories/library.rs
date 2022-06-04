@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use async_trait::async_trait;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use sqlx::{Row, SqlitePool};
@@ -13,6 +15,7 @@ use crate::{
     infrastructure::database::Pool,
 };
 
+#[derive(Clone)]
 pub struct LibraryRepositoryImpl {
     pool: Pool,
 }
@@ -111,6 +114,58 @@ impl LibraryRepository for LibraryRepositoryImpl {
             .await?;
 
         Ok(())
+    }
+
+    async fn get_category_count(
+        &self,
+        user_id: i64,
+    ) -> Result<HashMap<Option<i64>, i64>, LibraryRepositoryError> {
+        let data = sqlx::query(
+            "SELECT user_category.id, COUNT(1) FROM manga
+        INNER JOIN user_library ON user_library.user_id = ? AND manga.id = user_library.manga_id
+        LEFT JOIN library_category ON user_library.id = library_category.library_id
+        LEFT JOIN user_category ON library_category.category_id = user_category.id
+        GROUP BY user_category.id",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool as &SqlitePool)
+        .await?
+        .into_par_iter()
+        .map(|row| (row.get(0), row.get(1)))
+        .collect();
+
+        Ok(data)
+    }
+
+    async fn get_manga_from_library(
+        &self,
+        user_id: i64,
+    ) -> Result<Vec<Manga>, LibraryRepositoryError> {
+        let manga = sqlx::query(
+            r#"SELECT manga.*, library_category.category_id FROM manga
+            INNER JOIN user_library ON user_library.user_id = ? AND manga.id = user_library.manga_id
+            LEFT JOIN library_category ON user_library.id = library_category.library_id
+            ORDER BY title"#,
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool as &SqlitePool)
+        .await?
+        .into_par_iter()
+        .map(|row| Manga {
+            id: row.get(0),
+            source_id: row.get(1),
+            title: row.get(2),
+            author: serde_json::from_str(row.get::<String, _>(3).as_str()).unwrap_or_default(),
+            genre: serde_json::from_str(row.get::<String, _>(4).as_str()).unwrap_or_default(),
+            status: row.get(5),
+            description: row.get(6),
+            path: row.get(7),
+            cover_url: row.get(8),
+            date_added: row.get(9),
+        })
+        .collect();
+
+        Ok(manga)
     }
 
     async fn get_manga_from_library_by_category_id(

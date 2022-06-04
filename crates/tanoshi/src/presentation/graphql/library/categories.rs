@@ -1,7 +1,7 @@
 use crate::{
     domain::services::library::LibraryService,
     infrastructure::{auth::Claims, domain::repositories::library::LibraryRepositoryImpl},
-    presentation::graphql::loader::{DatabaseLoader, UserCategoryId},
+    presentation::graphql::{loader::UserCategoryId, schema::DatabaseLoader},
 };
 use async_graphql::{dataloader::DataLoader, Context, Object, Result};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
