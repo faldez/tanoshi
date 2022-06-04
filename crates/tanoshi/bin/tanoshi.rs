@@ -72,13 +72,13 @@ async fn main() -> Result<(), anyhow::Error> {
     let manga_svc = MangaService::new(manga_repo.clone(), extension_manager.clone());
 
     let chapter_repo = ChapterRepositoryImpl::new(pool.clone());
-    let chapter_svc = ChapterService::new(chapter_repo, extension_manager.clone());
+    let chapter_svc = ChapterService::new(chapter_repo.clone(), extension_manager.clone());
 
     let library_repo = LibraryRepositoryImpl::new(pool.clone());
     let libary_svc = LibraryService::new(library_repo.clone());
 
     let history_repo = HistoryRepositoryImpl::new(pool.clone());
-    let history_svc = HistoryService::new(history_repo.clone());
+    let history_svc = HistoryService::new(chapter_repo.clone(), history_repo.clone());
 
     match &config.local_path {
         config::LocalFolders::Single(local_path) => {

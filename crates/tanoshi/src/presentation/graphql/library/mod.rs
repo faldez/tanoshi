@@ -153,7 +153,8 @@ impl LibraryRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let history_svc = ctx.data::<HistoryService<HistoryRepositoryImpl>>()?;
+        let history_svc =
+            ctx.data::<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>()?;
 
         query(
             after,
@@ -263,7 +264,7 @@ impl LibraryMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        ctx.data::<HistoryService<HistoryRepositoryImpl>>()?
+        ctx.data::<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>()?
             .insert_chapter_to_history(claims.sub, chapter_id, page, is_complete)
             .await?;
 
@@ -313,7 +314,7 @@ impl LibraryMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        ctx.data::<HistoryService<HistoryRepositoryImpl>>()?
+        ctx.data::<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>()?
             .insert_chapters_to_history_as_completed(claims.sub, chapter_ids)
             .await?;
 
@@ -329,7 +330,7 @@ impl LibraryMutationRoot {
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        ctx.data::<HistoryService<HistoryRepositoryImpl>>()?
+        ctx.data::<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>()?
             .delete_chapters_from_history(claims.sub, chapter_ids)
             .await?;
 

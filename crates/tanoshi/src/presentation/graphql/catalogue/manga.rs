@@ -5,14 +5,16 @@ use super::{
     Chapter, Source,
 };
 use crate::{
-    db::MangaDatabase,
-    domain::services::{chapter::ChapterService, image::ImageService, source::SourceService},
+    domain::services::{
+        chapter::ChapterService, history::HistoryService, image::ImageService,
+        source::SourceService,
+    },
     infrastructure::{
         auth::Claims,
         config::GLOBAL_CONFIG,
         domain::repositories::{
-            chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl,
-            source::SourceRepositoryImpl,
+            chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
+            image::ImageRepositoryImpl, source::SourceRepositoryImpl,
         },
     },
     presentation::graphql::schema::DatabaseLoader,
@@ -269,27 +271,17 @@ impl Manga {
     }
 
     async fn next_chapter(&self, ctx: &Context<'_>) -> Result<Option<Chapter>> {
-        let db = ctx.data::<MangaDatabase>()?.clone();
-        let user = ctx
+        let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
 
-        let mut id = self.id;
-        if id == 0 {
-            if let Ok(manga) = db
-                .get_manga_by_source_path(self.source_id, &self.path)
-                .await
-            {
-                id = manga.id;
-            } else {
-                return Ok(None);
-            }
-        }
-
-        Ok(db
-            .get_next_chapter_by_manga_id(user.sub, id)
+        let chapter = ctx
+            .data::<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>()?
+            .get_next_chapter(claims.sub, self.id)
             .await?
-            .map(|c| c.into()))
+            .map(|chapter| chapter.into());
+
+        Ok(chapter)
     }
 
     async fn trackers(&self, ctx: &Context<'_>) -> Result<Vec<Tracker>> {

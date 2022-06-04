@@ -19,5 +19,7 @@ pub trait ChapterRepository: Send + Sync {
     async fn get_chapters_by_manga_id(
         &self,
         manga_id: i64,
+        limit: Option<i64>,
+        asc: bool,
     ) -> Result<Vec<Chapter>, ChapterRepositoryError>;
 }

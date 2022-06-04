@@ -74,4 +74,10 @@ pub trait HistoryRepository: Send + Sync {
         user_id: i64,
         manga_ids: &[i64],
     ) -> Result<HashMap<i64, i64>, HistoryRepositoryError>;
+
+    async fn get_next_chapter_by_manga_id(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+    ) -> Result<Option<i64>, HistoryRepositoryError>;
 }

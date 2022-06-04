@@ -49,7 +49,7 @@ pub struct ServerBuilder {
     chapter_svc: Option<ChapterService<ChapterRepositoryImpl>>,
     image_svc: Option<ImageService<ImageRepositoryImpl>>,
     library_svc: Option<LibraryService<LibraryRepositoryImpl>>,
-    history_svc: Option<HistoryService<HistoryRepositoryImpl>>,
+    history_svc: Option<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>,
     download_svc: Option<DownloadService<DownloadRepositoryImpl>>,
     mangadb: Option<MangaDatabase>,
     ext_manager: Option<SourceBus>,
@@ -129,7 +129,10 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_history_svc(self, history_svc: HistoryService<HistoryRepositoryImpl>) -> Self {
+    pub fn with_history_svc(
+        self,
+        history_svc: HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>,
+    ) -> Self {
         Self {
             history_svc: Some(history_svc),
             ..self

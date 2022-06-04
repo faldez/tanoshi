@@ -64,7 +64,7 @@ where
     ) -> Result<Vec<Chapter>, ChapterError> {
         let mut chapters = self
             .repo
-            .get_chapters_by_manga_id(manga_id)
+            .get_chapters_by_manga_id(manga_id, None, false)
             .await
             .unwrap_or_default()
             .into_par_iter()
@@ -90,7 +90,7 @@ where
 
             chapters = self
                 .repo
-                .get_chapters_by_manga_id(manga_id)
+                .get_chapters_by_manga_id(manga_id, None, false)
                 .await
                 .unwrap_or_default()
                 .into_par_iter()

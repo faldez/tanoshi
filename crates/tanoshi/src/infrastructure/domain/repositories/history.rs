@@ -400,4 +400,94 @@ impl HistoryRepository for HistoryRepositoryImpl {
 
         Ok(data)
     }
+
+    async fn get_next_chapter_by_manga_id(
+        &self,
+        user_id: i64,
+        manga_id: i64,
+    ) -> Result<Option<i64>, HistoryRepositoryError> {
+        let chapter_id = sqlx::query(
+            r#"
+            WITH last_reading_session AS (
+                SELECT
+                    chapter_id,
+                    is_complete,
+                    number as chapter_number
+                FROM
+                    user_history
+                    INNER JOIN chapter on chapter.id = user_history.chapter_id
+                    AND manga_id = ?
+                WHERE
+                    user_history.user_id = ?
+                ORDER BY
+                    user_history.read_at DESC
+                LIMIT
+                    1
+            ), first_unread_chapter AS (
+                SELECT
+                    id
+                FROM
+                    chapter
+                    LEFT JOIN user_history ON user_history.chapter_id = chapter.id
+                    AND user_history.user_id = ?
+                WHERE
+                    manga_id = ?
+                    AND user_history.is_complete IS NOT true
+                ORDER BY
+                    chapter.number ASC
+                LIMIT
+                    1
+            ), resume_chapter AS (
+                SELECT
+                    COALESCE(
+                        CASE
+                            WHEN is_complete THEN (
+                                SELECT
+                                    id
+                                FROM
+                                    chapter
+                                    LEFT JOIN user_history ON user_history.chapter_id = chapter.id
+                                    AND user_history.user_id = ?
+                                WHERE
+                                    chapter.number > chapter_number
+                                    AND manga_id = ?
+                                    AND user_history.is_complete IS NOT true
+                                ORDER BY
+                                    number ASC
+                                LIMIT
+                                    1
+                            )
+                            ELSE chapter_id
+                        END,
+                        first_unread_chapter.id
+                    ) AS id
+                FROM
+                    (SELECT null)
+                    LEFT JOIN first_unread_chapter
+                    LEFT JOIN last_reading_session
+            )
+            SELECT
+                chapter.id
+            FROM
+                chapter
+            WHERE
+                chapter.id = (
+                    SELECT
+                        id
+                    FROM
+                        resume_chapter
+                )"#,
+        )
+        .bind(manga_id)
+        .bind(user_id)
+        .bind(user_id)
+        .bind(manga_id)
+        .bind(user_id)
+        .bind(manga_id)
+        .fetch_optional(&self.pool as &SqlitePool)
+        .await?
+        .map(|row| row.get(0));
+
+        Ok(chapter_id)
+    }
 }
