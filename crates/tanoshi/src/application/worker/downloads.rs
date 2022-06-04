@@ -5,7 +5,7 @@ use crate::{
             chapter::ChapterRepository, download::DownloadRepository, manga::MangaRepository,
         },
     },
-    infrastructure::{domain::repositories::user::UserRepositoryImpl, notifier::Notifier},
+    infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
 };
 use anyhow::{anyhow, Result};
 use reqwest::Url;
@@ -44,7 +44,7 @@ where
     manga_repo: M,
     download_repo: D,
     ext: SourceBus,
-    _notifier: Notifier<UserRepositoryImpl>,
+    _notifier: Notification<UserRepositoryImpl>,
     tx: DownloadSender,
     rx: DownloadReceiver,
 }
@@ -61,7 +61,7 @@ where
         manga_repo: M,
         download_repo: D,
         ext: SourceBus,
-        notifier: Notifier<UserRepositoryImpl>,
+        notifier: Notification<UserRepositoryImpl>,
         download_sender: DownloadSender,
         download_receiver: DownloadReceiver,
     ) -> Self {
@@ -312,7 +312,7 @@ pub fn start<C, D, M, P>(
     manga_repo: M,
     download_repo: D,
     ext: SourceBus,
-    notifier: Notifier<UserRepositoryImpl>,
+    notifier: Notification<UserRepositoryImpl>,
     download_sender: DownloadSender,
     download_receiver: DownloadReceiver,
 ) -> JoinHandle<()>

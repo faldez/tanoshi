@@ -1,5 +1,8 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use teloxide::{adaptors::DefaultParseMode, prelude2::*, utils::command::BotCommand};
+
+use crate::Notifier;
 
 #[derive(Debug, Clone)]
 pub struct Telegram(DefaultParseMode<AutoSend<Bot>>);
@@ -14,6 +17,49 @@ impl Telegram {
 
     pub async fn send_message(&self, chat_id: i64, text: &str) -> Result<()> {
         self.0.send_message(chat_id, text).await?;
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Notifier for Telegram {
+    async fn send_notification(&self, user_key: &str, message: &str) -> Result<(), anyhow::Error> {
+        let chat_id = user_key.parse()?;
+
+        self.send_message(chat_id, &message).await?;
+
+        Ok(())
+    }
+
+    async fn send_notification_with_title(
+        &self,
+        user_key: &str,
+        title: &str,
+        message: &str,
+    ) -> Result<(), anyhow::Error> {
+        let message = format!("<b>{title}</b>\n{message}");
+
+        let chat_id = user_key.parse()?;
+
+        self.send_message(chat_id, &message).await?;
+
+        Ok(())
+    }
+
+    async fn send_notification_with_title_and_url(
+        &self,
+        user_key: &str,
+        title: &str,
+        message: &str,
+        url: &str,
+        url_title: &str,
+    ) -> Result<(), anyhow::Error> {
+        let message = format!("<b>{title}</b>\n{message}\n<a href=\"{url}\">{url_title}</a>");
+
+        let chat_id = user_key.parse()?;
+
+        self.send_message(chat_id, &message).await?;
 
         Ok(())
     }

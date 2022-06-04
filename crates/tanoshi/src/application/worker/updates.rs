@@ -19,7 +19,8 @@ use crate::{
         repositories::{chapter::ChapterRepository, library::LibraryRepository},
     },
     infrastructure::{
-        config::GLOBAL_CONFIG, domain::repositories::user::UserRepositoryImpl, notifier::Notifier,
+        config::GLOBAL_CONFIG, domain::repositories::user::UserRepositoryImpl,
+        notification::Notification,
     },
 };
 use anyhow::anyhow;
@@ -49,7 +50,7 @@ where
     extensions: SourceBus,
     auto_download_chapters: bool,
     download_tx: DownloadSender,
-    notifier: Notifier<UserRepositoryImpl>,
+    notifier: Notification<UserRepositoryImpl>,
     cache_path: PathBuf,
 }
 
@@ -64,7 +65,7 @@ where
         chapter_repo: C,
         extensions: SourceBus,
         download_tx: DownloadSender,
-        notifier: Notifier<UserRepositoryImpl>,
+        notifier: Notification<UserRepositoryImpl>,
         cache_path: P,
     ) -> Self {
         #[cfg(not(debug_assertions))]
@@ -339,7 +340,7 @@ pub fn start<C, L, P>(
     chapter_repo: C,
     extensions: SourceBus,
     download_tx: DownloadSender,
-    notifier: Notifier<UserRepositoryImpl>,
+    notifier: Notification<UserRepositoryImpl>,
     cache_path: P,
 ) where
     C: ChapterRepository + 'static,

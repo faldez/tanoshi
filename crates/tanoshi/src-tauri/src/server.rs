@@ -23,7 +23,7 @@ use tanoshi::{
       manga::MangaRepositoryImpl, source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl,
       user::UserRepositoryImpl,
     },
-    local, notifier,
+    local, notification,
   },
   presentation::{graphql::schema::DatabaseLoader, ServerBuilder},
 };
@@ -109,7 +109,7 @@ impl<R: Runtime> Plugin<R> for Server {
         }
       }
 
-      let notifier = notifier::Builder::new(user_repo.clone()).finish();
+      let notifier = notification::Builder::new(user_repo.clone()).finish();
 
       let (download_sender, download_receiver) = worker::downloads::channel();
 

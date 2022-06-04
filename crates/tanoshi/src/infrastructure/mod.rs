@@ -3,5 +3,5 @@ pub mod config;
 pub mod database;
 pub mod domain;
 pub mod local;
-pub mod notifier;
+pub mod notification;
 pub mod utils;

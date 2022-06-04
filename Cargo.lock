@@ -5054,6 +5054,7 @@ name = "tanoshi-notifier"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
  "insta",
  "log",

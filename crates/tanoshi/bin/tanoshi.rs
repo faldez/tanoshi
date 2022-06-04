@@ -21,7 +21,7 @@ use tanoshi::{
             manga::MangaRepositoryImpl, source::SourceRepositoryImpl,
             tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
-        local, notifier,
+        local, notification,
     },
     presentation::{graphql::loader::DatabaseLoader, ServerBuilder},
 };
@@ -105,7 +105,7 @@ async fn main() -> Result<(), anyhow::Error> {
         }
     }
 
-    let mut notifier_builder = notifier::Builder::new(user_repo.clone());
+    let mut notifier_builder = notification::Builder::new(user_repo.clone());
 
     let mut telegram_bot_fut: OptionFuture<_> = None.into();
     if let Some(telegram_config) = config.telegram.clone() {

@@ -1,5 +1,8 @@
 use anyhow::{anyhow, Error};
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+
+use crate::Notifier;
 
 const PUSHOVER_ENDPOINT: &str = "https://api.pushover.net/1/messages.json";
 
@@ -62,8 +65,11 @@ impl Pushover {
 
         Ok(())
     }
+}
 
-    pub async fn send_notification(&self, user_key: &str, message: &str) -> Result<(), Error> {
+#[async_trait]
+impl Notifier for Pushover {
+    async fn send_notification(&self, user_key: &str, message: &str) -> Result<(), anyhow::Error> {
         let payload = Payload {
             token: self.token.clone(),
             user: user_key.to_string(),
@@ -76,12 +82,12 @@ impl Pushover {
         Ok(())
     }
 
-    pub async fn send_notification_with_title(
+    async fn send_notification_with_title(
         &self,
         user_key: &str,
         title: &str,
         message: &str,
-    ) -> Result<(), Error> {
+    ) -> Result<(), anyhow::Error> {
         let payload = Payload {
             token: self.token.clone(),
             user: user_key.to_string(),
@@ -95,14 +101,14 @@ impl Pushover {
         Ok(())
     }
 
-    pub async fn send_notification_with_title_and_url(
+    async fn send_notification_with_title_and_url(
         &self,
         user_key: &str,
         title: &str,
         message: &str,
         url: &str,
         url_title: &str,
-    ) -> Result<(), Error> {
+    ) -> Result<(), anyhow::Error> {
         let payload = Payload {
             token: self.token.clone(),
             user: user_key.to_string(),

@@ -1,5 +1,5 @@
 use crate::{domain::repositories::user::UserRepository, infrastructure::config::GLOBAL_CONFIG};
-use tanoshi_notifier::{pushover::Pushover, telegram::Telegram};
+use tanoshi_notifier::{pushover::Pushover, telegram::Telegram, Notifier};
 
 pub struct Builder<R>
 where
@@ -36,8 +36,8 @@ where
         }
     }
 
-    pub fn finish(self) -> Notifier<R> {
-        Notifier {
+    pub fn finish(self) -> Notification<R> {
+        Notification {
             user_repo: self.user_repo,
             telegram: self.telegram,
             pushover: self.pushover,
@@ -46,7 +46,7 @@ where
 }
 
 #[derive(Clone)]
-pub struct Notifier<R>
+pub struct Notification<R>
 where
     R: UserRepository,
 {
@@ -55,7 +55,7 @@ where
     telegram: Option<Telegram>,
 }
 
-impl<R> Notifier<R>
+impl<R> Notification<R>
 where
     R: UserRepository,
 {
@@ -104,15 +104,22 @@ where
         chapter_id: i64,
     ) -> Result<(), anyhow::Error> {
         let user = self.user_repo.get_user_by_id(user_id).await?;
+
+        let url = GLOBAL_CONFIG.get().and_then(|cfg| {
+            cfg.base_url
+                .clone()
+                .map(|base_url| format!("{base_url}/chapter/{chapter_id}"))
+        });
+
         if let Some((user_key, pushover)) = user.pushover_user_key.zip(self.pushover.as_ref()) {
-            if let Some(base_url) = GLOBAL_CONFIG.get().and_then(|cfg| cfg.base_url.clone()) {
+            if let Some(url) = &url {
                 pushover
                     .send_notification_with_title_and_url(
                         &user_key,
                         manga_title,
                         chapter_title,
-                        &format!("{base_url}/chapter/{chapter_id}"),
-                        "Open",
+                        url,
+                        "Read",
                     )
                     .await?;
             } else {
@@ -122,17 +129,23 @@ where
             }
         }
 
-        if let Some(chat_id) = user.telegram_chat_id {
-            let mut message = format!("<b>{manga_title}</b>\n");
-            if let Some(base_url) = GLOBAL_CONFIG.get().and_then(|cfg| cfg.base_url.clone()) {
-                message = format!(
-                    "{message}<a href=\"{base_url}/chapter/{chapter_id}\">{chapter_title}</a>"
-                );
+        if let Some((chat_id, telegram)) = user.telegram_chat_id.zip(self.telegram.as_ref()) {
+            let chat_id = &format!("{chat_id}");
+            if let Some(url) = &url {
+                telegram
+                    .send_notification_with_title_and_url(
+                        chat_id,
+                        manga_title,
+                        chapter_title,
+                        url,
+                        "Read",
+                    )
+                    .await?;
             } else {
-                message = format!("{message}{chapter_title}");
+                telegram
+                    .send_notification_with_title(chat_id, manga_title, chapter_title)
+                    .await?;
             }
-
-            let _ = self.send_message_to_telegram(chat_id, &message).await;
         }
         Ok(())
     }

@@ -36,7 +36,7 @@ use crate::{
             manga::MangaRepositoryImpl, source::SourceRepositoryImpl,
             tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
-        notifier::Notifier,
+        notification::Notification,
     },
 };
 use tanoshi_vm::extension::SourceBus;
@@ -53,7 +53,7 @@ pub struct ServerBuilder {
     download_svc: Option<DownloadService<DownloadRepositoryImpl>>,
     ext_manager: Option<SourceBus>,
     download_tx: Option<DownloadSender>,
-    notifier: Option<Notifier<UserRepositoryImpl>>,
+    notifier: Option<Notification<UserRepositoryImpl>>,
     loader: Option<DatabaseLoader>,
     enable_playground: bool,
 }
@@ -106,7 +106,10 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_image_svc(self, image_svc: ImageService<ImageCacheRepositoryImpl,ImageRepositoryImpl>) -> Self {
+    pub fn with_image_svc(
+        self,
+        image_svc: ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>,
+    ) -> Self {
         Self {
             image_svc: Some(image_svc),
             ..self
@@ -158,7 +161,7 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_notifier(self, notifier: Notifier<UserRepositoryImpl>) -> Self {
+    pub fn with_notifier(self, notifier: Notification<UserRepositoryImpl>) -> Self {
         Self {
             notifier: Some(notifier),
             ..self
@@ -238,7 +241,7 @@ impl Server {
     pub fn new(
         enable_playground: bool,
         schema: TanoshiSchema,
-        image_svc: ImageService<ImageCacheRepositoryImpl,ImageRepositoryImpl>,
+        image_svc: ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>,
     ) -> Self {
         let mut router = Router::new();
 

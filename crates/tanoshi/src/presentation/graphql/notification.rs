@@ -1,5 +1,5 @@
 use crate::infrastructure::{
-    auth::Claims, domain::repositories::user::UserRepositoryImpl, notifier::Notifier,
+    auth::Claims, domain::repositories::user::UserRepositoryImpl, notification::Notification,
 };
 use async_graphql::{Context, Object, Result};
 
@@ -16,7 +16,7 @@ impl NotificationRoot {
         let _ = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        ctx.data::<Notifier<UserRepositoryImpl>>()?
+        ctx.data::<Notification<UserRepositoryImpl>>()?
             .send_message_to_telegram(chat_id, "Test Notification")
             .await?;
 
@@ -31,7 +31,7 @@ impl NotificationRoot {
         let _ = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
-        ctx.data::<Notifier<UserRepositoryImpl>>()?
+        ctx.data::<Notification<UserRepositoryImpl>>()?
             .send_message_to_pushover(&user_key, None, "Test Notification")
             .await?;
 
@@ -41,7 +41,7 @@ impl NotificationRoot {
     async fn test_desktop_notification(&self, _ctx: &Context<'_>) -> Result<bool> {
         #[cfg(feature = "desktop")]
         {
-            _ctx.data::<Notifier<UserRepositoryImpl>>()?
+            _ctx.data::<Notification<UserRepositoryImpl>>()?
                 .send_desktop_notification(None, "Test Notification")?;
 
             Ok(true)
