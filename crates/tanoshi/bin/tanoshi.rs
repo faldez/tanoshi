@@ -121,18 +121,27 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let notifier = notifier_builder.finish();
 
-    let (download_tx, download_worker_handle) = worker::downloads::start(
+    let (download_sender, download_receiver) = worker::downloads::channel();
+
+    let download_repo = DownloadRepositoryImpl::new(pool.clone());
+    let download_svc = DownloadService::new(download_repo.clone(), download_sender.clone());
+
+    let download_worker_handle = worker::downloads::start(
         &config.download_path,
-        mangadb.clone(),
+        chapter_repo.clone(),
+        manga_repo.clone(),
+        download_repo.clone(),
         extension_manager.clone(),
         notifier.clone(),
+        download_sender.clone(),
+        download_receiver,
     );
 
     let update_worker_handle = worker::updates::start(
         config.update_interval,
         mangadb.clone(),
         extension_manager.clone(),
-        download_tx.clone(),
+        download_sender.clone(),
         notifier.clone(),
     );
 
@@ -158,9 +167,6 @@ async fn main() -> Result<(), anyhow::Error> {
     let image_repo = ImageRepositoryImpl::new();
     let image_svc = ImageService::new(image_repo);
 
-    let download_repo = DownloadRepositoryImpl::new(pool.clone());
-    let download_svc = DownloadService::new(download_repo, download_tx.clone());
-
     let loader = DatabaseLoader::new(history_repo, library_repo, manga_repo, tracker_repo);
 
     let mut server_builder = ServerBuilder::new()
@@ -175,7 +181,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_download_svc(download_svc)
         .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
-        .with_download_tx(download_tx)
+        .with_download_tx(download_sender)
         .with_notifier(notifier)
         .with_loader(loader);
 

@@ -1,7 +1,9 @@
 use crate::{
-    db::{
-        model::{Chapter, DownloadQueue},
-        MangaDatabase,
+    domain::{
+        entities::{chapter::Chapter, download::DownloadQueue},
+        repositories::{
+            chapter::ChapterRepository, download::DownloadRepository, manga::MangaRepository,
+        },
     },
     infrastructure::{domain::repositories::user::UserRepositoryImpl, notifier::Notifier},
 };
@@ -16,7 +18,7 @@ use tanoshi_vm::extension::SourceBus;
 use zip::{ZipArchive, ZipWriter};
 
 use tokio::{
-    sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::JoinHandle,
 };
 
@@ -30,36 +32,50 @@ pub enum Command {
     Download,
 }
 
-pub struct DownloadWorker {
+pub struct DownloadWorker<C, D, M>
+where
+    C: ChapterRepository + 'static,
+    D: DownloadRepository + 'static,
+    M: MangaRepository + 'static,
+{
     dir: PathBuf,
     client: reqwest::Client,
-    db: MangaDatabase,
+    chapter_repo: C,
+    manga_repo: M,
+    download_repo: D,
     ext: SourceBus,
     _notifier: Notifier<UserRepositoryImpl>,
     tx: DownloadSender,
     rx: DownloadReceiver,
 }
 
-impl DownloadWorker {
+impl<C, D, M> DownloadWorker<C, D, M>
+where
+    C: ChapterRepository + 'static,
+    D: DownloadRepository + 'static,
+    M: MangaRepository + 'static,
+{
     pub fn new<P: AsRef<Path>>(
         dir: P,
-        db: MangaDatabase,
+        chapter_repo: C,
+        manga_repo: M,
+        download_repo: D,
         ext: SourceBus,
         notifier: Notifier<UserRepositoryImpl>,
-    ) -> (Self, DownloadSender) {
-        let (tx, rx) = unbounded_channel::<Command>();
-        (
-            Self {
-                dir: PathBuf::new().join(dir),
-                client: reqwest::ClientBuilder::new().build().unwrap(),
-                db,
-                ext,
-                _notifier: notifier,
-                rx,
-                tx: tx.clone(),
-            },
-            tx,
-        )
+        download_sender: DownloadSender,
+        download_receiver: DownloadReceiver,
+    ) -> Self {
+        Self {
+            dir: PathBuf::new().join(dir),
+            client: reqwest::ClientBuilder::new().build().unwrap(),
+            chapter_repo,
+            manga_repo,
+            download_repo,
+            ext,
+            _notifier: notifier,
+            tx: download_sender,
+            rx: download_receiver,
+        }
     }
 
     async fn insert_to_queue(&mut self, chapter: &Chapter) -> Result<(), anyhow::Error> {
@@ -69,13 +85,13 @@ impl DownloadWorker {
         }
 
         let priority = self
-            .db
+            .download_repo
             .get_download_queue_last_priority()
             .await?
             .map(|p| p + 1)
             .unwrap_or(0);
 
-        let manga = self.db.get_manga_by_id(chapter.manga_id).await?;
+        let manga = self.manga_repo.get_manga_by_id(chapter.manga_id).await?;
         let pages = self
             .ext
             .get_pages(manga.source_id, chapter.path.clone())
@@ -101,7 +117,7 @@ impl DownloadWorker {
             })
         }
 
-        self.db.insert_download_queue(&queue).await?;
+        self.download_repo.insert_download_queue(&queue).await?;
 
         Ok(())
     }
@@ -137,7 +153,7 @@ impl DownloadWorker {
 
     async fn download(&mut self) -> Result<()> {
         let mut queue = self
-            .db
+            .download_repo
             .get_single_download_queue()
             .await?
             .ok_or_else(|| anyhow!("no queue"))?;
@@ -169,7 +185,7 @@ impl DownloadWorker {
         if let Ok(mut zip) = self.open_readable_zip_file(&archive_path) {
             if zip.by_name(&filename).is_ok() {
                 debug!("file already downloaded, mark as compeleted then skip");
-                self.db
+                self.download_repo
                     .mark_single_download_queue_as_completed(queue.id)
                     .await?;
                 if !self.paused().await {
@@ -202,24 +218,24 @@ impl DownloadWorker {
 
         zip.write_all(contents.to_vec().as_slice())?;
 
-        self.db
+        self.download_repo
             .mark_single_download_queue_as_completed(queue.id)
             .await?;
 
         if self
-            .db
+            .download_repo
             .get_single_chapter_download_status(queue.chapter_id)
             .await
             .unwrap_or_default()
         {
-            self.db
+            self.download_repo
                 .update_chapter_downloaded_path(
                     queue.chapter_id,
                     Some(archive_path.display().to_string()),
                 )
                 .await?;
 
-            self.db
+            self.download_repo
                 .delete_single_chapter_download_queue(queue.chapter_id)
                 .await?;
         }
@@ -233,7 +249,7 @@ impl DownloadWorker {
         Ok(())
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(mut self) {
         if !self.paused().await {
             self.tx.send(Command::Download).unwrap();
         }
@@ -241,7 +257,7 @@ impl DownloadWorker {
         while let Some(cmd) = self.rx.recv().await {
             match cmd {
                 Command::InsertIntoQueue(chapter_id) => {
-                    match self.db.get_chapter_by_id(chapter_id).await {
+                    match self.chapter_repo.get_chapter_by_id(chapter_id).await {
                         Ok(chapter) => {
                             if let Err(e) = self.insert_to_queue(&chapter).await {
                                 error!("failed to insert queue, reason {}", e);
@@ -255,16 +271,20 @@ impl DownloadWorker {
                     }
                 }
                 Command::InsertIntoQueueBySourcePath(source_id, path) => {
-                    match self.db.get_chapter_by_source_path(source_id, &path).await {
-                        Some(chapter) => {
+                    match self
+                        .chapter_repo
+                        .get_chapter_by_source_id_path(source_id, &path)
+                        .await
+                    {
+                        Ok(chapter) => {
                             if let Err(e) = self.insert_to_queue(&chapter).await {
-                                error!("failed to insert queue, reason {}", e);
+                                error!("failed to insert queue, reason {e}");
                                 continue;
                             }
-                            self.tx.send(Command::Download).unwrap();
+                            let _ = self.tx.send(Command::Download);
                         }
-                        None => {
-                            error!("chapter {} {} not found", source_id, path);
+                        Err(e) => {
+                            error!("chapter {source_id} {path} not found: {e}");
                         }
                     }
                 }
@@ -282,17 +302,36 @@ impl DownloadWorker {
     }
 }
 
-pub fn start<P: AsRef<Path>>(
+pub fn channel() -> (DownloadSender, DownloadReceiver) {
+    tokio::sync::mpsc::unbounded_channel::<Command>()
+}
+
+pub fn start<C, D, M, P>(
     dir: P,
-    mangadb: MangaDatabase,
+    chapter_repo: C,
+    manga_repo: M,
+    download_repo: D,
     ext: SourceBus,
     notifier: Notifier<UserRepositoryImpl>,
-) -> (DownloadSender, JoinHandle<()>) {
-    let (mut download_worker, tx) = DownloadWorker::new(dir, mangadb, ext, notifier);
+    download_sender: DownloadSender,
+    download_receiver: DownloadReceiver,
+) -> JoinHandle<()>
+where
+    C: ChapterRepository + 'static,
+    D: DownloadRepository + 'static,
+    M: MangaRepository + 'static,
+    P: AsRef<Path>,
+{
+    let download_worker = DownloadWorker::new(
+        dir,
+        chapter_repo,
+        manga_repo,
+        download_repo,
+        ext,
+        notifier,
+        download_sender,
+        download_receiver,
+    );
 
-    let handle = tokio::spawn(async move {
-        download_worker.run().await;
-    });
-
-    (tx, handle)
+    tokio::spawn(download_worker.run())
 }
