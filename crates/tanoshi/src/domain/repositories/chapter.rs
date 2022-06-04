@@ -16,6 +16,12 @@ pub trait ChapterRepository: Send + Sync {
 
     async fn get_chapter_by_id(&self, id: i64) -> Result<Chapter, ChapterRepositoryError>;
 
+    async fn get_chapter_by_source_id_path(
+        &self,
+        source_id: i64,
+        path: &str,
+    ) -> Result<Chapter, ChapterRepositoryError>;
+
     async fn get_chapters_by_manga_id(
         &self,
         manga_id: i64,

@@ -101,6 +101,39 @@ impl ChapterRepository for ChapterRepositoryImpl {
         })
     }
 
+    async fn get_chapter_by_source_id_path(
+        &self,
+        source_id: i64,
+        path: &str,
+    ) -> Result<Chapter, ChapterRepositoryError> {
+        let row = sqlx::query(
+            r#"SELECT 
+                        chapter.*,
+                        (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number > chapter.number ORDER BY c.number ASC LIMIT 1) next,
+                        (SELECT c.id FROM chapter c WHERE c.manga_id = chapter.manga_id AND c.number < chapter.number ORDER BY c.number DESC LIMIT 1) prev
+                    FROM chapter WHERE source_id = ? AND path = ?"#,
+        )
+        .bind(source_id)
+        .bind(path)
+        .fetch_one(&self.pool as &SqlitePool)
+        .await?;
+
+        Ok(Chapter {
+            id: row.get(0),
+            source_id: row.get(1),
+            manga_id: row.get(2),
+            title: row.get(3),
+            path: row.get(4),
+            number: row.get(5),
+            scanlator: row.get(6),
+            uploaded: row.get(7),
+            date_added: row.get(8),
+            downloaded_path: row.get(9),
+            next: row.get(10),
+            prev: row.get(11),
+        })
+    }
+
     async fn get_chapters_by_manga_id(
         &self,
         manga_id: i64,
