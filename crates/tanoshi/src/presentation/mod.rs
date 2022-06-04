@@ -32,8 +32,9 @@ use crate::{
         domain::repositories::{
             chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
             history::HistoryRepositoryImpl, image::ImageRepositoryImpl,
-            library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
-            source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
+            image_cache::ImageCacheRepositoryImpl, library::LibraryRepositoryImpl,
+            manga::MangaRepositoryImpl, source::SourceRepositoryImpl,
+            tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
         notifier::Notifier,
     },
@@ -46,7 +47,7 @@ pub struct ServerBuilder {
     source_svc: Option<SourceService<SourceRepositoryImpl>>,
     manga_svc: Option<MangaService<MangaRepositoryImpl>>,
     chapter_svc: Option<ChapterService<ChapterRepositoryImpl>>,
-    image_svc: Option<ImageService<ImageRepositoryImpl>>,
+    image_svc: Option<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>,
     library_svc: Option<LibraryService<LibraryRepositoryImpl>>,
     history_svc: Option<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>,
     download_svc: Option<DownloadService<DownloadRepositoryImpl>>,
@@ -105,7 +106,7 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_image_svc(self, image_svc: ImageService<ImageRepositoryImpl>) -> Self {
+    pub fn with_image_svc(self, image_svc: ImageService<ImageCacheRepositoryImpl,ImageRepositoryImpl>) -> Self {
         Self {
             image_svc: Some(image_svc),
             ..self
@@ -237,7 +238,7 @@ impl Server {
     pub fn new(
         enable_playground: bool,
         schema: TanoshiSchema,
-        image_svc: ImageService<ImageRepositoryImpl>,
+        image_svc: ImageService<ImageCacheRepositoryImpl,ImageRepositoryImpl>,
     ) -> Self {
         let mut router = Router::new();
 

@@ -9,7 +9,10 @@ use serde::Deserialize;
 
 use crate::{
     domain::services::image::ImageService,
-    infrastructure::{config::GLOBAL_CONFIG, domain::repositories::image::ImageRepositoryImpl},
+    infrastructure::{
+        config::GLOBAL_CONFIG,
+        domain::repositories::{image::ImageRepositoryImpl, image_cache::ImageCacheRepositoryImpl},
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -20,7 +23,7 @@ pub struct Params {
 pub async fn fetch_image(
     Path(encrypted_url): Path<String>,
     Query(params): Query<Params>,
-    Extension(svc): Extension<ImageService<ImageRepositoryImpl>>,
+    Extension(svc): Extension<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let secret = GLOBAL_CONFIG
         .get()

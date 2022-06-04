@@ -2,6 +2,7 @@ use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvI
 use anyhow::anyhow;
 use bytes::Bytes;
 use fancy_regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 // create an alias for convenience
@@ -110,6 +111,7 @@ impl ToString for ImageUri {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct Image {
     pub content_type: String,
     pub data: Bytes,

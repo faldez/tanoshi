@@ -14,7 +14,8 @@ use crate::{
         config::GLOBAL_CONFIG,
         domain::repositories::{
             chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
-            image::ImageRepositoryImpl, source::SourceRepositoryImpl,
+            image::ImageRepositoryImpl, image_cache::ImageCacheRepositoryImpl,
+            source::SourceRepositoryImpl,
         },
     },
     presentation::graphql::schema::DatabaseLoader,
@@ -135,7 +136,7 @@ impl Manga {
         let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
 
         Ok(ctx
-            .data::<ImageService<ImageRepositoryImpl>>()?
+            .data::<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>()?
             .encrypt_image_url(secret, &self.cover_url)?)
     }
 

@@ -3,7 +3,10 @@ use chrono::NaiveDateTime;
 
 use crate::{
     domain::services::image::ImageService,
-    infrastructure::{config::GLOBAL_CONFIG, domain::repositories::image::ImageRepositoryImpl},
+    infrastructure::{
+        config::GLOBAL_CONFIG,
+        domain::repositories::{image::ImageRepositoryImpl, image_cache::ImageCacheRepositoryImpl},
+    },
 };
 
 pub struct RecentChapter {
@@ -48,7 +51,7 @@ impl RecentChapter {
         let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
 
         let cover_url = ctx
-            .data::<ImageService<ImageRepositoryImpl>>()?
+            .data::<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>()?
             .encrypt_image_url(secret, &self.cover_url)?;
 
         Ok(cover_url)
@@ -107,7 +110,7 @@ impl RecentUpdate {
         let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
 
         let cover_url = ctx
-            .data::<ImageService<ImageRepositoryImpl>>()?
+            .data::<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>()?
             .encrypt_image_url(secret, &self.cover_url)?;
 
         Ok(cover_url)

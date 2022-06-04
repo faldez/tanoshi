@@ -67,6 +67,8 @@ pub struct Config {
     pub local_path: LocalFolders,
     #[serde(default = "default_download_path")]
     pub download_path: String,
+    #[serde(default = "default_cache_path")]
+    pub cache_path: String,
     #[serde(default)]
     pub enable_playground: bool,
     pub telegram: Option<TelegramConfig>,
@@ -89,6 +91,7 @@ impl Default for Config {
             plugin_path: default_plugin_path(),
             local_path: default_local_folders(),
             download_path: default_download_path(),
+            cache_path: default_cache_path(),
             enable_playground: false,
             telegram: None,
             pushover: None,
@@ -156,6 +159,14 @@ fn default_local_path() -> String {
 
 fn default_download_path() -> String {
     let path = tanoshi_home().join("downloads");
+    if !path.exists() {
+        let _ = std::fs::create_dir_all(&path);
+    }
+    path.display().to_string()
+}
+
+fn default_cache_path() -> String {
+    let path = tanoshi_home().join("cache");
     if !path.exists() {
         let _ = std::fs::create_dir_all(&path);
     }

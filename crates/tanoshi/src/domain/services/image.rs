@@ -1,6 +1,9 @@
 use crate::domain::{
     entities::image::{Image, ImageUri},
-    repositories::image::{ImageRepository, ImageRepositoryError},
+    repositories::{
+        image::{ImageRepository, ImageRepositoryError},
+        image_cache::{ImageCacheRepository, ImageCacheRepositoryError},
+    },
 };
 use std::convert::TryFrom;
 use thiserror::Error;
@@ -9,33 +12,31 @@ use thiserror::Error;
 pub enum ImageError {
     #[error("error request image")]
     RequestError,
+    #[error("repository error: {0}")]
+    RepositoryError(#[from] ImageRepositoryError),
+    #[error("cache error: {0}")]
+    CacheError(#[from] ImageCacheRepositoryError),
     #[error("other error: {0}")]
     Other(#[from] anyhow::Error),
 }
 
-impl From<ImageRepositoryError> for ImageError {
-    fn from(e: ImageRepositoryError) -> Self {
-        match e {
-            ImageRepositoryError::RequestError(_) => Self::RequestError,
-            ImageRepositoryError::Other(msg) => Self::Other(anyhow::anyhow!("{msg}")),
-        }
-    }
-}
-
 #[derive(Clone)]
-pub struct ImageService<R>
+pub struct ImageService<C, R>
 where
+    C: ImageCacheRepository,
     R: ImageRepository,
 {
     repo: R,
+    cache_repo: C,
 }
 
-impl<R> ImageService<R>
+impl<C, R> ImageService<C, R>
 where
+    C: ImageCacheRepository,
     R: ImageRepository,
 {
-    pub fn new(repo: R) -> Self {
-        Self { repo }
+    pub fn new(repo: R, cache_repo: C) -> Self {
+        Self { repo, cache_repo }
     }
 
     pub async fn fetch_image(
@@ -44,11 +45,22 @@ where
         encrypted_url: &str,
         referer: Option<&String>,
     ) -> Result<Image, ImageError> {
+        if let Ok(image) = self.cache_repo.get(encrypted_url).await {
+            return Ok(image);
+        }
+
         let uri = ImageUri::from_encrypted(secret, encrypted_url)
             .map_err(|e| ImageError::Other(anyhow::anyhow!("{e}")))?;
 
         let image = match uri {
-            ImageUri::Remote(url) => self.repo.fetch_image_from_url(&url, referer).await?,
+            ImageUri::Remote(url) => {
+                let image = self.repo.fetch_image_from_url(&url, referer).await?;
+                if let Err(e) = self.cache_repo.set(encrypted_url, &image).await {
+                    error!("error cache image {encrypted_url}: {e}");
+                }
+
+                image
+            }
             ImageUri::File(path) => self.repo.fetch_image_from_file(&path).await?,
             ImageUri::Archive(archive, filename) => {
                 self.repo

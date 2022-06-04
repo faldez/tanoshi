@@ -17,8 +17,9 @@ use tanoshi::{
         domain::repositories::{
             chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
             history::HistoryRepositoryImpl, image::ImageRepositoryImpl,
-            library::LibraryRepositoryImpl, manga::MangaRepositoryImpl,
-            source::SourceRepositoryImpl, tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
+            image_cache::ImageCacheRepositoryImpl, library::LibraryRepositoryImpl,
+            manga::MangaRepositoryImpl, source::SourceRepositoryImpl,
+            tracker::TrackerRepositoryImpl, user::UserRepositoryImpl,
         },
         local, notifier,
     },
@@ -165,7 +166,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let tracker_svc = TrackerService::new(tracker_repo.clone());
 
     let image_repo = ImageRepositoryImpl::new();
-    let image_svc = ImageService::new(image_repo);
+    let image_cache_repo = ImageCacheRepositoryImpl::new(&config.cache_path);
+    let image_svc = ImageService::new(image_repo, image_cache_repo);
 
     let loader = DatabaseLoader::new(history_repo, library_repo, manga_repo, tracker_repo);
 

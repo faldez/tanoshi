@@ -9,7 +9,7 @@ use crate::{
         config::GLOBAL_CONFIG,
         domain::repositories::{
             chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl,
-            source::SourceRepositoryImpl,
+            image_cache::ImageCacheRepositoryImpl, source::SourceRepositoryImpl,
         },
     },
     presentation::graphql::schema::DatabaseLoader,
@@ -178,7 +178,8 @@ impl Chapter {
             .fetch_chapter_pages(self.source_id, &self.path, &self.downloaded_path)
             .await?;
 
-        let image_svc = ctx.data::<ImageService<ImageRepositoryImpl>>()?;
+        let image_svc =
+            ctx.data::<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>()?;
 
         if encrypt {
             let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
