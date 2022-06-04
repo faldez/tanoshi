@@ -1,4 +1,8 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use chrono::NaiveDateTime;
 use futures::StreamExt;
@@ -46,6 +50,7 @@ where
     auto_download_chapters: bool,
     download_tx: DownloadSender,
     notifier: Notifier<UserRepositoryImpl>,
+    cache_path: PathBuf,
 }
 
 impl<C, L> UpdatesWorker<C, L>
@@ -53,13 +58,14 @@ where
     C: ChapterRepository + 'static,
     L: LibraryRepository + 'static,
 {
-    fn new(
+    fn new<P: AsRef<Path>>(
         period: u64,
         library_repo: L,
         chapter_repo: C,
         extensions: SourceBus,
         download_tx: DownloadSender,
         notifier: Notifier<UserRepositoryImpl>,
+        cache_path: P,
     ) -> Self {
         #[cfg(not(debug_assertions))]
         let period = if period > 0 && period < 3600 {
@@ -83,6 +89,7 @@ where
             auto_download_chapters,
             download_tx,
             notifier,
+            cache_path: PathBuf::new().join(cache_path),
         }
     }
 
@@ -256,10 +263,37 @@ where
         Ok(())
     }
 
+    async fn clear_cache(&self) -> Result<(), anyhow::Error> {
+        let mut read_dir = tokio::fs::read_dir(&self.cache_path).await?;
+        while let Ok(Some(entry)) = read_dir.next_entry().await {
+            if let Some(created) = entry
+                .metadata()
+                .await?
+                .created()
+                .ok()
+                .and_then(|created| created.elapsed().ok())
+                .map(|elapsed| {
+                    chrono::Duration::from_std(elapsed)
+                        .unwrap_or_else(|_| chrono::Duration::max_value())
+                })
+            {
+                if created.num_days() >= 10 {
+                    info!("removing {}", entry.path().display());
+                    if let Err(e) = tokio::fs::remove_file(entry.path()).await {
+                        error!("failed to remove {}: {e}", entry.path().display());
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     async fn run(self) {
         let period = if self.period == 0 { 3600 } else { self.period };
         let mut chapter_update_interval = time::interval(time::Duration::from_secs(period));
         let mut server_update_interval = time::interval(time::Duration::from_secs(86400));
+        let mut clear_cache_interval = time::interval(time::Duration::from_secs(10 * 86400));
 
         loop {
             tokio::select! {
@@ -271,7 +305,7 @@ where
                     info!("start periodic updates");
 
                     if let Err(e) = self.check_chapter_update().await {
-                        error!("failed check chapter update: {}", e)
+                        error!("failed check chapter update: {e}")
                     }
 
                     info!("periodic updates done in {:?}", Instant::now() - start);
@@ -280,13 +314,18 @@ where
                     info!("check server update");
 
                     if let Err(e) = self.check_server_update().await {
-                        error!("failed check server update: {}", e)
+                        error!("failed check server update: {e}")
                     }
 
                     info!("check extension update");
 
                     if let Err(e) = self.check_extension_update().await {
-                        error!("failed check extension update: {}", e)
+                        error!("failed check extension update: {e}")
+                    }
+                }
+                _ = clear_cache_interval.tick() => {
+                    if let Err(e) = self.clear_cache().await {
+                        error!("failed clear cache: {e}")
                     }
                 }
             }
@@ -294,16 +333,18 @@ where
     }
 }
 
-pub fn start<C, L>(
+pub fn start<C, L, P>(
     period: u64,
     library_repo: L,
     chapter_repo: C,
     extensions: SourceBus,
     download_tx: DownloadSender,
     notifier: Notifier<UserRepositoryImpl>,
+    cache_path: P,
 ) where
     C: ChapterRepository + 'static,
     L: LibraryRepository + 'static,
+    P: AsRef<Path>,
 {
     let worker = UpdatesWorker::new(
         period,
@@ -312,6 +353,7 @@ pub fn start<C, L>(
         extensions,
         download_tx,
         notifier,
+        cache_path,
     );
 
     let handle = tokio::runtime::Handle::current();

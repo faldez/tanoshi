@@ -134,6 +134,7 @@ impl<R: Runtime> Plugin<R> for Server {
         extension_manager.clone(),
         download_sender.clone(),
         notifier.clone(),
+        &config.cache_path,
       );
 
       let mal_client = config

@@ -144,6 +144,7 @@ async fn main() -> Result<(), anyhow::Error> {
         extension_manager.clone(),
         download_sender.clone(),
         notifier.clone(),
+        &config.cache_path,
     );
 
     let mal_client = config
