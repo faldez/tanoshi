@@ -23,7 +23,6 @@ use self::{
 };
 use crate::{
     application::worker::downloads::DownloadSender,
-    db::MangaDatabase,
     domain::services::{
         chapter::ChapterService, download::DownloadService, history::HistoryService,
         image::ImageService, library::LibraryService, manga::MangaService, source::SourceService,
@@ -51,7 +50,6 @@ pub struct ServerBuilder {
     library_svc: Option<LibraryService<LibraryRepositoryImpl>>,
     history_svc: Option<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>,
     download_svc: Option<DownloadService<DownloadRepositoryImpl>>,
-    mangadb: Option<MangaDatabase>,
     ext_manager: Option<SourceBus>,
     download_tx: Option<DownloadSender>,
     notifier: Option<Notifier<UserRepositoryImpl>>,
@@ -71,7 +69,6 @@ impl ServerBuilder {
             library_svc: None,
             history_svc: None,
             download_svc: None,
-            mangadb: None,
             ext_manager: None,
             download_tx: None,
             notifier: None,
@@ -146,13 +143,6 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_mangadb(self, mangadb: MangaDatabase) -> Self {
-        Self {
-            mangadb: Some(mangadb),
-            ..self
-        }
-    }
-
     pub fn with_ext_manager(self, ext_manager: SourceBus) -> Self {
         Self {
             ext_manager: Some(ext_manager),
@@ -210,7 +200,6 @@ impl ServerBuilder {
         let download_svc = self
             .download_svc
             .ok_or_else(|| anyhow!("no download service"))?;
-        let mangadb = self.mangadb.ok_or_else(|| anyhow!("no manga database"))?;
         let extension_manager = self
             .ext_manager
             .ok_or_else(|| anyhow!("no extension manager"))?;
@@ -230,7 +219,6 @@ impl ServerBuilder {
             .data(library_svc)
             .data(history_svc)
             .data(download_svc)
-            .data(mangadb.clone())
             .loader(loader)
             .data(extension_manager)
             .data(download_tx)

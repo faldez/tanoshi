@@ -6,7 +6,6 @@ use clap::Parser;
 use futures::future::OptionFuture;
 use tanoshi::{
     application::worker,
-    db,
     domain::services::{
         chapter::ChapterService, download::DownloadService, history::HistoryService,
         image::ImageService, library::LibraryService, manga::MangaService, source::SourceService,
@@ -14,6 +13,7 @@ use tanoshi::{
     },
     infrastructure::{
         config::{self, Config, GLOBAL_CONFIG},
+        database,
         domain::repositories::{
             chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
             history::HistoryRepositoryImpl, image::ImageRepositoryImpl,
@@ -55,8 +55,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     debug!("config: {:?}", config);
 
-    let pool = db::establish_connection(&config.database_path).await?;
-    let mangadb = db::MangaDatabase::new(pool.clone());
+    let pool = database::establish_connection(&config.database_path).await?;
 
     let user_repo = UserRepositoryImpl::new(pool.clone());
     let user_svc = UserService::new(user_repo.clone());
@@ -180,7 +179,6 @@ async fn main() -> Result<(), anyhow::Error> {
         .with_library_svc(libary_svc)
         .with_history_svc(history_svc)
         .with_download_svc(download_svc)
-        .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_sender)
         .with_notifier(notifier)

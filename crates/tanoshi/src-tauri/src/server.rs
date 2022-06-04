@@ -8,7 +8,6 @@ use tauri::{
 
 use tanoshi::{
   application::worker,
-  db,
   domain::services::{
     chapter::ChapterService, download::DownloadService, history::HistoryService,
     image::ImageService, library::LibraryService, manga::MangaService, source::SourceService,
@@ -16,6 +15,7 @@ use tanoshi::{
   },
   infrastructure::{
     config::{self, GLOBAL_CONFIG},
+    database,
     domain::repositories::{
       chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
       history::HistoryRepositoryImpl, image::ImageRepositoryImpl, library::LibraryRepositoryImpl,
@@ -54,14 +54,12 @@ impl<R: Runtime> Plugin<R> for Server {
     tauri::async_runtime::spawn(async move {
       let config = GLOBAL_CONFIG.get().unwrap();
 
-      let pool = match db::establish_connection(&config.database_path).await {
+      let pool = match database::establish_connection(&config.database_path).await {
         Ok(pool) => pool,
         Err(_) => {
           return;
         }
       };
-
-      let mangadb = db::MangaDatabase::new(pool.clone());
 
       let user_repo = UserRepositoryImpl::new(pool.clone());
       let user_svc = UserService::new(user_repo.clone());
@@ -171,7 +169,6 @@ impl<R: Runtime> Plugin<R> for Server {
         .with_library_svc(libary_svc)
         .with_history_svc(history_svc)
         .with_download_svc(download_svc)
-        .with_mangadb(mangadb)
         .with_ext_manager(extension_manager)
         .with_download_tx(download_sender)
         .with_notifier(notifier)

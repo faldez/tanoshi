@@ -25,16 +25,6 @@ pub struct ReadProgress {
     pub is_complete: bool,
 }
 
-impl From<crate::db::model::ReadProgress> for ReadProgress {
-    fn from(val: crate::db::model::ReadProgress) -> Self {
-        Self {
-            at: val.at,
-            last_page: val.last_page,
-            is_complete: val.is_complete,
-        }
-    }
-}
-
 /// A type represent chapter, normalized across source
 #[derive(Debug, Clone)]
 pub struct Chapter {
@@ -108,60 +98,6 @@ impl From<Chapter> for crate::domain::entities::chapter::Chapter {
             downloaded_path: val.downloaded_path,
             next: val.next,
             prev: val.prev,
-        }
-    }
-}
-
-impl From<crate::db::model::Chapter> for Chapter {
-    fn from(val: crate::db::model::Chapter) -> Self {
-        Self {
-            id: val.id,
-            source_id: val.source_id,
-            manga_id: val.manga_id,
-            title: val.title,
-            path: val.path,
-            number: val.number,
-            scanlator: val.scanlator,
-            uploaded: val.uploaded,
-            date_added: val.date_added,
-            read_progress: None,
-            downloaded_path: val.downloaded_path,
-            next: None,
-            prev: None,
-        }
-    }
-}
-
-impl From<tanoshi_lib::models::ChapterInfo> for crate::db::model::Chapter {
-    fn from(ch: tanoshi_lib::models::ChapterInfo) -> Self {
-        Self {
-            id: 0,
-            source_id: ch.source_id,
-            manga_id: 0,
-            title: ch.title,
-            path: ch.path,
-            number: ch.number,
-            scanlator: ch.scanlator.unwrap_or_default(),
-            uploaded: chrono::NaiveDateTime::from_timestamp(ch.uploaded, 0),
-            date_added: chrono::NaiveDateTime::from_timestamp(chrono::Local::now().timestamp(), 0),
-            downloaded_path: None,
-        }
-    }
-}
-
-impl From<Chapter> for crate::db::model::Chapter {
-    fn from(val: Chapter) -> Self {
-        Self {
-            id: val.id,
-            source_id: val.source_id,
-            manga_id: val.manga_id,
-            title: val.title,
-            path: val.path,
-            number: val.number,
-            scanlator: val.scanlator,
-            uploaded: val.uploaded,
-            date_added: val.date_added,
-            downloaded_path: val.downloaded_path,
         }
     }
 }

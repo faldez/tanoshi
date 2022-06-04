@@ -79,59 +79,8 @@ impl From<tanoshi_lib::models::MangaInfo> for Manga {
     }
 }
 
-impl From<crate::db::model::Manga> for Manga {
-    fn from(val: crate::db::model::Manga) -> Self {
-        Self {
-            id: val.id,
-            source_id: val.source_id,
-            title: val.title,
-            author: val.author,
-            genre: val.genre,
-            status: val.status,
-            description: val.description,
-            path: val.path,
-            cover_url: val.cover_url,
-            date_added: val.date_added,
-        }
-    }
-}
-
 impl From<crate::domain::entities::manga::Manga> for Manga {
     fn from(val: crate::domain::entities::manga::Manga) -> Self {
-        Self {
-            id: val.id,
-            source_id: val.source_id,
-            title: val.title,
-            author: val.author,
-            genre: val.genre,
-            status: val.status,
-            description: val.description,
-            path: val.path,
-            cover_url: val.cover_url,
-            date_added: val.date_added,
-        }
-    }
-}
-
-impl From<tanoshi_lib::models::MangaInfo> for crate::db::model::Manga {
-    fn from(m: tanoshi_lib::models::MangaInfo) -> Self {
-        Self {
-            id: 0,
-            source_id: m.source_id,
-            title: m.title,
-            author: m.author,
-            genre: m.genre,
-            status: m.status,
-            description: m.description,
-            path: m.path,
-            cover_url: m.cover_url,
-            date_added: chrono::NaiveDateTime::from_timestamp(0, 0),
-        }
-    }
-}
-
-impl From<Manga> for crate::db::model::Manga {
-    fn from(val: Manga) -> Self {
         Self {
             id: val.id,
             source_id: val.source_id,
