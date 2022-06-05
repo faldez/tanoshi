@@ -29,4 +29,6 @@ pub trait ChapterRepository: Send + Sync {
         order_by: Option<&'static str>,
         asc: bool,
     ) -> Result<Vec<Chapter>, ChapterRepositoryError>;
+
+    async fn delete_chapter_by_id(&self, chapter_id: i64) -> Result<(), ChapterRepositoryError>;
 }

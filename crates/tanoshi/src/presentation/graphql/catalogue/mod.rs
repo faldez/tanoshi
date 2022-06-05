@@ -125,3 +125,21 @@ impl CatalogueRoot {
         Ok(chapter)
     }
 }
+
+#[derive(Default)]
+pub struct CatalogueMutationRoot;
+
+#[Object]
+impl CatalogueMutationRoot {
+    async fn remove_chapter(
+        &self,
+        ctx: &Context<'_>,
+        #[graphql(desc = "chapter id")] id: i64,
+    ) -> Result<bool> {
+        ctx.data::<ChapterService<ChapterRepositoryImpl>>()?
+            .delete_chapter(id)
+            .await?;
+
+        Ok(true)
+    }
+}

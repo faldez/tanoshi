@@ -174,7 +174,16 @@ impl ChapterRepository for ChapterRepositoryImpl {
                 prev: row.get(11),
             })
             .collect();
-
+            
         Ok(chapters)
+    }
+
+    async fn delete_chapter_by_id(&self, chapter_id: i64) -> Result<(), ChapterRepositoryError> {
+        sqlx::query("DELETE FROM chapter WHERE id = ?")
+            .bind(chapter_id)
+            .execute(&self.pool as &SqlitePool)
+            .await?;
+
+        Ok(())
     }
 }

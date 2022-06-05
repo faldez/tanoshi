@@ -120,4 +120,10 @@ where
 
         Ok(pages)
     }
+
+    pub async fn delete_chapter(&self, chapter_id: i64) -> Result<(), ChapterError> {
+        self.repo.delete_chapter_by_id(chapter_id).await?;
+
+        Ok(())
+    }
 }
