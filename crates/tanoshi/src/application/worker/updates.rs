@@ -136,9 +136,11 @@ where
                 .map(|c| c.id)
                 .collect();
 
-            self.chapter_repo
-                .delete_chapter_by_ids(&chapters_to_delete)
-                .await?;
+            if !chapters_to_delete.is_empty() {
+                self.chapter_repo
+                    .delete_chapter_by_ids(&chapters_to_delete)
+                    .await?;
+            }
 
             let chapters: Vec<Chapter> = self
                 .chapter_repo
