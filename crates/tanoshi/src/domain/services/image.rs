@@ -73,7 +73,7 @@ where
     }
 
     pub fn encrypt_image_url(&self, secret: &str, url: &str) -> Result<String, ImageError> {
-        let image_uri = ImageUri::try_from(url.to_string())?;
+        let image_uri = ImageUri::try_from(url)?;
 
         Ok(image_uri.into_encrypted(secret)?)
     }

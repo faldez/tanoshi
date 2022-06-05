@@ -2,8 +2,11 @@ use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncryptMut, KeyIvI
 use anyhow::anyhow;
 use bytes::Bytes;
 use fancy_regex::Regex;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+
+use crate::infrastructure::local::SUPPORTED_FILES;
 
 // create an alias for convenience
 type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
@@ -15,20 +18,21 @@ pub enum ImageUri {
     Archive(String, String),
 }
 
-impl TryFrom<String> for ImageUri {
+impl TryFrom<&str> for ImageUri {
     type Error = anyhow::Error;
 
-    fn try_from(uri: String) -> Result<Self, Self::Error> {
+    fn try_from(uri: &str) -> Result<Self, Self::Error> {
         let uri = if uri.starts_with("http") {
-            Self::Remote(uri)
+            Self::Remote(uri.to_string())
         } else if !uri.is_empty() {
-            let path = std::path::PathBuf::from(&uri);
+            let path = std::path::PathBuf::from(uri);
             if path.is_file() {
-                Self::File(uri)
+                Self::File(uri.to_string())
             } else {
-                let re = Regex::new(r#"\.(cbz|cbr)[\/|\\]"#)?;
+                let regex = format!(r#"\.({})[\/|\\]"#, SUPPORTED_FILES.iter().join("|"));
+                let re = Regex::new(&regex)?;
 
-                if let Some(matches) = re.find(&uri)? {
+                if let Some(matches) = re.find(uri).ok().flatten() {
                     let archive = uri[0..matches.end() - 1].to_owned();
                     let filename = uri[matches.end()..uri.len()].to_owned();
 
@@ -58,27 +62,7 @@ impl ImageUri {
             .to_vec();
 
         let url = String::from_utf8(bytes)?;
-        let uri = if url.starts_with("http") {
-            Self::Remote(url)
-        } else if !url.is_empty() {
-            let path = std::path::PathBuf::from(&url);
-            if path.is_file() {
-                Self::File(url)
-            } else {
-                let re = Regex::new(r#"\.(cbz|cbr)[\/|\\]"#)?;
-
-                if let Some(matches) = re.find(&url)? {
-                    let archive = url[0..matches.end() - 1].to_owned();
-                    let filename = url[matches.end()..url.len()].to_owned();
-
-                    Self::Archive(archive, filename)
-                } else {
-                    return Err(anyhow!("invalid file url"));
-                }
-            }
-        } else {
-            return Err(anyhow!("bad url"));
-        };
+        let uri = ImageUri::try_from(url.as_str())?;
 
         Ok(uri)
     }
