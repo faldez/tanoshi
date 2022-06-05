@@ -1,4 +1,5 @@
 mod source;
+use super::guard::AdminGuard;
 
 pub use source::{Source, SourceMutationRoot, SourceRoot};
 
@@ -131,6 +132,7 @@ pub struct CatalogueMutationRoot;
 
 #[Object]
 impl CatalogueMutationRoot {
+    #[graphql(guard = "AdminGuard::new()")]
     async fn remove_chapter(
         &self,
         ctx: &Context<'_>,
