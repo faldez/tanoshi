@@ -15,16 +15,10 @@ use tokio::task::JoinError;
 
 #[derive(Debug, Error)]
 pub enum ChapterError {
+    #[error("repository error: {0}")]
+    RepositoryError(#[from] ChapterRepositoryError),
     #[error("other error: {0}")]
     Other(#[from] anyhow::Error),
-}
-
-impl From<ChapterRepositoryError> for ChapterError {
-    fn from(e: ChapterRepositoryError) -> Self {
-        match e {
-            ChapterRepositoryError::DbError(e) => Self::Other(anyhow::anyhow!("{e}")),
-        }
-    }
 }
 
 impl From<JoinError> for ChapterError {

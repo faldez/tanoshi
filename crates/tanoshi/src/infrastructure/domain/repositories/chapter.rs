@@ -191,6 +191,12 @@ impl ChapterRepository for ChapterRepositoryImpl {
         &self,
         chapter_ids: &[i64],
     ) -> Result<(), ChapterRepositoryError> {
+        if chapter_ids.len() < 1 {
+            return Err(ChapterRepositoryError::BadArgsError(format!(
+                "chapter_ids should at least be 1"
+            )));
+        }
+
         let query_str = format!(
             "DELETE FROM chapter WHERE id IN ({})",
             vec!["?"; chapter_ids.len()].join(",")
@@ -213,6 +219,12 @@ impl ChapterRepository for ChapterRepositoryImpl {
         manga_id: i64,
         paths: &[String],
     ) -> Result<Vec<Chapter>, ChapterRepositoryError> {
+        if paths.len() < 1 {
+            return Err(ChapterRepositoryError::BadArgsError(format!(
+                "paths should at least be 1"
+            )));
+        }
+
         let query_str = format!(
             "SELECT * FROM chapter WHERE source_id = ? AND manga_id = ? AND path NOT IN ({})",
             vec!["?"; paths.len()].join(",")

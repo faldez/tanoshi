@@ -125,6 +125,21 @@ where
 
             self.chapter_repo.insert_chapters(&chapters).await?;
 
+            let chapter_paths: Vec<String> =
+                chapters.into_par_iter().map(|c| c.path.clone()).collect();
+
+            let chapters_to_delete: Vec<i64> = self
+                .chapter_repo
+                .get_chapters_not_in_source(manga.source_id, manga.id, &chapter_paths)
+                .await?
+                .iter()
+                .map(|c| c.id)
+                .collect();
+
+            self.chapter_repo
+                .delete_chapter_by_ids(&chapters_to_delete)
+                .await?;
+
             let chapters: Vec<Chapter> = self
                 .chapter_repo
                 .get_chapters_by_manga_id(manga.id, None, None, false)

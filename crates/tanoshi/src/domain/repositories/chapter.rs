@@ -8,6 +8,8 @@ use crate::domain::entities::chapter::Chapter;
 pub enum ChapterRepositoryError {
     #[error("database error: {0}")]
     DbError(#[from] sqlx::Error),
+    #[error("bad argument error: {0}")]
+    BadArgsError(String),
 }
 
 #[async_trait]
