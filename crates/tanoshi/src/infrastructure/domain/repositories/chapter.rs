@@ -174,7 +174,7 @@ impl ChapterRepository for ChapterRepositoryImpl {
                 prev: row.get(11),
             })
             .collect();
-            
+
         Ok(chapters)
     }
 
@@ -185,5 +185,65 @@ impl ChapterRepository for ChapterRepositoryImpl {
             .await?;
 
         Ok(())
+    }
+
+    async fn delete_chapter_by_ids(
+        &self,
+        chapter_ids: &[i64],
+    ) -> Result<(), ChapterRepositoryError> {
+        let query_str = format!(
+            "DELETE FROM chapter WHERE id IN ({})",
+            vec!["?"; chapter_ids.len()].join(",")
+        );
+
+        let mut query = sqlx::query(&query_str);
+
+        for chapter_id in chapter_ids {
+            query = query.bind(chapter_id);
+        }
+
+        query.execute(&self.pool as &SqlitePool).await?;
+
+        Ok(())
+    }
+
+    async fn get_chapters_not_in_source(
+        &self,
+        source_id: i64,
+        manga_id: i64,
+        paths: &[String],
+    ) -> Result<Vec<Chapter>, ChapterRepositoryError> {
+        let query_str = format!(
+            "SELECT * FROM chapter WHERE source_id = ? AND manga_id = ? AND path NOT IN ({})",
+            vec!["?"; paths.len()].join(",")
+        );
+
+        let mut query = sqlx::query(&query_str).bind(source_id).bind(manga_id);
+
+        for path in paths.iter() {
+            query = query.bind(path);
+        }
+
+        let chapters = query
+            .fetch_all(&self.pool as &SqlitePool)
+            .await?
+            .into_par_iter()
+            .map(|row| Chapter {
+                id: row.get(0),
+                source_id: row.get(1),
+                manga_id: row.get(2),
+                title: row.get(3),
+                path: row.get(4),
+                number: row.get(5),
+                scanlator: row.get(6),
+                uploaded: row.get(7),
+                date_added: row.get(8),
+                downloaded_path: row.get(9),
+                next: None,
+                prev: None,
+            })
+            .collect();
+
+        Ok(chapters)
     }
 }

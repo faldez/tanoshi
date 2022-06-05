@@ -31,4 +31,16 @@ pub trait ChapterRepository: Send + Sync {
     ) -> Result<Vec<Chapter>, ChapterRepositoryError>;
 
     async fn delete_chapter_by_id(&self, chapter_id: i64) -> Result<(), ChapterRepositoryError>;
+
+    async fn delete_chapter_by_ids(
+        &self,
+        chapter_ids: &[i64],
+    ) -> Result<(), ChapterRepositoryError>;
+
+    async fn get_chapters_not_in_source(
+        &self,
+        source_id: i64,
+        manga_id: i64,
+        paths: &[String],
+    ) -> Result<Vec<Chapter>, ChapterRepositoryError>;
 }
