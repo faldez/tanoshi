@@ -13,9 +13,10 @@ use serde::{Deserialize, Serialize};
 use tanoshi_lib::prelude::{ChapterInfo, Extension, Input, Lang, MangaInfo, SourceInfo};
 
 // list of supported files, other archive may works but no tested
-static SUPPORTED_FILES: phf::Set<&'static str> = phf::phf_set! {
+pub static SUPPORTED_FILES: phf::Set<&'static str> = phf::phf_set! {
     "cbz",
     "cbr",
+    "cb7"
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
