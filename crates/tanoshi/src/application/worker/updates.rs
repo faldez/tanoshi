@@ -100,10 +100,6 @@ where
         while let Some(Ok(manga)) = manga_in_library.next().await {
             debug!("Checking updates: {}", manga.title);
 
-            let last_uploaded_chapter = manga
-                .last_uploaded_at
-                .unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
-
             let chapters: Vec<Chapter> = match self
                 .extensions
                 .get_chapters(manga.source_id, manga.path.clone())
@@ -128,19 +124,25 @@ where
             let chapter_paths: Vec<String> =
                 chapters.into_par_iter().map(|c| c.path.clone()).collect();
 
-            let chapters_to_delete: Vec<i64> = self
-                .chapter_repo
-                .get_chapters_not_in_source(manga.source_id, manga.id, &chapter_paths)
-                .await?
-                .iter()
-                .map(|c| c.id)
-                .collect();
+            if !chapter_paths.is_empty() {
+                let chapters_to_delete: Vec<i64> = self
+                    .chapter_repo
+                    .get_chapters_not_in_source(manga.source_id, manga.id, &chapter_paths)
+                    .await?
+                    .iter()
+                    .map(|c| c.id)
+                    .collect();
 
-            if !chapters_to_delete.is_empty() {
-                self.chapter_repo
-                    .delete_chapter_by_ids(&chapters_to_delete)
-                    .await?;
+                if !chapters_to_delete.is_empty() {
+                    self.chapter_repo
+                        .delete_chapter_by_ids(&chapters_to_delete)
+                        .await?;
+                }
             }
+
+            let last_uploaded_chapter = manga
+                .last_uploaded_at
+                .unwrap_or_else(|| NaiveDateTime::from_timestamp(0, 0));
 
             let chapters: Vec<Chapter> = self
                 .chapter_repo
@@ -150,10 +152,10 @@ where
                 .filter(|chapter| chapter.uploaded > last_uploaded_chapter)
                 .collect();
 
-            if chapters.len() > 0 {
-                info!("{} has {} new chapters", manga.title, chapters.len());
-            } else {
+            if chapters.is_empty() {
                 debug!("{} has no new chapters", manga.title);
+            } else {
+                info!("{} has {} new chapters", manga.title, chapters.len());
             }
 
             for chapter in chapters {
