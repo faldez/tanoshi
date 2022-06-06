@@ -1,6 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use teloxide::{adaptors::DefaultParseMode, prelude2::*, utils::command::BotCommand};
+use teloxide::{adaptors::DefaultParseMode, prelude::*, utils::command::BotCommands};
 
 use crate::Notifier;
 
@@ -16,7 +16,7 @@ impl Telegram {
     }
 
     pub async fn send_message(&self, chat_id: i64, text: &str) -> Result<()> {
-        self.0.send_message(chat_id, text).await?;
+        self.0.send_message(ChatId(chat_id), text).await?;
 
         Ok(())
     }
@@ -65,7 +65,7 @@ impl Notifier for Telegram {
     }
 }
 
-#[derive(BotCommand, Clone)]
+#[derive(BotCommands, Clone)]
 #[command(rename = "lowercase", description = "These commands are supported:")]
 enum TelegramCommand {
     #[command(description = "display this text.")]
@@ -81,7 +81,7 @@ async fn answer(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     match command {
         TelegramCommand::Help => {
-            bot.send_message(message.chat.id, TelegramCommand::descriptions())
+            bot.send_message(message.chat.id, TelegramCommand::descriptions().to_string())
                 .await?
         }
         TelegramCommand::NotifyMe => {
@@ -101,5 +101,5 @@ async fn answer(
 
 pub async fn run(bot: Telegram) {
     info!("start telegram bot");
-    teloxide::repls2::commands_repl(bot.0, answer, TelegramCommand::ty()).await;
+    teloxide::commands_repl(bot.0, answer, TelegramCommand::ty()).await;
 }
