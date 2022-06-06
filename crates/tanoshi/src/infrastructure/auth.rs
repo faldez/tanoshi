@@ -1,8 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-
-use crate::infrastructure::config::GLOBAL_CONFIG;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -12,12 +10,7 @@ pub struct Claims {
     pub exp: usize,
 }
 
-pub fn decode_jwt(token: &str) -> Result<Claims> {
-    let secret = GLOBAL_CONFIG
-        .get()
-        .map(|cfg| cfg.secret.to_owned())
-        .ok_or_else(|| anyhow!("no secret in config"))?;
-
+pub fn decode_jwt(secret: &str, token: &str) -> Result<Claims> {
     Ok(jsonwebtoken::decode::<Claims>(
         &token,
         &DecodingKey::from_secret(secret.as_bytes()),
@@ -26,12 +19,7 @@ pub fn decode_jwt(token: &str) -> Result<Claims> {
     .claims)
 }
 
-pub fn encode_jwt(claims: &Claims) -> Result<String> {
-    let secret = GLOBAL_CONFIG
-        .get()
-        .map(|cfg| cfg.secret.to_owned())
-        .ok_or_else(|| anyhow!("no secret in config"))?;
-
+pub fn encode_jwt(secret: &str, claims: &Claims) -> Result<String> {
     Ok(jsonwebtoken::encode(
         &Header::default(),
         claims,

@@ -29,6 +29,7 @@ use crate::{
         tracker::TrackerService, user::UserService,
     },
     infrastructure::{
+        config::Config,
         domain::repositories::{
             chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
             history::HistoryRepositoryImpl, image::ImageRepositoryImpl,
@@ -42,6 +43,7 @@ use crate::{
 use tanoshi_vm::extension::SourceBus;
 
 pub struct ServerBuilder {
+    config: Option<Config>,
     user_svc: Option<UserService<UserRepositoryImpl>>,
     tracker_svc: Option<TrackerService<TrackerRepositoryImpl>>,
     source_svc: Option<SourceService<SourceRepositoryImpl>>,
@@ -61,6 +63,7 @@ pub struct ServerBuilder {
 impl ServerBuilder {
     pub fn new() -> Self {
         Self {
+            config: None,
             user_svc: None,
             tracker_svc: None,
             source_svc: None,
@@ -75,6 +78,13 @@ impl ServerBuilder {
             notifier: None,
             loader: None,
             enable_playground: false,
+        }
+    }
+
+    pub fn with_config(self, config: Config) -> Self {
+        Self {
+            config: Some(config),
+            ..self
         }
     }
 
@@ -183,6 +193,7 @@ impl ServerBuilder {
     }
 
     pub fn build(self) -> Result<Server, anyhow::Error> {
+        let config = self.config.ok_or_else(|| anyhow!("no config"))?;
         let user_svc = self.user_svc.ok_or_else(|| anyhow!("no user service"))?;
         let tracker_svc = self
             .tracker_svc
@@ -214,6 +225,7 @@ impl ServerBuilder {
         let loader = self.loader.ok_or_else(|| anyhow!("no loader"))?;
 
         let schema = SchemaBuilder::new()
+            .data(config.clone())
             .data(user_svc)
             .data(tracker_svc)
             .data(source_svc)
@@ -229,7 +241,12 @@ impl ServerBuilder {
             .data(notifier)
             .build();
 
-        Ok(Server::new(self.enable_playground, schema, image_svc))
+        Ok(Server::new(
+            self.enable_playground,
+            config,
+            schema,
+            image_svc,
+        ))
     }
 }
 
@@ -240,6 +257,7 @@ pub struct Server {
 impl Server {
     pub fn new(
         enable_playground: bool,
+        config: Config,
         schema: TanoshiSchema,
         image_svc: ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>,
     ) -> Self {
@@ -260,12 +278,15 @@ impl Server {
                 .route("/graphql/", post(graphql_handler));
         }
 
-        router = router.layer(Extension(schema)).layer(
-            CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any)
-                .allow_headers(Any),
-        );
+        router = router
+            .layer(Extension(config))
+            .layer(Extension(schema))
+            .layer(
+                CorsLayer::new()
+                    .allow_origin(Any)
+                    .allow_methods(Any)
+                    .allow_headers(Any),
+            );
 
         #[cfg(feature = "embed")]
         {

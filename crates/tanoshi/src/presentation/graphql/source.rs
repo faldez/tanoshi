@@ -2,7 +2,7 @@ use super::{common::InputList, guard::AdminGuard};
 use crate::{
     domain::services::source::SourceService,
     infrastructure::{
-        auth::Claims, config::GLOBAL_CONFIG, domain::repositories::source::SourceRepositoryImpl,
+        auth::Claims, config::Config, domain::repositories::source::SourceRepositoryImpl,
     },
 };
 use async_graphql::{Context, Object, Result};
@@ -88,10 +88,7 @@ impl SourceRoot {
     ) -> Result<Vec<Source>> {
         let _ = ctx.data::<Claims>()?;
 
-        let repo_url = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| &cfg.extension_repository)
-            .ok_or("no config set")?;
+        let repo_url = &ctx.data::<Config>()?.extension_repository;
 
         let sources = ctx
             .data::<SourceService<SourceRepositoryImpl>>()?
@@ -107,10 +104,7 @@ impl SourceRoot {
     async fn available_sources(&self, ctx: &Context<'_>) -> Result<Vec<Source>> {
         let _ = ctx.data::<Claims>()?;
 
-        let repo_url = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| &cfg.extension_repository)
-            .ok_or("no config set")?;
+        let repo_url = &ctx.data::<Config>()?.extension_repository;
 
         let sources = ctx
             .data::<SourceService<SourceRepositoryImpl>>()?
@@ -147,10 +141,7 @@ impl SourceMutationRoot {
             return Err("source installed, use updateSource to update".into());
         }
 
-        let repo_url = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| &cfg.extension_repository)
-            .ok_or("no config set")?;
+        let repo_url = &ctx.data::<Config>()?.extension_repository;
 
         ctx.data::<SourceService<SourceRepositoryImpl>>()?
             .install_source(&repo_url, source_id)
@@ -170,10 +161,7 @@ impl SourceMutationRoot {
 
     #[graphql(guard = "AdminGuard::new()")]
     async fn update_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        let repo_url = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| &cfg.extension_repository)
-            .ok_or("no config set")?;
+        let repo_url = &ctx.data::<Config>()?.extension_repository;
 
         ctx.data::<SourceService<SourceRepositoryImpl>>()?
             .update_source(&repo_url, source_id)

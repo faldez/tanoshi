@@ -12,7 +12,7 @@ use crate::{
     },
     infrastructure::{
         auth::Claims,
-        config::GLOBAL_CONFIG,
+        config::Config,
         domain::repositories::{
             chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
             image::ImageRepositoryImpl, image_cache::ImageCacheRepositoryImpl,
@@ -134,7 +134,7 @@ impl Manga {
     }
 
     async fn cover_url(&self, ctx: &Context<'_>) -> Result<String> {
-        let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
+        let secret = &ctx.data::<Config>()?.secret;
 
         Ok(ctx
             .data::<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>()?

@@ -14,7 +14,7 @@ use tanoshi::{
     tracker::TrackerService, user::UserService,
   },
   infrastructure::{
-    config::{self, GLOBAL_CONFIG},
+    config::{self, Config},
     database,
     domain::repositories::{
       chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
@@ -53,7 +53,7 @@ impl<R: Runtime> Plugin<R> for Server {
     let port = self.port;
 
     tauri::async_runtime::spawn(async move {
-      let config = GLOBAL_CONFIG.get().unwrap();
+      let config = Config::open::<String>(None).expect("failed to init config");
 
       let pool = match database::establish_connection(&config.database_path, true).await {
         Ok(pool) => pool,
@@ -133,7 +133,9 @@ impl<R: Runtime> Plugin<R> for Server {
         chapter_repo.clone(),
         extension_manager.clone(),
         download_sender.clone(),
+        config.auto_download_chapters,
         notifier.clone(),
+        config.extension_repository.clone(),
         &config.cache_path,
       );
 
@@ -163,6 +165,7 @@ impl<R: Runtime> Plugin<R> for Server {
       let loader = DatabaseLoader::new(history_repo, library_repo, manga_repo, tracker_repo);
 
       let mut server_builder = ServerBuilder::new()
+        .with_config(config.clone())
         .with_user_svc(user_svc)
         .with_tracker_svc(tracker_svc)
         .with_source_svc(source_svc)

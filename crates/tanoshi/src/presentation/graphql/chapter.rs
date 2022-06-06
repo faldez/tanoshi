@@ -8,7 +8,7 @@ use crate::{
     domain::services::{chapter::ChapterService, image::ImageService, source::SourceService},
     infrastructure::{
         auth::Claims,
-        config::GLOBAL_CONFIG,
+        config::Config,
         domain::repositories::{
             chapter::ChapterRepositoryImpl, image::ImageRepositoryImpl,
             image_cache::ImageCacheRepositoryImpl, source::SourceRepositoryImpl,
@@ -177,7 +177,7 @@ impl Chapter {
             ctx.data::<ImageService<ImageCacheRepositoryImpl, ImageRepositoryImpl>>()?;
 
         if encrypt {
-            let secret = &GLOBAL_CONFIG.get().ok_or("secret not set")?.secret;
+            let secret = &ctx.data::<Config>()?.secret;
             pages
                 .par_iter_mut()
                 .for_each(|p| *p = image_svc.encrypt_image_url(secret, p).unwrap());

@@ -1,4 +1,4 @@
-use crate::{domain::repositories::user::UserRepository, infrastructure::config::GLOBAL_CONFIG};
+use crate::domain::repositories::user::UserRepository;
 use tanoshi_notifier::{gotify::Gotify, pushover::Pushover, telegram::Telegram, Notifier};
 
 pub struct Builder<R>
@@ -9,6 +9,7 @@ where
     pushover: Option<Pushover>,
     telegram: Option<Telegram>,
     gotify: Option<Gotify>,
+    base_url: Option<String>,
 }
 
 impl<R> Builder<R>
@@ -21,6 +22,7 @@ where
             pushover: None,
             telegram: None,
             gotify: None,
+            base_url: None,
         }
     }
 
@@ -45,12 +47,20 @@ where
         }
     }
 
+    pub fn base_url(self, base_url: String) -> Self {
+        Self {
+            base_url: Some(base_url),
+            ..self
+        }
+    }
+
     pub fn finish(self) -> Notification<R> {
         Notification {
             user_repo: self.user_repo,
             telegram: self.telegram,
             pushover: self.pushover,
             gotify: self.gotify,
+            base_url: self.base_url,
         }
     }
 }
@@ -63,6 +73,7 @@ where
     user_repo: R,
     pushover: Option<Pushover>,
     telegram: Option<Telegram>,
+    base_url: Option<String>,
     gotify: Option<Gotify>,
 }
 
@@ -116,11 +127,10 @@ where
     ) -> Result<(), anyhow::Error> {
         let user = self.user_repo.get_user_by_id(user_id).await?;
 
-        let url = GLOBAL_CONFIG.get().and_then(|cfg| {
-            cfg.base_url
-                .clone()
-                .map(|base_url| format!("{base_url}/chapter/{chapter_id}"))
-        });
+        let url = self
+            .base_url
+            .as_ref()
+            .map(|base_url| format!("{base_url}/chapter/{chapter_id}"));
 
         if let Some((user_key, pushover)) = user.pushover_user_key.zip(self.pushover.as_ref()) {
             if let Some(url) = &url {

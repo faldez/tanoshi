@@ -18,12 +18,8 @@ use crate::{
         entities::chapter::Chapter,
         repositories::{chapter::ChapterRepository, library::LibraryRepository},
     },
-    infrastructure::{
-        config::GLOBAL_CONFIG, domain::repositories::user::UserRepositoryImpl,
-        notification::Notification,
-    },
+    infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
 };
-use anyhow::anyhow;
 use tokio::time::{self, Instant};
 
 use super::downloads::DownloadSender;
@@ -51,6 +47,7 @@ where
     auto_download_chapters: bool,
     download_tx: DownloadSender,
     notifier: Notification<UserRepositoryImpl>,
+    extension_repository: String,
     cache_path: PathBuf,
 }
 
@@ -65,7 +62,9 @@ where
         chapter_repo: C,
         extensions: SourceBus,
         download_tx: DownloadSender,
+        auto_download_chapters: bool,
         notifier: Notification<UserRepositoryImpl>,
+        extension_repository: String,
         cache_path: P,
     ) -> Self {
         #[cfg(not(debug_assertions))]
@@ -76,11 +75,6 @@ where
         };
         info!("periodic updates every {} seconds", period);
 
-        let auto_download_chapters = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| cfg.auto_download_chapters)
-            .unwrap_or(false);
-
         Self {
             period,
             client: reqwest::Client::new(),
@@ -90,6 +84,7 @@ where
             auto_download_chapters,
             download_tx,
             notifier,
+            extension_repository,
             cache_path: PathBuf::new().join(cache_path),
         }
     }
@@ -198,10 +193,7 @@ where
     }
 
     async fn check_extension_update(&self) -> Result<(), anyhow::Error> {
-        let url = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| format!("{}/index.json", cfg.extension_repository))
-            .ok_or_else(|| anyhow!("no config set"))?;
+        let url = format!("{}/index.json", self.extension_repository);
 
         let available_sources_map = self
             .client
@@ -359,7 +351,9 @@ pub fn start<C, L, P>(
     chapter_repo: C,
     extensions: SourceBus,
     download_tx: DownloadSender,
+    auto_download_chapters: bool,
     notifier: Notification<UserRepositoryImpl>,
+    extension_repository: String,
     cache_path: P,
 ) where
     C: ChapterRepository + 'static,
@@ -372,7 +366,9 @@ pub fn start<C, L, P>(
         chapter_repo,
         extensions,
         download_tx,
+        auto_download_chapters,
         notifier,
+        extension_repository,
         cache_path,
     );
 

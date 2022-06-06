@@ -1,9 +1,7 @@
 use super::{chapter::Chapter, common::Cursor, guard::AdminGuard};
 use crate::{
     domain::services::download::DownloadService,
-    infrastructure::{
-        config::GLOBAL_CONFIG, domain::repositories::download::DownloadRepositoryImpl,
-    },
+    infrastructure::{config::Config, domain::repositories::download::DownloadRepositoryImpl},
 };
 use async_graphql::{
     connection::{query, Connection, Edge, EmptyFields},
@@ -47,10 +45,7 @@ pub struct DownloadRoot;
 #[Object]
 impl DownloadRoot {
     async fn download_status(&self, ctx: &Context<'_>) -> Result<bool> {
-        let download_path = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| &cfg.download_path)
-            .ok_or("config not initialized")?;
+        let download_path = &ctx.data::<Config>()?.download_path;
 
         let status = ctx
             .data::<DownloadService<DownloadRepositoryImpl>>()?
@@ -170,10 +165,7 @@ pub struct DownloadMutationRoot;
 #[Object]
 impl DownloadMutationRoot {
     async fn pause_download(&self, ctx: &Context<'_>) -> Result<bool> {
-        let download_path = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| &cfg.download_path)
-            .ok_or("config not initialized")?;
+        let download_path = &ctx.data::<Config>()?.download_path;
 
         ctx.data::<DownloadService<DownloadRepositoryImpl>>()?
             .change_download_status(download_path, false)
@@ -183,10 +175,7 @@ impl DownloadMutationRoot {
     }
 
     async fn resume_download(&self, ctx: &Context<'_>) -> Result<bool> {
-        let download_path = GLOBAL_CONFIG
-            .get()
-            .map(|cfg| &cfg.download_path)
-            .ok_or("config not initialized")?;
+        let download_path = &ctx.data::<Config>()?.download_path;
 
         ctx.data::<DownloadService<DownloadRepositoryImpl>>()?
             .change_download_status(download_path, true)

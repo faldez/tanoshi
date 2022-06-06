@@ -15,7 +15,7 @@ pub mod status;
 pub mod tracking;
 pub mod user;
 
-use crate::infrastructure::auth;
+use crate::infrastructure::{auth, config::Config};
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
@@ -29,12 +29,13 @@ use super::token::Token;
 
 pub async fn graphql_handler(
     token: Token,
+    config: Extension<Config>,
     schema: Extension<TanoshiSchema>,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
     let mut req = req.into_inner();
 
-    if let Ok(claims) = auth::decode_jwt(&token.0) {
+    if let Ok(claims) = auth::decode_jwt(&config.secret, &token.0) {
         req = req.data(claims);
     }
 

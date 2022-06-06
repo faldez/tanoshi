@@ -12,7 +12,7 @@ use tanoshi::{
         tracker::TrackerService, user::UserService,
     },
     infrastructure::{
-        config::{self, Config, GLOBAL_CONFIG},
+        config::{self, Config},
         database,
         domain::repositories::{
             chapter::ChapterRepositoryImpl, download::DownloadRepositoryImpl,
@@ -51,8 +51,7 @@ async fn main() -> Result<(), anyhow::Error> {
     env_logger::init();
 
     let opts: Opts = Opts::parse();
-    let config =
-        GLOBAL_CONFIG.get_or_init(|| Config::open(opts.config).expect("failed to init config"));
+    let config = Config::open(opts.config)?;
 
     debug!("config: {:?}", config);
 
@@ -124,6 +123,10 @@ async fn main() -> Result<(), anyhow::Error> {
         notifier_builder = notifier_builder.gotify(Gotify::new(gotify_cfg.base_url.clone()));
     }
 
+    if let Some(base_url) = config.base_url.as_ref() {
+        notifier_builder = notifier_builder.base_url(base_url.clone());
+    }
+
     let notifier = notifier_builder.finish();
 
     let (download_sender, download_receiver) = worker::downloads::channel();
@@ -148,7 +151,9 @@ async fn main() -> Result<(), anyhow::Error> {
         chapter_repo.clone(),
         extension_manager.clone(),
         download_sender.clone(),
+        config.auto_download_chapters,
         notifier.clone(),
+        config.extension_repository.clone(),
         &config.cache_path,
     );
 
@@ -178,6 +183,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let loader = DatabaseLoader::new(history_repo, library_repo, manga_repo, tracker_repo);
 
     let mut server_builder = ServerBuilder::new()
+        .with_config(config.clone())
         .with_user_svc(user_svc)
         .with_tracker_svc(tracker_svc)
         .with_source_svc(source_svc)

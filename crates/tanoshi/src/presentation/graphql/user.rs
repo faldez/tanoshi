@@ -3,6 +3,7 @@ use crate::{
     domain::services::{tracker::TrackerService, user::UserService},
     infrastructure::{
         auth::{self, Claims},
+        config::Config,
         domain::repositories::{tracker::TrackerRepositoryImpl, user::UserRepositoryImpl},
     },
 };
@@ -121,13 +122,15 @@ impl UserRoot {
 
         let user = user_svc.fetch_user_by_username(&username).await?;
 
+        let secret = &ctx.data::<Config>()?.secret;
         let current_time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?;
-        let token = auth::encode_jwt(&Claims {
+        let claims = Claims {
             sub: user.id,
             username: user.username,
             is_admin: user.is_admin,
             exp: (current_time + std::time::Duration::from_secs(2678400)).as_secs() as usize, // 31 days
-        })?;
+        };
+        let token = auth::encode_jwt(secret, &claims)?;
 
         Ok(token)
     }
