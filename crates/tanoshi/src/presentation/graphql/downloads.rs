@@ -1,10 +1,8 @@
-use super::{catalogue::Chapter, guard::AdminGuard};
+use super::{chapter::Chapter, common::Cursor, guard::AdminGuard};
 use crate::{
     domain::services::download::DownloadService,
     infrastructure::{
-        config::GLOBAL_CONFIG,
-        domain::repositories::download::DownloadRepositoryImpl,
-        utils::{decode_cursor, encode_cursor},
+        config::GLOBAL_CONFIG, domain::repositories::download::DownloadRepositoryImpl,
     },
 };
 use async_graphql::{
@@ -82,27 +80,23 @@ impl DownloadRoot {
         before: Option<String>,
         first: Option<i32>,
         last: Option<i32>,
-    ) -> Result<Connection<String, Chapter, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<Cursor, Chapter, EmptyFields, EmptyFields>> {
         let download_svc = ctx.data::<DownloadService<DownloadRepositoryImpl>>()?;
         query(
             after,
             before,
             first,
             last,
-            |after, before, first, last| async move {
-                let (after_timestamp, after_id) = after
-                    .and_then(|cursor: String| decode_cursor(&cursor).ok())
-                    .unwrap_or((Local::now().naive_local().timestamp(), 1));
-                let (before_timestamp, before_id) = before
-                    .and_then(|cursor: String| decode_cursor(&cursor).ok())
-                    .unwrap_or((0, 0));
+            |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
+                let after_cursor = after.unwrap_or(Cursor(Local::now().timestamp(), 1));
+                let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = download_svc
                     .get_downloaded_chapters(
-                        after_timestamp,
-                        after_id,
-                        before_timestamp,
-                        before_id,
+                        after_cursor.0,
+                        after_cursor.1,
+                        before_cursor.0,
+                        before_cursor.1,
                         first,
                         last,
                     )
@@ -144,7 +138,7 @@ impl DownloadRoot {
                 let mut connection = Connection::new(has_previous_page, has_next_page);
                 connection.append(edges.into_iter().map(|e| {
                     Edge::new(
-                        encode_cursor(e.uploaded.timestamp(), e.id),
+                        Cursor(e.uploaded.timestamp(), e.id),
                         Chapter {
                             id: e.id,
                             source_id: e.source_id,

@@ -6,10 +6,12 @@ use crate::infrastructure::domain::repositories::{
 };
 
 use super::{
-    catalogue::{CatalogueRoot, SourceMutationRoot, SourceRoot},
+    catalogue::CatalogueRoot,
+    categories::{CategoryMutationRoot, CategoryRoot},
     downloads::{DownloadMutationRoot, DownloadRoot},
-    library::{CategoryMutationRoot, CategoryRoot, LibraryMutationRoot, LibraryRoot},
+    library::{LibraryMutationRoot, LibraryRoot},
     notification::NotificationRoot,
+    source::{SourceMutationRoot, SourceRoot},
     status::StatusRoot,
     tracking::{TrackingMutationRoot, TrackingRoot},
     user::{UserMutationRoot, UserRoot},

@@ -1,6 +1,8 @@
 use super::{
-    super::loader::{MangaId, UserHistoryId},
-    Manga, Source,
+    common::ReadProgress,
+    loader::{MangaId, UserHistoryId},
+    manga::Manga,
+    source::Source,
 };
 use crate::{
     domain::services::{chapter::ChapterService, image::ImageService, source::SourceService},
@@ -14,16 +16,9 @@ use crate::{
     },
     presentation::graphql::schema::DatabaseLoader,
 };
-use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
+use async_graphql::{dataloader::DataLoader, Context, Object, Result};
 use chrono::NaiveDateTime;
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
-
-#[derive(Debug, Clone, SimpleObject)]
-pub struct ReadProgress {
-    pub at: NaiveDateTime,
-    pub last_page: i64,
-    pub is_complete: bool,
-}
 
 /// A type represent chapter, normalized across source
 #[derive(Debug, Clone)]

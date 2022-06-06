@@ -4,4 +4,3 @@ pub mod database;
 pub mod domain;
 pub mod local;
 pub mod notification;
-pub mod utils;

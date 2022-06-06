@@ -1,10 +1,16 @@
 pub mod catalogue;
+pub mod categories;
+pub mod chapter;
+pub mod common;
 pub mod downloads;
 pub mod guard;
 pub mod library;
 pub mod loader;
+pub mod manga;
 pub mod notification;
+pub mod recent;
 pub mod schema;
+pub mod source;
 pub mod status;
 pub mod tracking;
 pub mod user;

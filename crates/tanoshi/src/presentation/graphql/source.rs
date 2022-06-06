@@ -1,4 +1,4 @@
-use super::super::guard::AdminGuard;
+use super::{common::InputList, guard::AdminGuard};
 use crate::{
     domain::services::source::SourceService,
     infrastructure::{
@@ -8,8 +8,6 @@ use crate::{
 use async_graphql::{Context, Object, Result};
 use serde::Deserialize;
 use tanoshi_vm::extension::SourceBus;
-
-use super::InputList;
 
 #[derive(Clone, Deserialize)]
 pub struct Source {

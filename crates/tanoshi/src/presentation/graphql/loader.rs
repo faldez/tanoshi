@@ -1,4 +1,4 @@
-use super::catalogue::{chapter::ReadProgress, Manga};
+use super::{common::ReadProgress, manga::Manga};
 use crate::domain::repositories::{
     history::HistoryRepository, library::LibraryRepository, manga::MangaRepository,
     tracker::TrackerRepository,

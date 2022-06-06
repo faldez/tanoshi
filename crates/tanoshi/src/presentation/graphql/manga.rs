@@ -1,8 +1,9 @@
 use super::{
-    super::loader::{
+    chapter::Chapter,
+    loader::{
         UserFavoriteId, UserFavoritePath, UserLastReadId, UserTrackerMangaId, UserUnreadChaptersId,
     },
-    Chapter, Source,
+    source::Source,
 };
 use crate::{
     domain::services::{

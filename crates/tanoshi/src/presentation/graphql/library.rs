@@ -1,4 +1,8 @@
-use super::catalogue::Manga;
+use super::{
+    common::Cursor,
+    manga::Manga,
+    recent::{RecentChapter, RecentUpdate},
+};
 use crate::{
     domain::services::{
         chapter::ChapterService, history::HistoryService, library::LibraryService,
@@ -10,7 +14,6 @@ use crate::{
             chapter::ChapterRepositoryImpl, history::HistoryRepositoryImpl,
             library::LibraryRepositoryImpl, tracker::TrackerRepositoryImpl,
         },
-        utils::{decode_cursor, encode_cursor},
     },
 };
 use async_graphql::{
@@ -18,15 +21,9 @@ use async_graphql::{
     Error,
 };
 use async_graphql::{Context, Object, Result};
-use chrono::{Local, NaiveDateTime};
-// use tanoshi_tracker::{anilist, myanimelist, AniList, MyAnimeList, Tracker};
+use chrono::Local;
 
-mod categories;
-pub use categories::{Category, CategoryMutationRoot, CategoryRoot};
-
-mod recent;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-pub use recent::{RecentChapter, RecentUpdate};
 
 #[derive(Default)]
 pub struct LibraryRoot;
@@ -61,7 +58,7 @@ impl LibraryRoot {
         before: Option<String>,
         first: Option<i32>,
         last: Option<i32>,
-    ) -> Result<Connection<String, RecentUpdate, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<Cursor, RecentUpdate, EmptyFields, EmptyFields>> {
         let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
@@ -73,21 +70,17 @@ impl LibraryRoot {
             before,
             first,
             last,
-            |after, before, first, last| async move {
-                let (after_timestamp, after_id) = after
-                    .and_then(|cursor: String| decode_cursor(&cursor).ok())
-                    .unwrap_or((Local::now().timestamp(), 1));
-                let (before_timestamp, before_id) = before
-                    .and_then(|cursor: String| decode_cursor(&cursor).ok())
-                    .unwrap_or((0, 0));
+            |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
+                let after_cursor = after.unwrap_or(Cursor(Local::now().timestamp(), 1));
+                let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = library_svc
                     .get_library_recent_updates(
                         claims.sub,
-                        after_timestamp,
-                        after_id,
-                        before_timestamp,
-                        before_id,
+                        after_cursor.0,
+                        after_cursor.1,
+                        before_cursor.0,
+                        before_cursor.1,
                         first,
                         last,
                     )
@@ -128,12 +121,11 @@ impl LibraryRoot {
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
-                connection.append(edges.into_iter().map(|e| {
-                    Edge::new(
-                        encode_cursor(e.uploaded.timestamp(), e.chapter_id),
-                        e.into(),
-                    )
-                }));
+                connection.append(
+                    edges
+                        .into_iter()
+                        .map(|e| Edge::new(Cursor(e.uploaded.timestamp(), e.chapter_id), e.into())),
+                );
 
                 Ok::<_, Error>(connection)
             },
@@ -148,7 +140,7 @@ impl LibraryRoot {
         before: Option<String>,
         first: Option<i32>,
         last: Option<i32>,
-    ) -> Result<Connection<String, RecentChapter, EmptyFields, EmptyFields>> {
+    ) -> Result<Connection<Cursor, RecentChapter, EmptyFields, EmptyFields>> {
         let claims = ctx
             .data::<Claims>()
             .map_err(|_| "token not exists, please login")?;
@@ -161,22 +153,12 @@ impl LibraryRoot {
             before,
             first,
             last,
-            |after, before, first, last| async move {
-                let (after_timestamp, _after_id) = after
-                    .and_then(|cursor: String| decode_cursor(&cursor).ok())
-                    .unwrap_or((Local::now().timestamp(), 1));
-                let (before_timestamp, _before_id) = before
-                    .and_then(|cursor: String| decode_cursor(&cursor).ok())
-                    .unwrap_or((NaiveDateTime::from_timestamp(0, 0).timestamp(), 0));
+            |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
+                let after_cursor = after.unwrap_or(Cursor(Local::now().timestamp(), 1));
+                let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = history_svc
-                    .get_history_chapters(
-                        claims.sub,
-                        after_timestamp,
-                        before_timestamp,
-                        first,
-                        last,
-                    )
+                    .get_history_chapters(claims.sub, after_cursor.0, before_cursor.0, first, last)
                     .await?;
 
                 let mut has_previous_page = false;
@@ -204,9 +186,11 @@ impl LibraryRoot {
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
-                connection.append(edges.into_iter().map(|e| {
-                    Edge::new(encode_cursor(e.read_at.timestamp(), e.manga_id), e.into())
-                }));
+                connection.append(
+                    edges
+                        .into_iter()
+                        .map(|e| Edge::new(Cursor(e.read_at.timestamp(), e.manga_id), e.into())),
+                );
 
                 Ok::<_, Error>(connection)
             },

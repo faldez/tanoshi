@@ -1,13 +1,4 @@
-mod source;
-use super::guard::AdminGuard;
-
-pub use source::{Source, SourceMutationRoot, SourceRoot};
-
-pub mod manga;
-pub use manga::Manga;
-
-pub mod chapter;
-pub use chapter::Chapter;
+use super::{chapter::Chapter, common::InputList, guard::AdminGuard, manga::Manga};
 
 use crate::{
     domain::services::{chapter::ChapterService, manga::MangaService},
@@ -16,16 +7,8 @@ use crate::{
     },
 };
 
-use async_graphql::{scalar, Context, Object, Result};
+use async_graphql::{Context, Object, Result};
 use rayon::prelude::*;
-use tanoshi_lib::models::Input;
-
-use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize, Serialize)]
-pub struct InputList(Vec<Input>);
-
-scalar!(InputList);
 
 #[derive(Default)]
 pub struct CatalogueRoot;
