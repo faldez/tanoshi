@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - [tanoshi] major refactor to clean arch
+- [tanoshi] update async-graphql and axum
 - [tanoshi-web] change edit chapter action icon
 
 ## Added

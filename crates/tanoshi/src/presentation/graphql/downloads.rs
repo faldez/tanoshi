@@ -136,7 +136,7 @@ impl DownloadRoot {
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
-                connection.append(edges.into_iter().map(|e| {
+                connection.edges.extend(edges.into_iter().map(|e| {
                     Edge::new(
                         Cursor(e.uploaded.timestamp(), e.id),
                         Chapter {

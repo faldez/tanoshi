@@ -264,8 +264,7 @@ impl Server {
             CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any)
-                .allow_headers(Any)
-                .allow_credentials(true),
+                .allow_headers(Any),
         );
 
         #[cfg(feature = "embed")]
