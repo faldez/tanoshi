@@ -60,6 +60,8 @@ pub struct Config {
     pub port: u16,
     #[serde(default = "default_database_path")]
     pub database_path: String,
+    #[serde(default = "default_create_database")]
+    pub create_database: bool,
     #[serde(default = "default_secret")]
     pub secret: String,
     #[serde(default = "default_update_interval")]
@@ -91,6 +93,7 @@ impl Default for Config {
             base_url: None,
             port: default_port(),
             database_path: default_database_path(),
+            create_database: default_create_database(),
             secret: default_secret(),
             update_interval: default_update_interval(),
             auto_download_chapters: false,
@@ -142,6 +145,10 @@ fn default_database_path() -> String {
         let _ = std::fs::create_dir_all(&path);
     }
     path.join("tanoshi.db").display().to_string()
+}
+
+fn default_create_database() -> bool {
+    true
 }
 
 fn default_plugin_path() -> String {

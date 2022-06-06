@@ -56,7 +56,8 @@ async fn main() -> Result<(), anyhow::Error> {
 
     debug!("config: {:?}", config);
 
-    let pool = database::establish_connection(&config.database_path).await?;
+    let pool =
+        database::establish_connection(&config.database_path, config.create_database).await?;
 
     let user_repo = UserRepositoryImpl::new(pool.clone());
     let user_svc = UserService::new(user_repo.clone());

@@ -55,7 +55,7 @@ impl<R: Runtime> Plugin<R> for Server {
     tauri::async_runtime::spawn(async move {
       let config = GLOBAL_CONFIG.get().unwrap();
 
-      let pool = match database::establish_connection(&config.database_path).await {
+      let pool = match database::establish_connection(&config.database_path, true).await {
         Ok(pool) => pool,
         Err(_) => {
           return;

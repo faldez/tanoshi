@@ -25,9 +25,12 @@ impl DerefMut for Pool {
     }
 }
 
-pub async fn establish_connection(database_path: &str) -> Result<Pool, anyhow::Error> {
+pub async fn establish_connection(
+    database_path: &str,
+    create: bool,
+) -> Result<Pool, anyhow::Error> {
     let opts = SqliteConnectOptions::new()
-        .create_if_missing(true)
+        .create_if_missing(create)
         .filename(database_path);
 
     let pool = SqlitePoolOptions::new()
