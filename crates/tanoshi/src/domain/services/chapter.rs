@@ -32,15 +32,18 @@ where
     R: ChapterRepository,
 {
     repo: R,
-    sources: ExtensionManager,
+    extension_manager: ExtensionManager,
 }
 
 impl<R> ChapterService<R>
 where
     R: ChapterRepository,
 {
-    pub fn new(repo: R, sources: ExtensionManager) -> Self {
-        Self { repo, sources }
+    pub fn new(repo: R, extension_manager: ExtensionManager) -> Self {
+        Self {
+            repo,
+            extension_manager,
+        }
     }
 
     pub async fn fetch_chapter_by_id(&self, id: i64) -> Result<Chapter, ChapterError> {
@@ -60,14 +63,11 @@ where
             .repo
             .get_chapters_by_manga_id(manga_id, None, None, false)
             .await
-            .unwrap_or_default()
-            .into_par_iter()
-            .map(|c| c.into())
-            .collect::<Vec<Chapter>>();
+            .unwrap_or_default();
 
         if refresh || chapters.is_empty() {
             let source_chapters: Vec<Chapter> = self
-                .sources
+                .extension_manager
                 .get_chapters(source_id, path.to_string())
                 .await?
                 .into_par_iter()
@@ -86,10 +86,7 @@ where
                 .repo
                 .get_chapters_by_manga_id(manga_id, None, None, false)
                 .await
-                .unwrap_or_default()
-                .into_par_iter()
-                .map(|c| c.into())
-                .collect::<Vec<Chapter>>();
+                .unwrap_or_default();
         }
 
         Ok(chapters)
@@ -109,7 +106,9 @@ where
             })
             .await??
         } else {
-            self.sources.get_pages(source_id, path.to_string()).await?
+            self.extension_manager
+                .get_pages(source_id, path.to_string())
+                .await?
         };
 
         Ok(pages)

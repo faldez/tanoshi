@@ -42,6 +42,7 @@ use crate::{
 };
 use tanoshi_vm::extension::ExtensionManager;
 
+#[derive(Default)]
 pub struct ServerBuilder {
     config: Option<Config>,
     user_svc: Option<UserService<UserRepositoryImpl>>,
@@ -62,23 +63,7 @@ pub struct ServerBuilder {
 
 impl ServerBuilder {
     pub fn new() -> Self {
-        Self {
-            config: None,
-            user_svc: None,
-            tracker_svc: None,
-            source_svc: None,
-            manga_svc: None,
-            chapter_svc: None,
-            image_svc: None,
-            library_svc: None,
-            history_svc: None,
-            download_svc: None,
-            ext_manager: None,
-            download_tx: None,
-            notifier: None,
-            loader: None,
-            enable_playground: false,
-        }
+        Self::default()
     }
 
     pub fn with_config(self, config: Config) -> Self {

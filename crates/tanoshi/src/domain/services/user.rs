@@ -16,18 +16,10 @@ pub enum UserError {
     Forbidden,
     #[error("insufficient password length")]
     InsufficientPasswordLength,
+    #[error("repository error: {0}")]
+    RepositoryError(#[from] UserRepositoryError),
     #[error("other: {0}")]
     Other(String),
-}
-
-impl From<UserRepositoryError> for UserError {
-    fn from(e: UserRepositoryError) -> Self {
-        match e {
-            UserRepositoryError::NotFound => Self::Other(format!("db error: row not found")),
-            UserRepositoryError::DbError(e) => Self::Other(format!("db error: {e}")),
-            UserRepositoryError::Other(e) => Self::Other(format!("other error: {e}")),
-        }
-    }
 }
 
 #[derive(Clone)]

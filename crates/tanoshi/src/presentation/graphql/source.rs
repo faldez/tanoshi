@@ -31,7 +31,7 @@ impl From<crate::domain::entities::source::Source> for Source {
             version: s.version.to_string(),
             rustc_version: "".to_string(),
             lib_version: "".to_string(),
-            icon: s.icon.to_string(),
+            icon: s.icon,
             has_update: false,
         }
     }
@@ -108,7 +108,7 @@ impl SourceRoot {
 
         let sources = ctx
             .data::<SourceService<SourceRepositoryImpl>>()?
-            .get_available_sources(&repo_url)
+            .get_available_sources(repo_url)
             .await?
             .into_iter()
             .map(Source::from)
@@ -144,7 +144,7 @@ impl SourceMutationRoot {
         let repo_url = &ctx.data::<Config>()?.extension_repository;
 
         ctx.data::<SourceService<SourceRepositoryImpl>>()?
-            .install_source(&repo_url, source_id)
+            .install_source(repo_url, source_id)
             .await?;
 
         Ok(source_id)
@@ -164,7 +164,7 @@ impl SourceMutationRoot {
         let repo_url = &ctx.data::<Config>()?.extension_repository;
 
         ctx.data::<SourceService<SourceRepositoryImpl>>()?
-            .update_source(&repo_url, source_id)
+            .update_source(repo_url, source_id)
             .await?;
 
         Ok(source_id)

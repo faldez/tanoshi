@@ -27,7 +27,7 @@ impl Notifier for Telegram {
     async fn send_notification(&self, user_key: &str, message: &str) -> Result<(), anyhow::Error> {
         let chat_id = user_key.parse()?;
 
-        self.send_message(chat_id, &message).await?;
+        self.send_message(chat_id, message).await?;
 
         Ok(())
     }

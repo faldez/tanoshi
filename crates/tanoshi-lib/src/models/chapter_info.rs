@@ -1,5 +1,3 @@
-#[cfg(feature = "js")]
-use rquickjs::{FromJs, IntoJs};
 use serde::{Deserialize, Serialize};
 /// A type represent chapter, normalized across source
 ///

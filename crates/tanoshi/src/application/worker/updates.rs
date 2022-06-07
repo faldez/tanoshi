@@ -116,8 +116,7 @@ where
 
             self.chapter_repo.insert_chapters(&chapters).await?;
 
-            let chapter_paths: Vec<String> =
-                chapters.into_par_iter().map(|c| c.path.clone()).collect();
+            let chapter_paths: Vec<String> = chapters.into_par_iter().map(|c| c.path).collect();
 
             if !chapter_paths.is_empty() {
                 let chapters_to_delete: Vec<i64> = self

@@ -42,7 +42,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         let session = self
             .clients
             .get(tracker)
-            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .ok_or(TrackerRepositoryError::NoTracker)?
             .get_authorize_url()
             .map_err(|e| TrackerRepositoryError::Other(anyhow::anyhow!("{e}")))?;
 
@@ -60,7 +60,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         let token = self
             .clients
             .get(tracker)
-            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .ok_or(TrackerRepositoryError::NoTracker)?
             .exchange_code(code, state, csrf_state, pkce_code_verifier)
             .await
             .map_err(|e| TrackerRepositoryError::Other(anyhow::anyhow!("{e}")))?;
@@ -81,7 +81,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         match self
             .clients
             .get(tracker)
-            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .ok_or(TrackerRepositoryError::NoTracker)?
             .refresh_token(refresh_token.to_string())
             .await
         {
@@ -174,7 +174,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         match self
             .clients
             .get(tracker)
-            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .ok_or(TrackerRepositoryError::NoTracker)?
             .search_manga(token.access_token.clone(), title.to_string())
             .await
         {
@@ -256,7 +256,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         match self
             .clients
             .get(tracker)
-            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .ok_or(TrackerRepositoryError::NoTracker)?
             .get_manga_details(token.to_string(), tracker_manga_id)
             .await
         {
@@ -280,7 +280,7 @@ impl TrackerRepository for TrackerRepositoryImpl {
         match self
             .clients
             .get(tracker)
-            .ok_or_else(|| TrackerRepositoryError::NoTracker)?
+            .ok_or(TrackerRepositoryError::NoTracker)?
             .update_tracker_status(
                 token.to_string(),
                 tracker_manga_id,

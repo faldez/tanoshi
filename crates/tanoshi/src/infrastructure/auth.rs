@@ -12,7 +12,7 @@ pub struct Claims {
 
 pub fn decode_jwt(secret: &str, token: &str) -> Result<Claims> {
     Ok(jsonwebtoken::decode::<Claims>(
-        &token,
+        token,
         &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
     )?

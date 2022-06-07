@@ -53,8 +53,8 @@ pub type DatabaseLoader = crate::presentation::graphql::loader::DatabaseLoader<
 
 pub struct SchemaBuilder(async_graphql::SchemaBuilder<QueryRoot, MutationRoot, EmptySubscription>);
 
-impl SchemaBuilder {
-    pub fn new() -> Self {
+impl Default for SchemaBuilder {
+    fn default() -> Self {
         let builder = Schema::build(
             QueryRoot::default(),
             MutationRoot::default(),
@@ -62,6 +62,12 @@ impl SchemaBuilder {
         );
 
         Self(builder)
+    }
+}
+
+impl SchemaBuilder {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn loader(self, loader: DatabaseLoader) -> Self {

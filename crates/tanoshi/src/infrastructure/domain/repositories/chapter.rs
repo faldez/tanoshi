@@ -191,10 +191,10 @@ impl ChapterRepository for ChapterRepositoryImpl {
         &self,
         chapter_ids: &[i64],
     ) -> Result<(), ChapterRepositoryError> {
-        if chapter_ids.len() < 1 {
-            return Err(ChapterRepositoryError::BadArgsError(format!(
-                "chapter_ids should at least be 1"
-            )));
+        if chapter_ids.is_empty() {
+            return Err(ChapterRepositoryError::BadArgsError(
+                "chapter_ids should at least be 1".to_string(),
+            ));
         }
 
         let query_str = format!(
@@ -219,10 +219,10 @@ impl ChapterRepository for ChapterRepositoryImpl {
         manga_id: i64,
         paths: &[String],
     ) -> Result<Vec<Chapter>, ChapterRepositoryError> {
-        if paths.len() < 1 {
-            return Err(ChapterRepositoryError::BadArgsError(format!(
-                "paths should at least be 1"
-            )));
+        if paths.is_empty() {
+            return Err(ChapterRepositoryError::BadArgsError(
+                "paths should at least be 1".to_string(),
+            ));
         }
 
         let query_str = format!(

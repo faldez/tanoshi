@@ -17,12 +17,11 @@ pub struct StatusRoot;
 #[Object]
 impl StatusRoot {
     async fn server_status(&self, ctx: &Context<'_>) -> Result<Status> {
-        let activated = ctx
+        let activated = !ctx
             .data::<UserService<UserRepositoryImpl>>()?
             .fetch_all_users()
             .await?
-            .len()
-            > 0;
+            .is_empty();
         let version = env!("CARGO_PKG_VERSION").to_string();
 
         Ok(Status { activated, version })

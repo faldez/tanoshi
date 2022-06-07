@@ -192,7 +192,7 @@ impl LibraryRepository for LibraryRepositoryImpl {
                 date_added: row.get(9),
                 last_uploaded_at: row.get(10),
             })
-            .map_err(|e| LibraryRepositoryError::DbError(e))
+            .map_err(LibraryRepositoryError::DbError)
         })
         .boxed();
 

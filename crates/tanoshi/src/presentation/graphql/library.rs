@@ -71,7 +71,7 @@ impl LibraryRoot {
             first,
             last,
             |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
-                let after_cursor = after.unwrap_or(Cursor(Local::now().timestamp(), 1));
+                let after_cursor = after.unwrap_or_else(|| Cursor(Local::now().timestamp(), 1));
                 let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = library_svc
@@ -88,7 +88,7 @@ impl LibraryRoot {
 
                 let mut has_previous_page = false;
                 if let Some(e) = edges.first() {
-                    has_previous_page = library_svc
+                    has_previous_page = !library_svc
                         .get_library_recent_updates(
                             claims.sub,
                             Local::now().timestamp(),
@@ -99,13 +99,12 @@ impl LibraryRoot {
                             Some(1),
                         )
                         .await?
-                        .len()
-                        > 0;
+                        .is_empty();
                 }
 
                 let mut has_next_page = false;
                 if let Some(e) = edges.last() {
-                    has_next_page = library_svc
+                    has_next_page = !library_svc
                         .get_library_recent_updates(
                             claims.sub,
                             e.uploaded.timestamp(),
@@ -116,8 +115,7 @@ impl LibraryRoot {
                             None,
                         )
                         .await?
-                        .len()
-                        > 0;
+                        .is_empty();
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);
@@ -154,7 +152,7 @@ impl LibraryRoot {
             first,
             last,
             |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
-                let after_cursor = after.unwrap_or(Cursor(Local::now().timestamp(), 1));
+                let after_cursor = after.unwrap_or_else(|| Cursor(Local::now().timestamp(), 1));
                 let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = history_svc
@@ -163,7 +161,7 @@ impl LibraryRoot {
 
                 let mut has_previous_page = false;
                 if let Some(e) = edges.first() {
-                    has_previous_page = history_svc
+                    has_previous_page = !history_svc
                         .get_history_chapters(
                             claims.sub,
                             Local::now().timestamp(),
@@ -178,11 +176,10 @@ impl LibraryRoot {
 
                 let mut has_next_page = false;
                 if let Some(e) = edges.last() {
-                    has_next_page = history_svc
+                    has_next_page = !history_svc
                         .get_history_chapters(claims.sub, e.read_at.timestamp(), 0, Some(1), None)
                         .await?
-                        .len()
-                        > 0;
+                        .is_empty();
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);

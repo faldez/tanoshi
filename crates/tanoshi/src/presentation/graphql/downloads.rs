@@ -83,7 +83,7 @@ impl DownloadRoot {
             first,
             last,
             |after: Option<Cursor>, before: Option<Cursor>, first, last| async move {
-                let after_cursor = after.unwrap_or(Cursor(Local::now().timestamp(), 1));
+                let after_cursor = after.unwrap_or_else(|| Cursor(Local::now().timestamp(), 1));
                 let before_cursor = before.unwrap_or(Cursor(0, 0));
 
                 let edges = download_svc
@@ -100,7 +100,7 @@ impl DownloadRoot {
 
                 let mut has_previous_page = false;
                 if let Some(e) = edges.first() {
-                    has_previous_page = download_svc
+                    has_previous_page = !download_svc
                         .get_downloaded_chapters(
                             Local::now().naive_local().timestamp(),
                             1,
@@ -110,13 +110,12 @@ impl DownloadRoot {
                             Some(1),
                         )
                         .await?
-                        .len()
-                        > 0;
+                        .is_empty();
                 }
 
                 let mut has_next_page = false;
                 if let Some(e) = edges.last() {
-                    has_next_page = download_svc
+                    has_next_page = !download_svc
                         .get_downloaded_chapters(
                             e.date_added.timestamp(),
                             e.id,
@@ -126,8 +125,7 @@ impl DownloadRoot {
                             None,
                         )
                         .await?
-                        .len()
-                        > 0;
+                        .is_empty();
                 }
 
                 let mut connection = Connection::new(has_previous_page, has_next_page);

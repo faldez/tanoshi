@@ -23,12 +23,14 @@ pub struct SourceDto {
 
 #[derive(Clone)]
 pub struct SourceRepositoryImpl {
-    ext: ExtensionManager,
+    extension_manager: ExtensionManager,
 }
 
 impl SourceRepositoryImpl {
     pub fn new(ext: ExtensionManager) -> Self {
-        Self { ext }
+        Self {
+            extension_manager: ext,
+        }
     }
 }
 
@@ -36,7 +38,7 @@ impl SourceRepositoryImpl {
 impl SourceRepository for SourceRepositoryImpl {
     async fn installed_sources(&self) -> Result<Vec<Source>, SourceRepositoryError> {
         let mut sources = self
-            .ext
+            .extension_manager
             .list()
             .await?
             .into_iter()
@@ -59,7 +61,7 @@ impl SourceRepository for SourceRepositoryImpl {
 
         let mut sources: Vec<Source> = vec![];
         for index in source_indexes {
-            if !self.ext.exists(index.id).await? {
+            if !self.extension_manager.exists(index.id).await? {
                 sources.push(Source {
                     id: index.id,
                     name: index.name,
@@ -76,12 +78,12 @@ impl SourceRepository for SourceRepositoryImpl {
     }
 
     async fn get_source_by_id(&self, id: i64) -> Result<Source, SourceRepositoryError> {
-        let source = self.ext.get_source_info(id)?;
+        let source = self.extension_manager.get_source_info(id)?;
         Ok(source.into())
     }
 
     async fn install_source(&self, repo_url: &str, id: i64) -> Result<(), SourceRepositoryError> {
-        if self.ext.exists(id).await? {
+        if self.extension_manager.exists(id).await? {
             return Err(SourceRepositoryError::Other(
                 "source installed, use updateSource to update".to_string(),
             ));
@@ -95,8 +97,7 @@ impl SourceRepository for SourceRepositoryImpl {
         let source = source_indexes
             .iter()
             .find(|index| index.id == id)
-            .ok_or_else(|| SourceRepositoryError::NotFound)?
-            .clone();
+            .ok_or(SourceRepositoryError::NotFound)?;
 
         if source.rustc_version != tanoshi_lib::RUSTC_VERSION
             || source.lib_version != tanoshi_lib::LIB_VERSION
@@ -106,13 +107,15 @@ impl SourceRepository for SourceRepositoryImpl {
             ));
         }
 
-        self.ext.install(repo_url, &source.name).await?;
+        self.extension_manager
+            .install(repo_url, &source.name)
+            .await?;
 
         Ok(())
     }
 
     async fn update_source(&self, repo_url: &str, id: i64) -> Result<(), SourceRepositoryError> {
-        let installed_source = self.ext.get_source_info(id)?;
+        let installed_source = self.extension_manager.get_source_info(id)?;
 
         let source_indexes: Vec<SourceDto> = reqwest::get(format!("{repo_url}/index.json"))
             .await?
@@ -121,8 +124,7 @@ impl SourceRepository for SourceRepositoryImpl {
         let source = source_indexes
             .iter()
             .find(|index| index.id == id)
-            .ok_or_else(|| SourceRepositoryError::NotFound)?
-            .clone();
+            .ok_or(SourceRepositoryError::NotFound)?;
 
         if Version::from_str(installed_source.version)? == Version::from_str(&source.version)? {
             return Err(SourceRepositoryError::Other("No new version".to_string()));
@@ -136,14 +138,16 @@ impl SourceRepository for SourceRepositoryImpl {
             ));
         }
 
-        self.ext.remove(id).await?;
-        self.ext.install(repo_url, &source.name).await?;
+        self.extension_manager.remove(id).await?;
+        self.extension_manager
+            .install(repo_url, &source.name)
+            .await?;
 
         Ok(())
     }
 
     async fn uninstall_source(&self, id: i64) -> Result<(), SourceRepositoryError> {
-        self.ext.remove(id).await?;
+        self.extension_manager.remove(id).await?;
 
         Ok(())
     }

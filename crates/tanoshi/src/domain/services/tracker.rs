@@ -9,19 +9,10 @@ use crate::domain::{
 
 #[derive(Debug, Error)]
 pub enum TrackerError {
-    #[error("other: {0}")]
+    #[error("repository error: {0}")]
+    RepositoryError(#[from] TrackerRepositoryError),
+    #[error("other error: {0}")]
     Other(String),
-}
-
-impl From<TrackerRepositoryError> for TrackerError {
-    fn from(e: TrackerRepositoryError) -> Self {
-        match e {
-            TrackerRepositoryError::NoTracker => Self::Other(format!("tracker not available")),
-            TrackerRepositoryError::Unauthorized => Self::Other(format!("unauthorized error")),
-            TrackerRepositoryError::DbError(e) => Self::Other(format!("db error: {e}")),
-            TrackerRepositoryError::Other(e) => Self::Other(format!("db error: {e}")),
-        }
-    }
 }
 
 pub struct TrackerService<R>
@@ -246,9 +237,9 @@ where
             }
         }
 
-        Err(TrackerError::Other(format!(
-            "failed to update manga tracking"
-        )))
+        Err(TrackerError::Other(
+            "failed to update manga tracking".to_string(),
+        ))
     }
 
     pub async fn track_manga(

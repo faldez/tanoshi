@@ -9,16 +9,14 @@ use crate::domain::{
     repositories::image::{ImageRepository, ImageRepositoryError},
 };
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct ImageRepositoryImpl {
     client: reqwest::Client,
 }
 
 impl ImageRepositoryImpl {
     pub fn new() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-        }
+        Self::default()
     }
 }
 
