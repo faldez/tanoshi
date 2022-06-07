@@ -618,9 +618,9 @@ pub async fn update_profile(
 ) -> Result<(), Box<dyn Error>> {
     let var = update_profile::Variables {
         input: update_profile::ProfileInput {
-            telegramChatId: telegram_chat_id,
-            pushoverUserKey: pushover_user_key,
-            gotifyToken: gotify_token,
+            telegram_chat_id,
+            pushover_user_key,
+            gotify_token,
         },
     };
     let _ = post_graphql::<UpdateProfile>(var).await?;
@@ -1065,9 +1065,9 @@ pub async fn update_tracker_status(
         status: update_tracker_status::TrackerStatusInput {
             status,
             score,
-            numChaptersRead: num_chapters_read,
-            startDate: start_date,
-            finishDate: finish_date,
+            num_chapters_read,
+            start_date,
+            finish_date,
         },
     };
     let _ = post_graphql::<UpdateTrackerStatus>(var).await?;
