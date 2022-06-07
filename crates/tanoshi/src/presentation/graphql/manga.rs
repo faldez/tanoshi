@@ -98,7 +98,7 @@ impl From<crate::domain::entities::manga::Manga> for Manga {
     }
 }
 
-#[Object]
+#[Object(cache_control(max_age = 60, private))]
 impl Manga {
     async fn id(&self) -> i64 {
         self.id

@@ -28,7 +28,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 #[derive(Default)]
 pub struct LibraryRoot;
 
-#[Object]
+#[Object(cache_control(max_age = 30, private))]
 impl LibraryRoot {
     async fn library(
         &self,
