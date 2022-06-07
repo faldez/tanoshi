@@ -27,7 +27,7 @@ use tanoshi::{
 };
 use tanoshi_notifier::{gotify::Gotify, pushover::Pushover, telegram::Telegram};
 use tanoshi_tracker::{AniList, MyAnimeList};
-use tanoshi_vm::{extension::SourceBus, prelude::Source};
+use tanoshi_vm::{extension::ExtensionManager, prelude::Source};
 
 #[derive(Parser)]
 struct Opts {
@@ -61,7 +61,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let user_repo = UserRepositoryImpl::new(pool.clone());
     let user_svc = UserService::new(user_repo.clone());
 
-    let extension_manager = SourceBus::new(&config.plugin_path);
+    let extension_manager = ExtensionManager::new(&config.plugin_path);
 
     extension_manager.load_all().await?;
 

@@ -7,7 +7,7 @@ use crate::{
 };
 use async_graphql::{Context, Object, Result};
 use serde::Deserialize;
-use tanoshi_vm::extension::SourceBus;
+use tanoshi_vm::extension::ExtensionManager;
 
 #[derive(Clone, Deserialize)]
 pub struct Source {
@@ -64,13 +64,13 @@ impl Source {
     }
 
     async fn filters(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let filters = ctx.data::<SourceBus>()?.filter_list(self.id)?;
+        let filters = ctx.data::<ExtensionManager>()?.filter_list(self.id)?;
 
         Ok(InputList(filters))
     }
 
     async fn preferences(&self, ctx: &Context<'_>) -> Result<InputList> {
-        let preferences = ctx.data::<SourceBus>()?.get_preferences(self.id)?;
+        let preferences = ctx.data::<ExtensionManager>()?.get_preferences(self.id)?;
 
         Ok(InputList(preferences))
     }
@@ -137,7 +137,7 @@ pub struct SourceMutationRoot;
 impl SourceMutationRoot {
     #[graphql(guard = "AdminGuard::new()")]
     async fn install_source(&self, ctx: &Context<'_>, source_id: i64) -> Result<i64> {
-        if ctx.data::<SourceBus>()?.exists(source_id).await? {
+        if ctx.data::<ExtensionManager>()?.exists(source_id).await? {
             return Err("source installed, use updateSource to update".into());
         }
 
@@ -177,7 +177,7 @@ impl SourceMutationRoot {
         source_id: i64,
         preferences: InputList,
     ) -> Result<i64> {
-        ctx.data::<SourceBus>()?
+        ctx.data::<ExtensionManager>()?
             .set_preferences(source_id, preferences.0)
             .await?;
 

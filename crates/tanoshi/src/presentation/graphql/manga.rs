@@ -24,7 +24,7 @@ use crate::{
 use async_graphql::{dataloader::DataLoader, Context, Object, Result, SimpleObject};
 use chrono::NaiveDateTime;
 use rayon::prelude::*;
-use tanoshi_vm::extension::SourceBus;
+use tanoshi_vm::extension::ExtensionManager;
 
 #[derive(Debug, SimpleObject)]
 pub struct Tracker {
@@ -125,7 +125,9 @@ impl Manga {
     }
 
     async fn link(&self, ctx: &Context<'_>) -> Result<String> {
-        let detail = ctx.data::<SourceBus>()?.get_source_info(self.source_id)?;
+        let detail = ctx
+            .data::<ExtensionManager>()?
+            .get_source_info(self.source_id)?;
         Ok(format!("{}{}", detail.url, self.path))
     }
 

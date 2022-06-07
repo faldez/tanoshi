@@ -3,7 +3,7 @@ use std::str::FromStr;
 use async_trait::async_trait;
 use serde::Deserialize;
 use tanoshi_lib::prelude::Version;
-use tanoshi_vm::prelude::SourceBus;
+use tanoshi_vm::prelude::ExtensionManager;
 
 use crate::domain::{
     entities::source::Source,
@@ -23,11 +23,11 @@ pub struct SourceDto {
 
 #[derive(Clone)]
 pub struct SourceRepositoryImpl {
-    ext: SourceBus,
+    ext: ExtensionManager,
 }
 
 impl SourceRepositoryImpl {
-    pub fn new(ext: SourceBus) -> Self {
+    pub fn new(ext: ExtensionManager) -> Self {
         Self { ext }
     }
 }

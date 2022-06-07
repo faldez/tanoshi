@@ -14,7 +14,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use tanoshi_vm::extension::SourceBus;
+use tanoshi_vm::extension::ExtensionManager;
 use zip::{ZipArchive, ZipWriter};
 
 use tokio::{
@@ -43,7 +43,7 @@ where
     chapter_repo: C,
     manga_repo: M,
     download_repo: D,
-    ext: SourceBus,
+    ext: ExtensionManager,
     _notifier: Notification<UserRepositoryImpl>,
     tx: DownloadSender,
     rx: DownloadReceiver,
@@ -60,7 +60,7 @@ where
         chapter_repo: C,
         manga_repo: M,
         download_repo: D,
-        ext: SourceBus,
+        ext: ExtensionManager,
         notifier: Notification<UserRepositoryImpl>,
         download_sender: DownloadSender,
         download_receiver: DownloadReceiver,
@@ -311,7 +311,7 @@ pub fn start<C, D, M, P>(
     chapter_repo: C,
     manga_repo: M,
     download_repo: D,
-    ext: SourceBus,
+    ext: ExtensionManager,
     notifier: Notification<UserRepositoryImpl>,
     download_sender: DownloadSender,
     download_receiver: DownloadReceiver,

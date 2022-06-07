@@ -1,6 +1,6 @@
 // from https://github.com/tauri-apps/tauri-plugin-localhost
 
-use tanoshi_vm::prelude::{Source, SourceBus};
+use tanoshi_vm::prelude::{ExtensionManager, Source};
 use tauri::{
   plugin::{Plugin, Result as PluginResult},
   AppHandle, Runtime,
@@ -65,7 +65,7 @@ impl<R: Runtime> Plugin<R> for Server {
       let user_repo = UserRepositoryImpl::new(pool.clone());
       let user_svc = UserService::new(user_repo.clone());
 
-      let extension_manager = SourceBus::new(&config.plugin_path);
+      let extension_manager = ExtensionManager::new(&config.plugin_path);
 
       let _ = extension_manager.load_all().await;
 

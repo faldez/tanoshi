@@ -9,7 +9,7 @@ use crate::{
 };
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use tanoshi_vm::prelude::SourceBus;
+use tanoshi_vm::prelude::ExtensionManager;
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -32,14 +32,14 @@ where
     R: ChapterRepository,
 {
     repo: R,
-    sources: SourceBus,
+    sources: ExtensionManager,
 }
 
 impl<R> ChapterService<R>
 where
     R: ChapterRepository,
 {
-    pub fn new(repo: R, sources: SourceBus) -> Self {
+    pub fn new(repo: R, sources: ExtensionManager) -> Self {
         Self { repo, sources }
     }
 

@@ -11,12 +11,12 @@ use tanoshi_lib::prelude::{Input, PluginDeclaration, SourceInfo};
 use crate::{prelude::Source, PLUGIN_EXTENSION};
 
 #[derive(Clone)]
-pub struct SourceBus {
+pub struct ExtensionManager {
     dir: PathBuf,
     extensions: Arc<RwLock<FnvHashMap<i64, Source>>>,
 }
 
-impl SourceBus {
+impl ExtensionManager {
     pub fn new<P: AsRef<Path>>(extension_dir: P) -> Self {
         Self {
             dir: PathBuf::new().join(extension_dir),

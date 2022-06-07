@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use serde::Deserialize;
 
 use tanoshi_lib::prelude::Version;
-use tanoshi_vm::extension::SourceBus;
+use tanoshi_vm::extension::ExtensionManager;
 
 use crate::{
     application::worker::downloads::Command as DownloadCommand,
@@ -43,7 +43,7 @@ where
     client: reqwest::Client,
     library_repo: L,
     chapter_repo: C,
-    extensions: SourceBus,
+    extensions: ExtensionManager,
     auto_download_chapters: bool,
     download_tx: DownloadSender,
     notifier: Notification<UserRepositoryImpl>,
@@ -60,7 +60,7 @@ where
         period: u64,
         library_repo: L,
         chapter_repo: C,
-        extensions: SourceBus,
+        extensions: ExtensionManager,
         download_tx: DownloadSender,
         auto_download_chapters: bool,
         notifier: Notification<UserRepositoryImpl>,
@@ -349,7 +349,7 @@ pub fn start<C, L, P>(
     period: u64,
     library_repo: L,
     chapter_repo: C,
-    extensions: SourceBus,
+    extensions: ExtensionManager,
     download_tx: DownloadSender,
     auto_download_chapters: bool,
     notifier: Notification<UserRepositoryImpl>,

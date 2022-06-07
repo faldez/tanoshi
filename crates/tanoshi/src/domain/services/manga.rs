@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use tanoshi_vm::prelude::SourceBus;
+use tanoshi_vm::prelude::ExtensionManager;
 use thiserror::Error;
 
 use crate::domain::{
@@ -27,14 +27,14 @@ where
     R: MangaRepository,
 {
     repo: R,
-    sources: SourceBus,
+    sources: ExtensionManager,
 }
 
 impl<R> MangaService<R>
 where
     R: MangaRepository,
 {
-    pub fn new(repo: R, sources: SourceBus) -> Self {
+    pub fn new(repo: R, sources: ExtensionManager) -> Self {
         Self { repo, sources }
     }
 

@@ -1,5 +1,5 @@
 pub mod source;
 pub use source::*;
 
-pub mod bus;
-pub use bus::*;
+pub mod manager;
+pub use manager::*;

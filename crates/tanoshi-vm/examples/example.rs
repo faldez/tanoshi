@@ -1,5 +1,5 @@
 use tanoshi_lib::{models::Input, prelude::TriState};
-use tanoshi_vm::extension::bus::SourceBus;
+use tanoshi_vm::extension::manager::ExtensionManager;
 
 #[tokio::main]
 async fn main() {
@@ -10,7 +10,7 @@ async fn main() {
 
     let path = "C:\\Users\\fadhlika\\Repos\\tanoshi-extensions\\target\\debug";
 
-    let bus = SourceBus::new(path);
+    let bus = ExtensionManager::new(path);
     bus.load(source_name).await.unwrap();
 
     let (rustc_version, lib_version) = bus.get_version(source_id).unwrap();

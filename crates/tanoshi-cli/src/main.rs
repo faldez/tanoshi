@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use serde::Serialize;
 use tanoshi_lib::prelude::SourceInfo;
-use tanoshi_vm::{prelude::SourceBus, PLUGIN_EXTENSION};
+use tanoshi_vm::{prelude::ExtensionManager, PLUGIN_EXTENSION};
 
 const TARGET: &str = env!("TARGET");
 
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            let extension_manager = SourceBus::new(&target_dir_path);
+            let extension_manager = ExtensionManager::new(&target_dir_path);
             extension_manager.load_all().await?;
             let source_list = extension_manager.list().await?;
 

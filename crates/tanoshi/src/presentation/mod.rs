@@ -40,7 +40,7 @@ use crate::{
         notification::Notification,
     },
 };
-use tanoshi_vm::extension::SourceBus;
+use tanoshi_vm::extension::ExtensionManager;
 
 pub struct ServerBuilder {
     config: Option<Config>,
@@ -53,7 +53,7 @@ pub struct ServerBuilder {
     library_svc: Option<LibraryService<LibraryRepositoryImpl>>,
     history_svc: Option<HistoryService<ChapterRepositoryImpl, HistoryRepositoryImpl>>,
     download_svc: Option<DownloadService<DownloadRepositoryImpl>>,
-    ext_manager: Option<SourceBus>,
+    ext_manager: Option<ExtensionManager>,
     download_tx: Option<DownloadSender>,
     notifier: Option<Notification<UserRepositoryImpl>>,
     loader: Option<DatabaseLoader>,
@@ -157,7 +157,7 @@ impl ServerBuilder {
         }
     }
 
-    pub fn with_ext_manager(self, ext_manager: SourceBus) -> Self {
+    pub fn with_ext_manager(self, ext_manager: ExtensionManager) -> Self {
         Self {
             ext_manager: Some(ext_manager),
             ..self
