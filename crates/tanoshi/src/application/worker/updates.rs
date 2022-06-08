@@ -20,7 +20,10 @@ use crate::{
     },
     infrastructure::{domain::repositories::user::UserRepositoryImpl, notification::Notification},
 };
-use tokio::time::{self, Instant};
+use tokio::{
+    task::JoinHandle,
+    time::{self, Instant},
+};
 
 use super::downloads::DownloadSender;
 
@@ -90,9 +93,24 @@ where
     }
 
     async fn check_chapter_update(&self) -> Result<(), anyhow::Error> {
-        let mut manga_in_library = self.library_repo.get_manga_from_all_users_library().await;
+        let library_repo = self.library_repo.clone();
+        let (tx, mut rx) = tokio::sync::mpsc::channel(10);
 
-        while let Some(Ok(manga)) = manga_in_library.next().await {
+        let rt = tokio::runtime::Handle::current();
+        std::thread::spawn(move || {
+            rt.block_on(async move {
+                let mut manga_in_library = library_repo.get_manga_from_all_users_library().await;
+
+                while let Some(manga) = manga_in_library.next().await {
+                    if let Err(e) = tx.send(manga).await {
+                        error!("error send update: {e:?}");
+                        break;
+                    }
+                }
+            });
+        });
+
+        while let Some(Ok(manga)) = rx.recv().await {
             debug!("Checking updates: {}", manga.title);
 
             let chapters: Vec<Chapter> = match self
@@ -354,7 +372,8 @@ pub fn start<C, L, P>(
     notifier: Notification<UserRepositoryImpl>,
     extension_repository: String,
     cache_path: P,
-) where
+) -> JoinHandle<()>
+where
     C: ChapterRepository + 'static,
     L: LibraryRepository + 'static,
     P: AsRef<Path>,
@@ -371,8 +390,5 @@ pub fn start<C, L, P>(
         cache_path,
     );
 
-    let handle = tokio::runtime::Handle::current();
-    std::thread::spawn(move || {
-        handle.block_on(worker.run());
-    });
+    tokio::spawn(worker.run())
 }

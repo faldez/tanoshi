@@ -18,7 +18,7 @@ pub enum LibraryRepositoryError {
 }
 
 #[async_trait]
-pub trait LibraryRepository: Send + Sync {
+pub trait LibraryRepository: Clone + Send + Sync {
     async fn get_categories_by_user_id(
         &self,
         user_id: i64,

@@ -145,7 +145,7 @@ async fn main() -> Result<(), anyhow::Error> {
         download_receiver,
     );
 
-    worker::updates::start(
+    let update_worker_handle = worker::updates::start(
         config.update_interval,
         library_repo.clone(),
         chapter_repo.clone(),
@@ -208,9 +208,9 @@ async fn main() -> Result<(), anyhow::Error> {
         _ = server_fut => {
             info!("server shutdown");
         }
-        // _ = update_worker_handle => {
-        //     info!("update worker quit");
-        // }
+        _ = update_worker_handle => {
+            info!("update worker quit");
+        }
         _ = download_worker_handle => {
             info!("download worker quit");
         }
