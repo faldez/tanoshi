@@ -18,7 +18,7 @@ Selfhosted web manga reader.
 - MyAnimeList and AniList tracker support
 
 ## Download
-Download from [release page](https://github.com/faldez/tanoshi/releases) or [docker](https://hub.docker.com/repository/docker/faldez/tanoshi).
+Download from [release page](https://github.com/faldez/tanoshi/releases) or [docker](https://hub.docker.com/r/faldez/tanoshi).
 
 ### Desktop
 If you don't plan to host Tanoshi and use from single device you can download desktop version. Download `.msi` for windows, `.deb` or `.AppImage` for linux, `.dmg` for mac.
