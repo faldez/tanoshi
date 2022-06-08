@@ -157,21 +157,39 @@ async fn main() -> Result<(), anyhow::Error> {
         &config.cache_path,
     );
 
-    let mal_client = config
-        .base_url
-        .clone()
-        .zip(config.myanimelist.clone())
-        .and_then(|(base_url, mal_cfg)| {
-            MyAnimeList::new(&base_url, mal_cfg.client_id.clone(), mal_cfg.client_secret).ok()
-        });
+    let mal_client = if let Some(mal_cfg) = config.myanimelist.as_ref() {
+        if let Some(base_url) = config.base_url.as_ref() {
+            MyAnimeList::new(
+                base_url,
+                mal_cfg.client_id.clone(),
+                mal_cfg.client_secret.clone(),
+            )
+            .ok()
+        } else {
+            return Err(anyhow::anyhow!(
+                "Invalid config: MyAnimeList tracker needs base_url to login"
+            ));
+        }
+    } else {
+        None
+    };
 
-    let al_client = config
-        .base_url
-        .clone()
-        .zip(config.anilist.clone())
-        .and_then(|(base_url, al_cfg)| {
-            AniList::new(&base_url, al_cfg.client_id.clone(), al_cfg.client_secret).ok()
-        });
+    let al_client = if let Some(al_cfg) = config.anilist.as_ref() {
+        if let Some(base_url) = config.base_url.as_ref() {
+            AniList::new(
+                base_url,
+                al_cfg.client_id.clone(),
+                al_cfg.client_secret.clone(),
+            )
+            .ok()
+        } else {
+            return Err(anyhow::anyhow!(
+                "Invalid config: AniList tracker needs base_url to login"
+            ));
+        }
+    } else {
+        None
+    };
 
     let tracker_repo = TrackerRepositoryImpl::new(pool.clone(), mal_client.clone(), al_client);
     let tracker_svc = TrackerService::new(tracker_repo.clone());
