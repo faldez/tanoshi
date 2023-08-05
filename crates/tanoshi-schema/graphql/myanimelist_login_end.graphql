@@ -1,0 +1,3 @@
+query MyanimelistLoginEnd($code: String!, $state: String!, $csrfState: String!, $pkceCodeVerifier: String!) {
+  myanimelistLoginEnd(code: $code, state: $state, csrfState: $csrfState, pkceCodeVerifier: $pkceCodeVerifier)
+}

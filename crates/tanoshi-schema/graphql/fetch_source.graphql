@@ -1,0 +1,9 @@
+query FetchSourceDetail($sourceId: Int) {
+  source(sourceId: $sourceId) {
+    id
+    name
+    version
+    icon
+    preferences
+  }
+}

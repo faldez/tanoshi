@@ -1,0 +1,3 @@
+mutation RemoveChapterFromQueue($ids: [Int]) {
+  removeChaptersFromQueue(ids: $ids)
+}

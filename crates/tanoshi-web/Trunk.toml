@@ -1,0 +1,17 @@
+[[proxy]]
+backend = "http://localhost:3030/graphql"
+
+[[proxy]]
+backend = "ws://localhost:3030/ws"
+ws = true
+
+[[proxy]]
+backend = "http://localhost:3030/image"
+
+[tools]
+sass = "1.50.0"
+wasm_bindgen = "0.2.80"
+wasm_opt = "version_108"
+
+[serve]
+address = "0.0.0.0"

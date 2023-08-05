@@ -1,0 +1,16 @@
+query FetchAllSources{
+  installedSources(checkUpdate: true) {
+    id
+    name
+    version
+    icon
+    hasUpdate
+  }
+
+  availableSources {
+    id
+    name
+    version
+    icon
+  }
+}

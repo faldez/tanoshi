@@ -1,0 +1,19 @@
+query FetchRecentUpdates($first: Int, $cursor: String) {
+ recentUpdates(first: $first, after: $cursor) {
+   edges {
+     node {
+       mangaId
+       mangaTitle
+       coverUrl
+       chapterId
+       chapterTitle
+       uploaded
+     }
+     cursor
+   }
+   pageInfo {
+     hasNextPage
+     hasPreviousPage
+   }
+ }
+}

@@ -1,0 +1,1 @@
+ALTER TABLE download_queue ADD COLUMN priority INTEGER NOT NULL;

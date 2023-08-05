@@ -1,0 +1,3 @@
+query TestTelegram($chatId: Int) {
+  testTelegram(chatId: $chatId)
+}

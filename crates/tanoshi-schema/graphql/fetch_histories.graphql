@@ -1,0 +1,20 @@
+query FetchHistories($first: Int, $cursor: String) {
+ recentChapters(first: $first, after: $cursor) {
+   edges {
+     node {
+       mangaId
+   		mangaTitle
+   		coverUrl
+   		chapterId
+   		chapterTitle
+   		readAt
+ 	 	lastPageRead
+     }
+     cursor
+   }
+   pageInfo {
+     hasNextPage
+     hasPreviousPage
+   }
+ }
+}

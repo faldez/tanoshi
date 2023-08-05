@@ -1,0 +1,3 @@
+mutation UntrackManga($tracker: String!, $mangaId: Int!) {
+    untrackManga(tracker: $tracker, mangaId: $mangaId)
+}

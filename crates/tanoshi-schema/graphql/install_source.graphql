@@ -1,0 +1,3 @@
+mutation InstallSource($sourceId: Int) {
+  installSource(sourceId: $sourceId)
+}

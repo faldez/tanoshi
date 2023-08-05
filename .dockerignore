@@ -1,0 +1,12 @@
+.DS_Store
+target/
+.vscode/
+.env
+.idea/
+mangas/
+config.yml
+*.db
+*.db-shm
+*.db-wal
+tanoshi-web/node_modules/
+.github/

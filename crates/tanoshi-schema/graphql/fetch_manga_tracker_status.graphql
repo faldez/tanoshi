@@ -1,0 +1,12 @@
+query FetchMangaTrackerStatus($mangaId: Int!){
+  mangaTrackerStatus(mangaId: $mangaId) {
+      tracker
+      trackerMangaId
+      trackerMangaTitle
+      status
+      score
+      numChaptersRead
+      startDate
+      finishDate
+  }
+}

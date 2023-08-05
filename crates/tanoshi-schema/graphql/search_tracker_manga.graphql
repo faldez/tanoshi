@@ -1,0 +1,8 @@
+query SearchTrackerManga($tracker: String!, $title: String!) {
+  searchTrackerManga(tracker: $tracker, title: $title) {
+    trackerMangaId
+    title
+    synopsis
+    coverUrl
+  }
+}

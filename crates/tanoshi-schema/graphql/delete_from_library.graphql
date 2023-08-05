@@ -1,0 +1,3 @@
+mutation DeleteFromLibrary($mangaId: Int) {
+  deleteFromLibrary(mangaId: $mangaId)
+}

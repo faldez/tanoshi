@@ -1,0 +1,3 @@
+mutation RemoveDownloadedChapters($ids: [Int]) {
+    removeDownloadedChapters(ids: $ids)
+}

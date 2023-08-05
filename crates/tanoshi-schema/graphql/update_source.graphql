@@ -1,0 +1,3 @@
+mutation UpdateSource($sourceId: Int) {
+  updateSource(sourceId: $sourceId)
+}

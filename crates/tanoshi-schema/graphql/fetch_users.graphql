@@ -1,0 +1,15 @@
+query FetchUserList {
+  me {
+    id
+    username
+    isAdmin
+    telegramChatId
+    pushoverUserKey
+  }
+  
+  users {
+    id
+    username
+    isAdmin
+  }
+}

@@ -1,0 +1,12 @@
+query FetchMe {
+  me {
+    id
+    username
+    isAdmin
+    telegramChatId
+    pushoverUserKey
+    gotifyToken
+    myanimelistStatus
+    anilistStatus
+  }
+}

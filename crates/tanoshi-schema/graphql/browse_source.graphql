@@ -1,0 +1,13 @@
+query BrowseSource($sourceId: Int, $page:Int, $query: String, $filters: InputList) {
+  source(sourceId: $sourceId) {
+    name
+  }
+
+  browseSource(sourceId:$sourceId, page:$page, query: $query, filters: $filters) {
+    id
+    path
+    title
+    coverUrl
+    isFavorite
+  }
+}

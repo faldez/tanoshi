@@ -1,0 +1,3 @@
+mutation UpdatePageReadAt($chapterId: Int, $page: Int, $isComplete: Boolean) {
+  updatePageReadAt(chapterId: $chapterId, page: $page, isComplete: $isComplete)
+}

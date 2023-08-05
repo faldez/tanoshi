@@ -1,0 +1,3 @@
+mutation RefreshChapters($mangaId: Int, $wait: Boolean!) {
+  refreshChapters(mangaId: $mangaId, wait: $wait)
+}

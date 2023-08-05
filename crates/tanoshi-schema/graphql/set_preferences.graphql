@@ -1,0 +1,3 @@
+mutation SetPreferences($sourceId: Int!, $preferences: InputList!) {
+    setPreferences(sourceId: $sourceId, preferences: $preferences)
+}

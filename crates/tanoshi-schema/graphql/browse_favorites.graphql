@@ -1,0 +1,10 @@
+query BrowseFavorites($categoryId: Int) {
+  library(categoryId: $categoryId) {
+    id
+    title
+    path
+    coverUrl
+    lastReadAt
+    unreadChapterCount
+  }
+}

@@ -1,0 +1,45 @@
+query FetchMangaDetail($id: Int, $refresh: Boolean) {
+  manga(id: $id, refresh: $refresh) {
+    id
+    title
+    author
+    genre
+    coverUrl
+    description
+    status
+    isFavorite
+    link
+    source {
+      name
+    }
+    trackers {
+      tracker
+      trackerMangaId
+    }
+    nextChapter {
+      id
+      readProgress {
+        at
+        lastPage
+        isComplete
+      }
+    }
+    chapters(refresh: $refresh) {
+      id
+      title
+      number
+      scanlator
+      uploaded
+      readProgress {
+        at
+        lastPage
+        isComplete
+      }
+      downloadedPath
+      downloadStatus {
+        downloaded
+        total
+      }
+    }
+  }
+}

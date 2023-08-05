@@ -1,0 +1,22 @@
+query FetchDownloadedChapters($first: Int, $cursor: String) {
+  getDownloadedChapters(first: $first, after: $cursor) {
+    edges {
+      node {
+        id
+        title
+        number
+        dateAdded
+        manga {
+          title
+        }
+      }
+      cursor
+    }
+    pageInfo {
+      hasPreviousPage
+      hasNextPage
+      startCursor
+      endCursor
+    }
+  }
+}

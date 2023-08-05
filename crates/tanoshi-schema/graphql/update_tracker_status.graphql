@@ -1,0 +1,3 @@
+mutation UpdateTrackerStatus($tracker: String!, $trackerMangaId: String!, $status: TrackerStatusInput!) {
+    updateTrackerStatus(tracker: $tracker, trackerMangaId: $trackerMangaId, status: $status)
+}

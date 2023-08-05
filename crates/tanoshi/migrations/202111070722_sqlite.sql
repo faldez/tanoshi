@@ -1,0 +1,1 @@
+DELETE FROM page WHERE chapter_id IN (SELECT DISTINCT chapter_id FROM page WHERE local_url IS NOT NULL);

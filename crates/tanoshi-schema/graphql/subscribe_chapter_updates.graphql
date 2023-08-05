@@ -1,0 +1,6 @@
+subscription SubscribeChapterUpdates {
+  recentUpdatesSubscription {
+    mangaTitle
+    chapterTitle
+  }
+}

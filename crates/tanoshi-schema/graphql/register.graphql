@@ -1,0 +1,3 @@
+mutation UserRegister($login: LoginInput!, $isAdmin: Boolean!) {
+  register(login: $login, isAdmin: $isAdmin)
+}

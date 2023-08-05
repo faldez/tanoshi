@@ -1,0 +1,8 @@
+query FetchSources{
+  installedSources(checkUpdate: false) {
+    id
+    name
+    version
+    icon
+  }
+}

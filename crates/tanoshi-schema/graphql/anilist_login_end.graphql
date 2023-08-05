@@ -1,0 +1,3 @@
+query AnilistLoginEnd($code: String!) {
+  anilistLoginEnd(code: $code)
+}

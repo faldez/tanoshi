@@ -1,0 +1,2 @@
+UPDATE user_history
+SET is_complete = (user_history.last_page IS (SELECT COUNT(1) - 1 FROM page WHERE page.chapter_id = user_history.chapter_id)) OR (user_history.last_page IS (SELECT COUNT(1) - 2 FROM page WHERE page.chapter_id = user_history.chapter_id));

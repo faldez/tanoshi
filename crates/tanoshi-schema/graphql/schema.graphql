@@ -1,0 +1,459 @@
+schema {
+  query: QueryRoot
+  mutation: MutationRoot
+  subscription: SubscriptionRoot
+}
+
+type Category {
+  id: Int
+  name: String!
+  count: Int!
+}
+
+input ChangePasswordInput {
+  oldPassword: String!
+  newPassword: String!
+}
+
+type Chapter {
+  id: Int!
+  title: String!
+  path: String!
+  number: Float!
+  scanlator: String!
+  prev: Int
+  next: Int
+  readProgress: ReadProgress
+  uploaded: NaiveDateTime!
+  dateAdded: NaiveDateTime!
+  source: Source!
+  manga: Manga!
+  pages(
+    # fetch from source
+    fetch: Boolean! = false
+
+    # encrypt url
+    encrypt: Boolean! = true
+  ): [String!]!
+  downloadedPath: String
+  downloadStatus: DownloadQueueEntry
+}
+
+type ChapterConnection {
+  # Information to aid in pagination.
+  pageInfo: PageInfo!
+
+  # A list of edges.
+  edges: [ChapterEdge!]!
+
+  # A list of nodes.
+  nodes: [Chapter!]!
+}
+
+# An edge in a connection.
+type ChapterEdge {
+  # A cursor for use in pagination
+  cursor: String!
+
+  # The item at the end of the edge
+  node: Chapter!
+}
+
+type DownloadQueueEntry {
+  sourceId: Int!
+  sourceName: String!
+  mangaId: Int!
+  mangaTitle: String!
+  chapterId: Int!
+  chapterTitle: String!
+  downloaded: Int!
+  total: Int!
+  priority: Int!
+}
+
+scalar InputList
+
+input LoginInput {
+  username: String!
+  password: String!
+}
+
+type Manga {
+  id: Int!
+  title: String!
+  author: [String!]!
+  genre: [String!]!
+  status: String
+  description: String
+  link: String!
+  path: String!
+  coverUrl: String!
+  isFavorite: Boolean!
+  dateAdded: NaiveDateTime!
+  unreadChapterCount: Int!
+  lastReadAt: NaiveDateTime
+  source: Source!
+  chapters(
+    # refresh data from source
+    refresh: Boolean! = false
+  ): [Chapter!]!
+  chapter(
+    # chapter id
+    id: Int!
+  ): Chapter!
+  nextChapter: Chapter
+  trackers: [Tracker!]!
+}
+
+type MutationRoot {
+  addToLibrary(
+    # manga id
+    mangaId: Int!
+
+    # category ids
+    categoryIds: [Int!]!
+  ): Int!
+  deleteFromLibrary(
+    # manga id
+    mangaId: Int!
+  ): Int!
+  updatePageReadAt(
+    # chapter id
+    chapterId: Int!
+
+    # page
+    page: Int!
+
+    # is_complete
+    isComplete: Boolean!
+  ): Int!
+  markChapterAsRead(
+    # chapter ids
+    chapterIds: [Int!]!
+  ): Int!
+  markChapterAsUnread(
+    # chapter ids
+    chapterIds: [Int!]!
+  ): Int!
+  refreshChapters(
+    # manga id
+    mangaId: Int
+
+    # wait for updates
+    wait: Boolean! = false
+  ): Boolean!
+  createCategory(
+    # category name
+    name: String!
+  ): Category!
+  updateCategory(
+    # category id
+    id: Int!
+
+    # category name
+    name: String!
+  ): Category!
+  deleteCategory(
+    # category id
+    id: Int!
+  ): Int!
+  register(
+    login: LoginInput!
+
+    # role
+    isAdmin: Boolean! = false
+  ): Int!
+  deleteUser(
+    # user id
+    userId: Int!
+  ): Int!
+  changePassword(input: ChangePasswordInput!): Int!
+  updateProfile(input: ProfileInput!): Int!
+  trackerLogout(tracker: String!): Int!
+  installSource(sourceId: Int!): Int!
+  uninstallSource(sourceId: Int!): Int!
+  updateSource(sourceId: Int!): Int!
+  setPreferences(sourceId: Int!, preferences: InputList!): Int!
+  pauseDownload: Boolean!
+  resumeDownload: Boolean!
+  downloadChapters(ids: [Int!]!): Int!
+  removeChaptersFromQueue(ids: [Int!]!): Int!
+  removeDownloadedChapters(ids: [Int!]!): Int!
+  updateChapterPriority(id: Int!, priority: Int!): Boolean!
+  trackManga(tracker: String!, mangaId: Int!, trackerMangaId: String!): Int!
+  untrackManga(tracker: String!, mangaId: Int!): Int!
+  updateTrackerStatus(
+    tracker: String!
+    trackerMangaId: String!
+    status: TrackerStatusInput!
+  ): Boolean!
+}
+
+# ISO 8601 combined date and time without timezone.
+#
+# # Examples
+#
+# * `2015-07-01T08:59:60.123`,
+scalar NaiveDateTime
+
+# Information about pagination in a connection
+type PageInfo {
+  # When paginating backwards, are there more items?
+  hasPreviousPage: Boolean!
+
+  # When paginating forwards, are there more items?
+  hasNextPage: Boolean!
+
+  # When paginating backwards, the cursor to continue.
+  startCursor: String
+
+  # When paginating forwards, the cursor to continue.
+  endCursor: String
+}
+
+input ProfileInput {
+  telegramChatId: Int
+  pushoverUserKey: String
+  gotifyToken: String
+}
+
+type QueryRoot {
+  installedSources(checkUpdate: Boolean!): [Source!]!
+  availableSources: [Source!]!
+  source(sourceId: Int!): Source!
+  getPopularManga(
+    # source id
+    sourceId: Int!
+
+    # page
+    page: Int!
+  ): [Manga!]!
+  getLatestManga(
+    # source id
+    sourceId: Int!
+
+    # page
+    page: Int!
+  ): [Manga!]!
+  browseSource(
+    # source id
+    sourceId: Int!
+
+    # page
+    page: Int!
+
+    # query
+    query: String
+
+    # filters
+    filters: InputList
+  ): [Manga!]!
+  mangaBySourcePath(
+    # source id
+    sourceId: Int!
+
+    # path to manga in source
+    path: String!
+  ): Manga!
+  manga(
+    # manga id
+    id: Int!
+
+    # refresh data from source
+    refresh: Boolean! = false
+  ): Manga!
+  chapter(
+    # chapter id
+    id: Int!
+  ): Chapter!
+  library(
+    # category id
+    categoryId: Int
+  ): [Manga!]!
+  recentUpdates(
+    after: String
+    before: String
+    first: Int
+    last: Int
+  ): RecentUpdateConnection!
+  recentChapters(
+    after: String
+    before: String
+    first: Int
+    last: Int
+  ): RecentChapterConnection!
+  getCategories: [Category!]!
+  getCategory(id: Int): Category!
+  login(login: LoginInput!): String!
+  users: [User!]!
+  me: User!
+  serverStatus: Status!
+  testTelegram(
+    # telegram chat id
+    chatId: Int!
+  ): Boolean!
+  testPushover(
+    # pushover user key
+    userKey: String!
+  ): Boolean!
+  testGotify(
+    # gotify app token
+    token: String!
+  ): Boolean!
+  testDesktopNotification: Boolean!
+  downloadStatus: Boolean!
+  downloadQueue: [DownloadQueueEntry!]!
+  getDownloadedChapters(
+    after: String
+    before: String
+    first: Int
+    last: Int
+  ): ChapterConnection!
+  myanimelistLoginStart: Session!
+  myanimelistLoginEnd(
+    code: String!
+    state: String!
+    csrfState: String!
+    pkceCodeVerifier: String!
+  ): String!
+  anilistLoginStart: Session!
+  anilistLoginEnd(code: String!): String!
+  searchTrackerManga(tracker: String!, title: String!): [TrackerManga!]!
+  mangaTrackerStatus(mangaId: Int!): [TrackerStatus!]!
+}
+
+type ReadProgress {
+  at: NaiveDateTime!
+  lastPage: Int!
+  isComplete: Boolean!
+}
+
+type RecentChapter {
+  mangaId: Int!
+  chapterId: Int!
+  mangaTitle: String!
+  coverUrl: String!
+  chapterTitle: String!
+  readAt: NaiveDateTime!
+  lastPageRead: Int!
+}
+
+type RecentChapterConnection {
+  # Information to aid in pagination.
+  pageInfo: PageInfo!
+
+  # A list of edges.
+  edges: [RecentChapterEdge!]!
+
+  # A list of nodes.
+  nodes: [RecentChapter!]!
+}
+
+# An edge in a connection.
+type RecentChapterEdge {
+  # A cursor for use in pagination
+  cursor: String!
+
+  # The item at the end of the edge
+  node: RecentChapter!
+}
+
+type RecentUpdate {
+  mangaId: Int!
+  chapterId: Int!
+  mangaTitle: String!
+  coverUrl: String!
+  chapterTitle: String!
+  uploaded: NaiveDateTime!
+}
+
+type RecentUpdateConnection {
+  # Information to aid in pagination.
+  pageInfo: PageInfo!
+
+  # A list of edges.
+  edges: [RecentUpdateEdge!]!
+
+  # A list of nodes.
+  nodes: [RecentUpdate!]!
+}
+
+# An edge in a connection.
+type RecentUpdateEdge {
+  # A cursor for use in pagination
+  cursor: String!
+
+  # The item at the end of the edge
+  node: RecentUpdate!
+}
+
+type Session {
+  authorizeUrl: String!
+  csrfState: String!
+  pkceCodeVerifier: String
+}
+
+type Source {
+  id: Int!
+  name: String!
+  url: String!
+  version: String!
+  icon: String!
+  hasUpdate: Boolean!
+  filters: InputList!
+  preferences: InputList!
+}
+
+type Status {
+  activated: Boolean!
+  version: String!
+  loggedin: Boolean!
+}
+
+type SubscriptionRoot {
+  recentUpdatesSubscription: RecentUpdate!
+}
+
+type Tracker {
+  tracker: String!
+  trackerMangaId: String
+}
+
+type TrackerManga {
+  tracker: String!
+  trackerMangaId: String!
+  title: String!
+  synopsis: String!
+  coverUrl: String!
+  status: String!
+}
+
+type TrackerStatus {
+  tracker: String!
+  trackerMangaId: String
+  trackerMangaTitle: String
+  status: String
+  score: Int
+  numChaptersRead: Int
+  startDate: NaiveDateTime
+  finishDate: NaiveDateTime
+}
+
+input TrackerStatusInput {
+  status: String
+  score: Int
+  numChaptersRead: Int
+  startDate: NaiveDateTime
+  finishDate: NaiveDateTime
+}
+
+type User {
+  id: Int!
+  username: String!
+  isAdmin: Boolean!
+  telegramChatId: Int
+  pushoverUserKey: String
+  gotifyToken: String
+  myanimelistStatus: Boolean!
+  anilistStatus: Boolean!
+}

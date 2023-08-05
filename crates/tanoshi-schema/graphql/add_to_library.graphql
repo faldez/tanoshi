@@ -1,0 +1,3 @@
+mutation AddToLibrary($mangaId: Int, $categoryIds: [Int]) {
+  addToLibrary(mangaId: $mangaId, categoryIds: $categoryIds)
+}

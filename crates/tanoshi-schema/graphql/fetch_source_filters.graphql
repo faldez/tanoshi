@@ -1,0 +1,5 @@
+query FetchSourceFilters($sourceId: Int!) {
+  source(sourceId: $sourceId) {
+    filters
+  }
+}

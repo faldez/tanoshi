@@ -1,0 +1,3 @@
+mutation TrackManga($tracker: String!, $mangaId: Int!, $trackerMangaId: String!) {
+    trackManga(tracker: $tracker, mangaId: $mangaId, trackerMangaId: $trackerMangaId)
+}

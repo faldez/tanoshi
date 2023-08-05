@@ -1,0 +1,1 @@
+CREATE INDEX idx_chapter_source_id_manga_id_path ON chapter(source_id, manga_id, path);
